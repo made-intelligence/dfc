@@ -1,0 +1,21 @@
+{
+  "name": "DFC App",
+  "short_name": "DFC",
+  "description": "A modern Progressive Web App built with Next.js",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
