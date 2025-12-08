@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 interface UseCountUpOptions {
   end: number;
@@ -9,7 +9,12 @@ interface UseCountUpOptions {
   isVisible: boolean;
 }
 
-export function useCountUp({ end, duration = 2000, start = 0, isVisible }: UseCountUpOptions) {
+export function useCountUp({
+  end,
+  duration = 2000,
+  start = 0,
+  isVisible,
+}: UseCountUpOptions) {
   const [count, setCount] = useState(start);
 
   useEffect(() => {
@@ -46,4 +51,3 @@ export function useCountUp({ end, duration = 2000, start = 0, isVisible }: UseCo
 
   return count;
 }
-

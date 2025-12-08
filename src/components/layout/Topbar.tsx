@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { Menu, X, User, LogOut, Calendar, FileText } from 'lucide-react';
-import { Button } from '../ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import Image from "next/image";
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Menu, X, User, LogOut, Calendar, FileText } from "lucide-react";
+import { Button } from "../ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,14 +14,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-
+} from "@/components/ui/dropdown-menu";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 
 const navLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/book', label: 'Book' },
-  { href: '/about', label: 'About Us' },
-  { href: '/partners', label: 'Partners' },
+  { href: "/", label: "Home" },
+  { href: "/book", label: "Book" },
+  { href: "/about", label: "About Us" },
+  { href: "/partners", label: "Partners" },
 ];
 
 export default function Topbar() {
@@ -33,10 +33,10 @@ export default function Topbar() {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/');
+    router.push("/");
   };
 
-  useEffect(() => {
+    useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 0);
     };
@@ -45,8 +45,9 @@ export default function Topbar() {
   }, []);
 
   return (
-    <header className={`${isScrolled ? 'fixed bg-white/95 backdrop-blur-md shadow-sm' : 'absolute bg-transparent'} inset-x-0 top-0 z-50 transition-all duration-300`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <header className={`${( isScrolled || pathname !== "/") ? 'fixed bg-white/95 backdrop-blur-md shadow-sm' : 'absolute bg-transparent'} inset-x-0 top-0 z-50 transition-all duration-300`}>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <nav className="flex items-center justify-between h-18">
           <div className="flex shrink-0">
             <Link href="/" title="Home">
@@ -63,12 +64,14 @@ export default function Topbar() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex md:items-center md:space-x-8">
             {navLinks.map((link) => {
-              const isActive = pathname === link.href || (link.href === '/#book' && pathname === '/book');
+              const isActive =
+                pathname === link.href ||
+                (link.href === "/book" && pathname === "/book");
               return (
-                <Link 
+                <Link
                   key={link.href}
-                  className={`font-semibold text-sm transition-colors ${
-                    isScrolled 
+               className={`font-semibold text-sm transition-colors ${
+                    isScrolled || pathname !== "/" 
                       ? isActive 
                         ? 'text-[#832232]' 
                         : 'text-primary hover:text-primary/90'
@@ -87,52 +90,63 @@ export default function Topbar() {
           {/* Auth Buttons / User Menu */}
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center space-x-2 focus:outline-none">
-                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                      <span className="text-white text-sm font-medium">
-                        {user.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user.email}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/book')}>
-                    <Calendar className="mr-2 h-4 w-4" />
-                    <span>Book Appointment</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/appointments')}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    <span>My Appointments</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/profile')}>
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center space-x-4">
+                <NotificationsDropdown />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center space-x-2 focus:outline-none">
+                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center overflow-hidden">
+                        {user.profileImage ? (
+                          <img
+                            src={user.profileImage}
+                            alt={user.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-white text-sm font-medium">
+                            {user.name.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {user.name}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => router.push("/book")}>
+                      <Calendar className="mr-2 h-4 w-4" />
+                      <span>Book Appointment</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => router.push("/appointments")}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      <span>My Appointments</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => router.push("/profile")}>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             ) : (
-              <Link className={`font-medium transition-colors ${
-                isScrolled
-                  ? 'text-gray-900 hover:text-blue-600'
-                  : 'text-white hover:text-opacity-80'
-              }`} href="/auth/login">
-                <Button size="lg" className='cursor-pointer'>
+              <Link href="/auth/login">
+                <Button size="lg" className="cursor-pointer">
                   Log In
                 </Button>
               </Link>
@@ -142,11 +156,15 @@ export default function Topbar() {
           {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
-              className={isScrolled ? 'text-gray-900' : 'text-white'}
+              className="text-gray-900"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle menu"
             >
-              {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {menuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
             </button>
           </div>
         </nav>
@@ -167,39 +185,43 @@ export default function Topbar() {
             <hr className="border-gray-200" />
             {user ? (
               <>
-                <div className="flex items-center space-x-3 py-2">
-                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
-                      {user.name.charAt(0).toUpperCase()}
-                    </span>
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center overflow-hidden">
+                      {user.profileImage ? (
+                        <img
+                          src={user.profileImage}
+                          alt={user.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white text-sm font-medium">
+                          {user.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {user.name}
+                      </p>
+                      <p className="text-xs text-gray-500">{user.email}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                    <p className="text-xs text-gray-500">{user.email}</p>
-                  </div>
+                  <NotificationsDropdown />
                 </div>
-                <Link
-                  href="/book"
-                  onClick={() => setMenuOpen(false)}
-                >
+                <Link href="/book" onClick={() => setMenuOpen(false)}>
                   <Button variant="outline" className="w-full justify-start">
                     <Calendar className="mr-2 h-4 w-4" />
                     Book Appointment
                   </Button>
                 </Link>
-                <Link
-                  href="/appointments"
-                  onClick={() => setMenuOpen(false)}
-                >
+                <Link href="/appointments" onClick={() => setMenuOpen(false)}>
                   <Button variant="outline" className="w-full justify-start">
                     <FileText className="mr-2 h-4 w-4" />
                     My Appointments
                   </Button>
                 </Link>
-                <Link
-                  href="/profile"
-                  onClick={() => setMenuOpen(false)}
-                >
+                <Link href="/profile" onClick={() => setMenuOpen(false)}>
                   <Button variant="outline" className="w-full justify-start">
                     <User className="mr-2 h-4 w-4" />
                     Profile
@@ -218,13 +240,8 @@ export default function Topbar() {
                 </Button>
               </>
             ) : (
-              <Link
-                href="/auth/login"
-                onClick={() => setMenuOpen(false)}
-              >
-                <Button variant="destructive">
-                  Log In
-                </Button>
+              <Link href="/auth/login" onClick={() => setMenuOpen(false)}>
+                <Button variant="destructive">Log In</Button>
               </Link>
             )}
           </div>

@@ -1,24 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { UserRole } from "@prisma/client";
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
+    const { id } = await params;
     const user = await prisma.user.findUnique({
-      where: { id: params.id, role: 'PATIENT' },
+      where: { id, role: UserRole.PATIENT },
       include: {
         patientProfile: true,
         createdAppointments: {
           include: {
-            doctor: { select: { name: true } }
+            doctor: { select: { name: true } },
           },
-          orderBy: { createdAt: 'desc' },
-          take: 5
-        }
-      }
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        },
+      },
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     return NextResponse.json({
@@ -30,14 +35,17 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       isActive: user.isActive,
       createdAt: user.createdAt,
       profile: user.patientProfile,
-      recentAppointments: user.createdAppointments.map(apt => ({
+      recentAppointments: user.createdAppointments.map((apt) => ({
         id: apt.id,
         date: apt.appointmentDate,
         doctor: apt.doctor.name,
-        status: apt.status
-      }))
+        status: apt.status,
+      })),
     });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch user details' }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch user details" },
+      { status: 500 },
+    );
   }
 }

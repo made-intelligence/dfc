@@ -3,12 +3,23 @@ import withPWA from "next-pwa";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  turbopack: {}, // Empty turbopack config to silence webpack/turbopack conflict
+  turbopack: {},
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.cloudinary.com",
+      },
+    ],
+  },
+  experimental: {
+    serverComponentsExternalPackages: ['react-dom/server'],
+  },
 };
 
 export default withPWA({
   dest: "public",
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development', // Disable PWA in development to prevent constant reloads
+  disable: process.env.NODE_ENV === "development", // Disable PWA in development to prevent constant reloads
 })(nextConfig as any);

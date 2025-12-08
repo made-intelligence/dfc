@@ -15,20 +15,24 @@ Your Progressive Web App (PWA) is now fully functional. Here's how to test and v
 ## 🧪 How to Test PWA Features
 
 ### 1. Service Worker Registration
+
 - Open browser DevTools (F12)
 - Go to **Application** tab → **Service Workers**
 - You should see the service worker registered for `http://localhost:3000`
 
 ### 2. Manifest File
+
 - In DevTools **Application** tab → **Manifest**
 - Verify the app name, icons, and settings are correct
 
 ### 3. PWA Installation
+
 - Look for the **"Install App"** button in your browser's address bar
 - Or use the browser menu to "Install DFC App"
 - The app should install as a standalone application
 
 ### 4. Offline Functionality (Production Only)
+
 - Build the app: `yarn build && yarn start`
 - Visit the app, then disconnect from internet
 - The app should still load (basic offline support)

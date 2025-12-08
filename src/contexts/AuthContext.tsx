@@ -1,13 +1,20 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { UserRole } from '@prisma/client';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { UserRole } from "@prisma/client";
 
 export interface AuthUser {
   id: string;
   email: string;
   name: string;
   role: UserRole;
+  profileImage?: string | null;
   phone?: string;
   isActive: boolean;
   createdAt: string;
@@ -17,8 +24,13 @@ export interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; user?: AuthUser }>;
-  register: (data: RegisterData) => Promise<{ success: boolean; error?: string }>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; error?: string; user?: AuthUser }>;
+  register: (
+    data: RegisterData,
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -49,8 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/auth/me', {
-        credentials: 'include',
+      const response = await fetch("/api/auth/me", {
+        credentials: "include",
       });
 
       if (response.ok) {
@@ -60,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error("Auth check failed:", error);
       setUser(null);
     } finally {
       setLoading(false);
@@ -69,12 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
@@ -87,19 +99,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error };
       }
     } catch (error) {
-      console.error('Login failed:', error);
-      return { success: false, error: 'Network error. Please try again.' };
+      console.error("Login failed:", error);
+      return { success: false, error: "Network error. Please try again." };
     }
   };
 
   const register = async (registerData: RegisterData) => {
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify(registerData),
       });
 
@@ -112,23 +124,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: data.error };
       }
     } catch (error) {
-      console.error('Registration failed:', error);
-      return { success: false, error: 'Network error. Please try again.' };
+      console.error("Registration failed:", error);
+      return { success: false, error: "Network error. Please try again." };
     }
   };
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
       });
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error("Logout failed:", error);
     } finally {
       setUser(null);
       // Redirect to home page
-      window.location.href = '/';
+      window.location.href = "/";
     }
   };
 
@@ -145,17 +157,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUser,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
@@ -163,18 +171,22 @@ export function useAuth() {
 // Hook for role-based access
 export function useRequireAuth(requiredRole?: UserRole) {
   const { user, loading } = useAuth();
-  
+
   useEffect(() => {
     if (!loading && !user) {
-      window.location.href = '/auth/login';
+      window.location.href = "/auth/login";
     }
-    
+
     if (!loading && user && requiredRole && user.role !== requiredRole) {
       // Redirect to appropriate dashboard
-      const dashboardUrl = user.role === 'SUPERADMIN' ? '/admin' :
-                          user.role === 'ADMIN' ? '/admin' :
-                          user.role === 'DOCTOR' ? '/doctor' :
-                          '/';
+      const dashboardUrl =
+        user.role === "SUPERADMIN"
+          ? "/admin"
+          : user.role === "ADMIN"
+            ? "/admin"
+            : user.role === "DOCTOR"
+              ? "/doctor"
+              : "/";
       window.location.href = dashboardUrl;
     }
   }, [user, loading, requiredRole]);

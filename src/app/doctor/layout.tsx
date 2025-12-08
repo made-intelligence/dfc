@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { UserRole } from '@prisma/client';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { UserRole } from "@prisma/client";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 
 export default function DoctorLayout({
   children,
@@ -11,9 +11,7 @@ export default function DoctorLayout({
 }) {
   return (
     <ProtectedRoute requiredRole={UserRole.DOCTOR}>
-      <DashboardLayout>
-        {children}
-      </DashboardLayout>
+      <DashboardLayout>{children}</DashboardLayout>
     </ProtectedRoute>
   );
 }

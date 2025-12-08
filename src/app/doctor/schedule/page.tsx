@@ -1,24 +1,46 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Clock, Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Clock, Plus, Edit, Trash2, Save, X } from "lucide-react";
+import { Loading } from "@/components/ui/loading";
 
 interface Schedule {
   id: string;
+  title?: string;
   dayOfWeek: number;
   startTime: string;
   endTime: string;
-  isActive: boolean;
+  slotDuration: number;
+  bufferTime: number;
+  scheduleType: 'AVAILABLE' | 'BLOCKED' | 'HOLIDAY' | 'EMERGENCY';
+  isRecurring: boolean;
+  maxBookingsPerSlot: number;
+  notes?: string;
+  color?: string;
 }
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
 export default function SchedulePage() {
   const { user } = useAuth();
@@ -26,10 +48,17 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newSchedule, setNewSchedule] = useState({
+    title: "",
     dayOfWeek: 1,
-    startTime: '09:00',
-    endTime: '17:00',
-    isActive: true
+    startTime: "09:00",
+    endTime: "17:00",
+    slotDuration: 30,
+    bufferTime: 0,
+    scheduleType: 'AVAILABLE' as const,
+    isRecurring: true,
+    maxBookingsPerSlot: 1,
+    notes: "",
+    color: "#3B82F6"
   });
 
   useEffect(() => {
@@ -38,13 +67,13 @@ export default function SchedulePage() {
 
   const fetchSchedules = async () => {
     try {
-      const response = await fetch('/api/doctor/schedule');
+      const response = await fetch("/api/doctor/schedule");
       if (response.ok) {
         const data = await response.json();
         setSchedules(data);
       }
     } catch (error) {
-      console.error('Error fetching schedules:', error);
+      console.error("Error fetching schedules:", error);
     } finally {
       setLoading(false);
     }
@@ -52,41 +81,53 @@ export default function SchedulePage() {
 
   const handleSaveSchedule = async (schedule: Partial<Schedule>) => {
     try {
-      const method = schedule.id ? 'PUT' : 'POST';
-      const response = await fetch('/api/doctor/schedule', {
+      const method = schedule.id ? "PUT" : "POST";
+      const response = await fetch("/api/doctor/schedule", {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(schedule)
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(schedule),
       });
 
       if (response.ok) {
         fetchSchedules();
         setEditingId(null);
         if (!schedule.id) {
-          setNewSchedule({ dayOfWeek: 1, startTime: '09:00', endTime: '17:00', isActive: true });
+          setNewSchedule({
+            title: "",
+            dayOfWeek: 1,
+            startTime: "09:00",
+            endTime: "17:00",
+            slotDuration: 30,
+            bufferTime: 0,
+            scheduleType: 'AVAILABLE' as const,
+            isRecurring: true,
+            maxBookingsPerSlot: 1,
+            notes: "",
+            color: "#3B82F6"
+          });
         }
       }
     } catch (error) {
-      console.error('Error saving schedule:', error);
+      console.error("Error saving schedule:", error);
     }
   };
 
   const handleDeleteSchedule = async (id: string) => {
     try {
       const response = await fetch(`/api/doctor/schedule?id=${id}`, {
-        method: 'DELETE'
+        method: "DELETE",
       });
 
       if (response.ok) {
         fetchSchedules();
       }
     } catch (error) {
-      console.error('Error deleting schedule:', error);
+      console.error("Error deleting schedule:", error);
     }
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return <Loading />;
   }
 
   return (
@@ -94,7 +135,9 @@ export default function SchedulePage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Schedule Management</h1>
-          <p className="text-gray-600">Manage your availability and working hours</p>
+          <p className="text-gray-600">
+            Create flexible schedule blocks. Use different types: Available (bookable), Blocked (lunch/breaks), Holiday, or Emergency slots.
+          </p>
         </div>
       </div>
 
@@ -106,39 +149,113 @@ export default function SchedulePage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <Label>Day</Label>
-              <select
-                className="w-full p-2 border rounded-md"
-                value={newSchedule.dayOfWeek}
-                onChange={(e) => setNewSchedule({ ...newSchedule, dayOfWeek: parseInt(e.target.value) })}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Title (Optional)</Label>
+                <Input
+                  placeholder="e.g., Morning Clinic, Lunch Break"
+                  value={newSchedule.title}
+                  onChange={(e) =>
+                    setNewSchedule({ ...newSchedule, title: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label>Day</Label>
+                <select
+                  className="w-full p-2 border rounded-md"
+                  value={newSchedule.dayOfWeek}
+                  onChange={(e) =>
+                    setNewSchedule({
+                      ...newSchedule,
+                      dayOfWeek: parseInt(e.target.value),
+                    })
+                  }
+                >
+                  {DAYS.map((day, index) => (
+                    <option key={index} value={index}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Type</Label>
+                <select
+                  className="w-full p-2 border rounded-md"
+                  value={newSchedule.scheduleType}
+                  onChange={(e) =>
+                    setNewSchedule({ ...newSchedule, scheduleType: e.target.value as any })
+                  }
+                >
+                  <option value="AVAILABLE">Available</option>
+                  <option value="BLOCKED">Blocked</option>
+                  <option value="HOLIDAY">Holiday</option>
+                  <option value="EMERGENCY">Emergency</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <Label>Start Time</Label>
+                <Input
+                  type="time"
+                  value={newSchedule.startTime}
+                  onChange={(e) =>
+                    setNewSchedule({ ...newSchedule, startTime: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label>End Time</Label>
+                <Input
+                  type="time"
+                  value={newSchedule.endTime}
+                  onChange={(e) =>
+                    setNewSchedule({ ...newSchedule, endTime: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label>Slot Duration</Label>
+                <select
+                  className="w-full p-2 border rounded-md"
+                  value={newSchedule.slotDuration}
+                  onChange={(e) =>
+                    setNewSchedule({ ...newSchedule, slotDuration: parseInt(e.target.value) })
+                  }
+                >
+                  <option value={15}>15 min</option>
+                  <option value={30}>30 min</option>
+                  <option value={45}>45 min</option>
+                  <option value={60}>60 min</option>
+                </select>
+              </div>
+              <div>
+                <Label>Buffer Time</Label>
+                <select
+                  className="w-full p-2 border rounded-md"
+                  value={newSchedule.bufferTime}
+                  onChange={(e) =>
+                    setNewSchedule({ ...newSchedule, bufferTime: parseInt(e.target.value) })
+                  }
+                >
+                  <option value={0}>No buffer</option>
+                  <option value={5}>5 min</option>
+                  <option value={10}>10 min</option>
+                  <option value={15}>15 min</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <Button
+                onClick={() => handleSaveSchedule(newSchedule)}
               >
-                {DAYS.map((day, index) => (
-                  <option key={index} value={index}>{day}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Start Time</Label>
-              <Input
-                type="time"
-                value={newSchedule.startTime}
-                onChange={(e) => setNewSchedule({ ...newSchedule, startTime: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>End Time</Label>
-              <Input
-                type="time"
-                value={newSchedule.endTime}
-                onChange={(e) => setNewSchedule({ ...newSchedule, endTime: e.target.value })}
-              />
-            </div>
-            <div className="flex items-end">
-              <Button onClick={() => handleSaveSchedule(newSchedule)} className="w-full">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Schedule
+                Add Schedule Block
               </Button>
             </div>
           </div>
@@ -156,18 +273,23 @@ export default function SchedulePage() {
         <CardContent>
           <div className="space-y-4">
             {DAYS.map((day, dayIndex) => {
-              const daySchedules = schedules.filter(s => s.dayOfWeek === dayIndex);
-              
+              const daySchedules = schedules.filter(
+                (s) => s.dayOfWeek === dayIndex,
+              );
+
               return (
                 <div key={dayIndex} className="border rounded-lg p-4">
                   <h3 className="font-semibold mb-3">{day}</h3>
-                  
+
                   {daySchedules.length === 0 ? (
                     <p className="text-gray-500 text-sm">No schedule set</p>
                   ) : (
                     <div className="space-y-2">
                       {daySchedules.map((schedule) => (
-                        <div key={schedule.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                        <div
+                          key={schedule.id}
+                          className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
+                        >
                           {editingId === schedule.id ? (
                             <EditScheduleForm
                               schedule={schedule}
@@ -177,11 +299,29 @@ export default function SchedulePage() {
                           ) : (
                             <>
                               <div className="flex items-center gap-4">
-                                <span className="font-medium">
-                                  {schedule.startTime} - {schedule.endTime}
-                                </span>
-                                <Badge variant={schedule.isActive ? 'default' : 'secondary'}>
-                                  {schedule.isActive ? 'Active' : 'Inactive'}
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: schedule.color || '#3B82F6' }}
+                                />
+                                <div>
+                                  <div className="font-medium">
+                                    {schedule.title || `${schedule.startTime} - ${schedule.endTime}`}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {schedule.startTime} - {schedule.endTime}
+                                  </div>
+                                </div>
+                                <Badge variant="outline">
+                                  {schedule.slotDuration}min
+                                </Badge>
+                                <Badge
+                                  variant={
+                                    schedule.scheduleType === 'AVAILABLE' ? "default" : 
+                                    schedule.scheduleType === 'BLOCKED' ? "secondary" :
+                                    schedule.scheduleType === 'HOLIDAY' ? "destructive" : "outline"
+                                  }
+                                >
+                                  {schedule.scheduleType.toLowerCase()}
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-2">
@@ -195,7 +335,9 @@ export default function SchedulePage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleDeleteSchedule(schedule.id)}
+                                  onClick={() =>
+                                    handleDeleteSchedule(schedule.id)
+                                  }
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -216,42 +358,76 @@ export default function SchedulePage() {
   );
 }
 
-function EditScheduleForm({ 
-  schedule, 
-  onSave, 
-  onCancel 
-}: { 
-  schedule: Schedule; 
-  onSave: (schedule: Schedule) => void; 
-  onCancel: () => void; 
+function EditScheduleForm({
+  schedule,
+  onSave,
+  onCancel,
+}: {
+  schedule: Schedule;
+  onSave: (schedule: Schedule) => void;
+  onCancel: () => void;
 }) {
   const [editData, setEditData] = useState(schedule);
 
   return (
-    <div className="flex items-center gap-2 w-full">
-      <Input
-        type="time"
-        value={editData.startTime}
-        onChange={(e) => setEditData({ ...editData, startTime: e.target.value })}
-        className="w-24"
-      />
-      <span>-</span>
-      <Input
-        type="time"
-        value={editData.endTime}
-        onChange={(e) => setEditData({ ...editData, endTime: e.target.value })}
-        className="w-24"
-      />
-      <Switch
-        checked={editData.isActive}
-        onCheckedChange={(checked) => setEditData({ ...editData, isActive: checked })}
-      />
-      <Button size="sm" onClick={() => onSave(editData)}>
-        <Save className="h-4 w-4" />
-      </Button>
-      <Button size="sm" variant="outline" onClick={onCancel}>
-        <X className="h-4 w-4" />
-      </Button>
+    <div className="space-y-2 w-full">
+      <div className="flex items-center gap-2">
+        <Input
+          placeholder="Title"
+          value={editData.title || ''}
+          onChange={(e) =>
+            setEditData({ ...editData, title: e.target.value })
+          }
+          className="flex-1"
+        />
+        <select
+          className="p-1 border rounded text-sm"
+          value={editData.scheduleType}
+          onChange={(e) =>
+            setEditData({ ...editData, scheduleType: e.target.value as any })
+          }
+        >
+          <option value="AVAILABLE">Available</option>
+          <option value="BLOCKED">Blocked</option>
+          <option value="HOLIDAY">Holiday</option>
+          <option value="EMERGENCY">Emergency</option>
+        </select>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          type="time"
+          value={editData.startTime}
+          onChange={(e) =>
+            setEditData({ ...editData, startTime: e.target.value })
+          }
+          className="w-24"
+        />
+        <span>-</span>
+        <Input
+          type="time"
+          value={editData.endTime}
+          onChange={(e) => setEditData({ ...editData, endTime: e.target.value })}
+          className="w-24"
+        />
+        <select
+          className="p-1 border rounded text-sm"
+          value={editData.slotDuration}
+          onChange={(e) =>
+            setEditData({ ...editData, slotDuration: parseInt(e.target.value) })
+          }
+        >
+          <option value={15}>15min</option>
+          <option value={30}>30min</option>
+          <option value={45}>45min</option>
+          <option value={60}>60min</option>
+        </select>
+        <Button size="sm" onClick={() => onSave(editData)}>
+          <Save className="h-4 w-4" />
+        </Button>
+        <Button size="sm" variant="outline" onClick={onCancel}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }

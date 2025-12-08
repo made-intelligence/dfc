@@ -1,25 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createLogoutCookie } from '@/lib/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { createLogoutCookie } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
     // Create response with logout cookie
     const response = NextResponse.json({
       success: true,
-      message: 'Logged out successfully',
+      message: "Logged out successfully",
     });
 
     // Clear the auth cookie
-    response.headers.set('Set-Cookie', createLogoutCookie());
+    response.headers.set("Set-Cookie", createLogoutCookie());
 
     return response;
-
   } catch (error) {
-    console.error('Logout error:', error);
-    
+    console.error("Logout error:", error);
+
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }

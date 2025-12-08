@@ -1,20 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken, canAccessRoute, getTokenFromCookies } from '@/lib/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { verifyToken, canAccessRoute, getTokenFromCookies } from "@/lib/auth";
 
 // Define protected routes and their required roles
 const protectedRoutes = {
-  '/admin': ['SUPERADMIN' as const, 'ADMIN' as const],
-  '/doctor': ['DOCTOR' as const, 'SUPERADMIN' as const, 'ADMIN' as const],
+  "/admin": ["SUPERADMIN" as const, "ADMIN" as const],
+  "/doctor": ["DOCTOR" as const, "SUPERADMIN" as const, "ADMIN" as const],
 } as const;
 
 // Public routes that don't require authentication
 const publicRoutes = [
-  '/',
-  '/auth/login',
-  '/auth/forgot-password',
-  '/api/auth/login',
-  '/api/auth/register',
-  '/api/auth/forgot-password',
+  "/",
+  "/book",
+  "/about",
+  "/auth/login",
+  "/auth/forgot-password",
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/forgot-password",
+  "/api/public/doctors",
+  "/api/public/specialties",
 ];
 
 export async function proxy(request: NextRequest) {
@@ -22,27 +26,29 @@ export async function proxy(request: NextRequest) {
 
   // Skip proxy for static files and API routes that don't need auth
   if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/_') ||
-    pathname.includes('.') ||
-    publicRoutes.includes(pathname)
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/_") ||
+    pathname.startsWith("/api/public") ||
+    pathname.includes(".") ||
+    publicRoutes.includes(pathname) ||
+    pathname.startsWith("/book/") // Allow dynamic doctor pages
   ) {
     return NextResponse.next();
   }
 
   // Get token from cookies
-  const token = getTokenFromCookies(request.headers.get('cookie'));
+  const token = getTokenFromCookies(request.headers.get("cookie"));
 
   // Check if route requires authentication
-  const isProtectedRoute = Object.keys(protectedRoutes).some(route =>
-    pathname.startsWith(route)
+  const isProtectedRoute = Object.keys(protectedRoutes).some((route) =>
+    pathname.startsWith(route),
   );
 
   if (isProtectedRoute) {
     if (!token) {
       // Redirect to login if no token
-      const loginUrl = new URL('/auth/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
+      const loginUrl = new URL("/auth/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);
     }
 
@@ -50,20 +56,21 @@ export async function proxy(request: NextRequest) {
     const payload = await verifyToken(token);
     if (!payload) {
       // Invalid token, redirect to login
-      const loginUrl = new URL('/auth/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
+      const loginUrl = new URL("/auth/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
       const response = NextResponse.redirect(loginUrl);
-      response.cookies.delete('token');
+      response.cookies.delete("token");
       return response;
     }
 
     // Check role-based access
-    const matchedRoute = Object.keys(protectedRoutes).find(route => 
-      pathname.startsWith(route)
+    const matchedRoute = Object.keys(protectedRoutes).find((route) =>
+      pathname.startsWith(route),
     );
-    
+
     if (matchedRoute) {
-      const allowedRoles = protectedRoutes[matchedRoute as keyof typeof protectedRoutes];
+      const allowedRoles =
+        protectedRoutes[matchedRoute as keyof typeof protectedRoutes];
       if (!allowedRoles.includes(payload.role as any)) {
         // Insufficient permissions, redirect to appropriate dashboard
         const dashboardUrl = getDashboardUrl(payload.role);
@@ -73,10 +80,10 @@ export async function proxy(request: NextRequest) {
 
     // Add user info to headers for API routes
     const response = NextResponse.next();
-    response.headers.set('x-user-id', payload.userId);
-    response.headers.set('x-user-role', payload.role);
-    response.headers.set('x-user-email', payload.email);
-    
+    response.headers.set("x-user-id", payload.userId);
+    response.headers.set("x-user-role", payload.role);
+    response.headers.set("x-user-email", payload.email);
+
     return response;
   }
 
@@ -85,9 +92,9 @@ export async function proxy(request: NextRequest) {
     const payload = await verifyToken(token);
     if (payload) {
       const response = NextResponse.next();
-      response.headers.set('x-user-id', payload.userId);
-      response.headers.set('x-user-role', payload.role);
-      response.headers.set('x-user-email', payload.email);
+      response.headers.set("x-user-id", payload.userId);
+      response.headers.set("x-user-role", payload.role);
+      response.headers.set("x-user-email", payload.email);
       return response;
     }
   }
@@ -97,16 +104,16 @@ export async function proxy(request: NextRequest) {
 
 function getDashboardUrl(role: string): string {
   switch (role) {
-    case 'SUPERADMIN':
-      return '/admin';
-    case 'ADMIN':
-      return '/admin';
-    case 'DOCTOR':
-      return '/doctor';
-    case 'PATIENT':
-      return '/';
+    case "SUPERADMIN":
+      return "/admin";
+    case "ADMIN":
+      return "/admin";
+    case "DOCTOR":
+      return "/doctor";
+    case "PATIENT":
+      return "/";
     default:
-      return '/';
+      return "/";
   }
 }
 
@@ -119,7 +126,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };
-

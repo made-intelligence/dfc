@@ -1,21 +1,21 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Search, 
-  Filter, 
-  Calendar, 
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Search,
+  Filter,
+  Calendar,
   MoreHorizontal,
   Clock,
   CheckCircle,
   XCircle,
   AlertCircle,
-  Loader2
-} from 'lucide-react';
+} from "lucide-react";
+import { TableSkeleton } from "@/components/ui/loading";
 
 interface AppointmentData {
   id: string;
@@ -40,9 +40,14 @@ interface AppointmentsResponse {
 }
 
 export default function AppointmentsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
-  const [stats, setStats] = useState({ todayTotal: 0, confirmed: 0, pending: 0, cancelled: 0 });
+  const [stats, setStats] = useState({
+    todayTotal: 0,
+    confirmed: 0,
+    pending: 0,
+    cancelled: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,15 +58,15 @@ export default function AppointmentsPage() {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      
+      if (searchTerm) params.append("search", searchTerm);
+
       const response = await fetch(`/api/admin/appointments?${params}`);
       const data: AppointmentsResponse = await response.json();
-      
+
       setAppointments(data.appointments);
       setStats(data.stats);
     } catch (error) {
-      console.error('Failed to fetch appointments:', error);
+      console.error("Failed to fetch appointments:", error);
     } finally {
       setLoading(false);
     }
@@ -69,11 +74,16 @@ export default function AppointmentsPage() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'confirmed': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'pending': return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-      case 'completed': return <CheckCircle className="h-4 w-4 text-blue-600" />;
-      case 'cancelled': return <XCircle className="h-4 w-4 text-red-600" />;
-      default: return <Clock className="h-4 w-4" />;
+      case "confirmed":
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "pending":
+        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-blue-600" />;
+      case "cancelled":
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return <Clock className="h-4 w-4" />;
     }
   };
 
@@ -81,7 +91,9 @@ export default function AppointmentsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Appointments Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Appointments Management
+          </h1>
           <p className="text-gray-600">Manage all platform appointments</p>
         </div>
         <Button>
@@ -160,13 +172,14 @@ export default function AppointmentsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
+            <TableSkeleton rows={6} />
           ) : (
             <div className="space-y-4">
               {appointments.map((appointment) => (
-                <div key={appointment.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                <div
+                  key={appointment.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                       <Calendar className="h-5 w-5 text-blue-600" />
@@ -175,7 +188,9 @@ export default function AppointmentsPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-medium">{appointment.patient}</h3>
                         <span className="text-gray-400">with</span>
-                        <span className="font-medium text-blue-600">{appointment.doctor}</span>
+                        <span className="font-medium text-blue-600">
+                          {appointment.doctor}
+                        </span>
                         {appointment.reason && (
                           <Badge variant="outline">{appointment.reason}</Badge>
                         )}
@@ -191,9 +206,13 @@ export default function AppointmentsPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           {getStatusIcon(appointment.status)}
-                          <span className="capitalize">{appointment.status}</span>
+                          <span className="capitalize">
+                            {appointment.status}
+                          </span>
                         </div>
-                        <span>₦{appointment.consultationFee.toLocaleString()}</span>
+                        <span>
+                          ₦{appointment.consultationFee.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </div>

@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { UserRole } from '@prisma/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { UserRole } from "@prisma/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loading } from "@/components/ui/loading";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,11 +13,11 @@ interface ProtectedRouteProps {
   redirectTo?: string;
 }
 
-export function ProtectedRoute({ 
-  children, 
-  requiredRole, 
-  allowedRoles, 
-  redirectTo 
+export function ProtectedRoute({
+  children,
+  requiredRole,
+  allowedRoles,
+  redirectTo,
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -27,7 +27,9 @@ export function ProtectedRoute({
 
     // Not authenticated
     if (!user) {
-      const loginUrl = redirectTo ? `/auth/login?redirect=${encodeURIComponent(redirectTo)}` : '/auth/login';
+      const loginUrl = redirectTo
+        ? `/auth/login?redirect=${encodeURIComponent(redirectTo)}`
+        : "/auth/login";
       router.push(loginUrl);
       return;
     }
@@ -52,10 +54,7 @@ export function ProtectedRoute({
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
+        <Loading type="pulse" size="lg" />
       </div>
     );
   }
@@ -79,13 +78,14 @@ export function ProtectedRoute({
 
 function getDashboardUrl(role: UserRole): string {
   switch (role) {
+    case UserRole.SUPERADMIN:
     case UserRole.ADMIN:
-      return '/admin';
+      return "/admin";
     case UserRole.DOCTOR:
-      return '/doctor';
+      return "/doctor";
     case UserRole.PATIENT:
-      return '/patient';
+      return "/patient";
     default:
-      return '/';
+      return "/";
   }
 }

@@ -1,34 +1,40 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { UserRole } from '@prisma/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { useScrollAnimation } from '@/lib/useScrollAnimation';
-import Image from 'next/image';
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { UserRole } from "@prisma/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useScrollAnimation } from "@/lib/useScrollAnimation";
+import Link from "next/link";
 
 export function LoginForm() {
   const { ref: formRef, isVisible: formVisible } = useScrollAnimation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect');
+  const redirectTo = searchParams.get("redirect");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     // Login without role filter - accept any valid user credentials
     const result = await login(email, password);
@@ -42,36 +48,39 @@ export function LoginForm() {
         router.push(dashboardUrl);
       }
     } else {
-      setError(result.error || 'Login failed');
+      setError(result.error || "Login failed");
     }
 
     setLoading(false);
   };
 
   const handleGoogleLogin = () => {
-    const redirect = redirectTo || '/';
+    const redirect = redirectTo || "/";
     window.location.href = `/api/auth/google?redirect=${encodeURIComponent(redirect)}`;
   };
 
   const getDashboardUrl = (userRole?: UserRole) => {
-    if (!userRole) return '/';
-    
+    if (!userRole) return "/";
+
     switch (userRole) {
       case UserRole.SUPERADMIN:
-        return '/admin';
+        return "/admin";
       case UserRole.ADMIN:
-        return '/admin';
+        return "/admin";
       case UserRole.DOCTOR:
-        return '/doctor';
+        return "/doctor";
       case UserRole.PATIENT:
-        return '/';
+        return "/";
       default:
-        return '/';
+        return "/";
     }
   };
 
   return (
-    <Card ref={formRef} className={`w-full max-w-md mx-auto animate-fade-up ${formVisible ? 'visible' : ''}`}>
+    <Card
+      ref={formRef}
+      className={`w-full max-w-md mx-auto animate-fade-up ${formVisible ? "visible" : ""}`}
+    >
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold text-center">
           Sign In
@@ -82,8 +91,6 @@ export function LoginForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-
-
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -102,7 +109,7 @@ export function LoginForm() {
             <div className="relative">
               <Input
                 id="password"
-                type={showPassword ? 'text' : 'password'}
+                type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -132,18 +139,14 @@ export function LoginForm() {
             </div>
           )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={loading}
-          >
+          <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Signing in...
               </>
             ) : (
-              'Sign In'
+              "Sign In"
             )}
           </Button>
 
@@ -185,8 +188,26 @@ export function LoginForm() {
             </svg>
             Continue with Google
           </Button>
-
         </form>
+         <div className="flex flex-col items-center space-y-2 pt-4">
+            <div className="flex justify-between w-full">
+               <p className="text-sm text-primary font-medium">
+                 <Link href="/">Back to Home</Link>
+               </p>
+               <p className="text-sm text-red-700 font-medium">
+                 <Link href="/auth/forgot-password">Forgot Password?</Link>
+               </p>
+            </div>
+            <p className="text-sm text-gray-600">
+              Don't have an account?{" "}
+              <Link 
+                href={`/auth/register${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
+                className="text-primary font-medium hover:underline"
+              >
+                Sign Up
+              </Link>
+            </p>
+         </div>
       </CardContent>
     </Card>
   );

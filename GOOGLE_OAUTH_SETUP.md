@@ -88,14 +88,17 @@ When deploying to production:
 ## Troubleshooting
 
 ### "Error 400: redirect_uri_mismatch"
+
 - Make sure the redirect URI in your Google Cloud Console matches exactly with the one in your application
 - Check that you've added both development and production URLs
 
 ### "Error 403: access_denied"
+
 - Make sure you've added your email as a test user in the OAuth consent screen
 - Check that the required scopes are enabled
 
 ### "This app isn't verified"
+
 - This is normal for apps in development
 - Click "Advanced" and then "Go to [App Name] (unsafe)" to continue
 - For production, you'll need to submit your app for verification
@@ -106,4 +109,3 @@ When deploying to production:
 - Use different OAuth credentials for development and production
 - Regularly rotate your client secret
 - Monitor your OAuth usage in the Google Cloud Console
-

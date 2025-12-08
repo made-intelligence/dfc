@@ -2,12 +2,14 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ToastProvider } from "@/components/ui/toast";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "DFC App - Modern PWA",
-  description: "A modern Progressive Web App built with Next.js, Prisma, and shadcn/ui",
+  title: "DFC | Doctors Foundation For Care",
+  description:
+    "a global healthcare movement and digital platform created to bridge the gap between Nigerians and the wealth of medical expertise across the world",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -20,13 +22,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "DFC App",
-    title: "DFC App - Modern PWA",
-    description: "A modern Progressive Web App built with Next.js, Prisma, and shadcn/ui",
+    title: "DFC | Doctors Foundation For Care",
+    description:
+      "A global healthcare movement and digital platform created to bridge the gap between Nigerians and the wealth of medical expertise across the world",
   },
   twitter: {
     card: "summary",
-    title: "DFC App - Modern PWA",
-    description: "A modern Progressive Web App built with Next.js, Prisma, and shadcn/ui",
+    title: "DFC | Doctors Foundation For Care",
+    description:
+      "A global healthcare movement and digital platform created to bridge the gap between Nigerians and the wealth of medical expertise across the world",
   },
 };
 
@@ -49,9 +53,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="DFC App" />
       </head>
       <body className={inter.className}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <ToastProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </ToastProvider>
       </body>
     </html>
   );

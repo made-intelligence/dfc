@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -23,6 +23,13 @@ enum AppointmentStatus {
   COMPLETED
   CANCELLED
   NO_SHOW
+}
+
+enum ScheduleType {
+  AVAILABLE     // Available for booking
+  BLOCKED       // Blocked/unavailable (lunch, break, etc.)
+  HOLIDAY       // Holiday/vacation
+  EMERGENCY     // Emergency time block
 }
 
 enum SubscriptionStatus {
@@ -53,35 +60,60 @@ model User {
   doctorProfile                     DoctorProfile?
   patientProfile                    PatientProfile?
 
-  // Relationships
   createdAppointments               Appointment[]           @relation("PatientAppointments")
   doctorAppointments                Appointment[]           @relation("DoctorAppointments")
+  notifications                     Notification[]
 
   @@unique([provider, providerId])
 }
 
+model Permission {
+  id                                String                  @id @default(cuid())
+  name                              String                  @unique
+  description                       String?
+  category                          String                  @default("general")
+  isActive                          Boolean                 @default(true)
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+  
+  adminProfiles                     AdminPermission[]
+}
 
 model AdminProfile {
   id                                String                  @id @default(cuid())
   userId                            String                  @unique
   user                              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  permissions                       String 
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
+  
+  permissions                       AdminPermission[]
 }
 
+model AdminPermission {
+  id                                String                  @id @default(cuid())
+  adminProfileId                    String
+  permissionId                      String
+  
+  adminProfile                      AdminProfile            @relation(fields: [adminProfileId], references: [id], onDelete: Cascade)
+  permission                        Permission              @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  
+  createdAt                         DateTime                @default(now())
+  
+  @@unique([adminProfileId, permissionId])
+}
 
 model DoctorProfile {
   id                                String                  @id @default(cuid())
   userId                            String                  @unique
   user                              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  specialty                         String
-  license                           String                  @unique
-  experience                        Int    
+  slug                              String                  @unique
+  license                           String?                 @unique
+  experience                        Int
   bio                               String?
-  consultationFee                   Float
+  consultationFee                   Decimal                 @default(0.00) @db.Decimal(10, 2)
   currency                          String                  @default("NGN")
+  country                           String                  @default("United Kingdom")
   isAvailable                       Boolean                 @default(true)
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
@@ -90,6 +122,8 @@ model DoctorProfile {
   subscriptions                     DoctorSubscription[]
   medicalRecords                    MedicalRecord[]
   ratings                           DoctorRating[]
+  specialtyId                       String?
+  specialty                         specialty?            @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
 }
 
 model PatientProfile {
@@ -110,32 +144,48 @@ model PatientProfile {
   payments                          Payment[]
 }
 
-
 model DoctorSchedule {
   id                                String                  @id @default(cuid())
   doctorId                          String
   doctor                            DoctorProfile           @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  dayOfWeek                         Int // 0 = Sunday, 1 = Monday, etc.
-  startTime                         String // HH:MM format
-  endTime                           String // HH:MM format
-  isActive                          Boolean                 @default(true)
+  
+  // Flexible scheduling
+  title                             String?                 // e.g., "Morning Clinic", "Lunch Break"
+  dayOfWeek                         Int                     // 0 = Sunday, 1 = Monday, etc.
+  startTime                         String                  // HH:MM format
+  endTime                           String                  // HH:MM format
+  slotDuration                      Int                     @default(30) // minutes per appointment
+  bufferTime                        Int                     @default(0)  // break between appointments
+  
+  // Schedule type and availability
+  scheduleType                      ScheduleType            @default(AVAILABLE)
+  isRecurring                       Boolean                 @default(true)
+  maxBookingsPerSlot                Int                     @default(1)
+  
+  // Date range for non-recurring schedules
+  validFrom                         DateTime?
+  validUntil                        DateTime?
+  
+  // Metadata
+  notes                             String?
+  color                             String?                 @default("#3B82F6")
+  
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
 
-  @@unique([doctorId, dayOfWeek, startTime])
+  @@index([doctorId, dayOfWeek])
+  @@index([doctorId, scheduleType])
 }
-
-
 
 model Appointment {
   id                                String                  @id @default(cuid())
   patientId                         String
   doctorId                          String
 
-  patient                           User                    @relation("PatientAppointments", fields: [patientId], references: [id])
-  doctor                            User                    @relation("DoctorAppointments", fields: [doctorId], references: [id])
-  doctorProfile                     DoctorProfile           @relation(fields: [doctorId], references: [userId])
-  patientProfile                    PatientProfile          @relation(fields: [patientId], references: [userId])
+  patient                           User                    @relation("PatientAppointments", fields: [patientId], references: [id], map: "Appointment_patient_fkey")
+  doctor                            User                    @relation("DoctorAppointments", fields: [doctorId], references: [id], map: "Appointment_doctor_fkey")
+  doctorProfile                     DoctorProfile           @relation(fields: [doctorId], references: [userId], map: "Appointment_doctorProfile_fkey")
+  patientProfile                    PatientProfile          @relation(fields: [patientId], references: [userId], map: "Appointment_patientProfile_fkey")
 
   appointmentDate                   DateTime
   startTime                         String // HH:MM format
@@ -145,6 +195,7 @@ model Appointment {
   reason                            String?
   notes                             String?
   consultationFee                   Float
+  meetingLink                       String?
 
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
@@ -175,14 +226,13 @@ model MedicalRecord {
   updatedAt                         DateTime                @updatedAt
 }
 
-
 model DoctorSubscription {
   id                                String                  @id @default(cuid())
   doctorId                          String
   doctor                            DoctorProfile           @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 
   planName                          String
-  amount                            Float
+  amount                            Decimal                 @default(0.00) @db.Decimal(10, 2)
   currency                          String                  @default("NGN")
   status                            SubscriptionStatus      @default(PENDING)
 
@@ -194,7 +244,6 @@ model DoctorSubscription {
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
 }
-
 
 model DoctorRating {
   id                                String                  @id @default(cuid())
@@ -213,7 +262,6 @@ model DoctorRating {
 @@unique([doctorId, patientId])
 }
 
-
 model Payment {
   id                                String                  @id @default(cuid())
   appointmentId                     String
@@ -222,10 +270,59 @@ model Payment {
   patientId                         String
   patient                           PatientProfile          @relation(fields: [patientId], references: [id])
 
-  amount                            Float                   @default(0.00)
+  amount                            Decimal                 @default(0.00) @db.Decimal(10, 2)
   currency                          String                  @default("NGN")
-  paymentReference                  String?                 @unique
+  paymentReference                  String                  @unique
 
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
+}
+
+model specialty {
+  id                                String                  @id @default(cuid())
+  name                              String
+  description                       String?
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+  doctors                           DoctorProfile[]
+}
+
+model SystemSettings {
+  id                                String                  @id @default(cuid())
+  
+  // Settings groups stored as JSON for flexibility
+  general                           Json?                   // Site name, description, contact info
+  notifications                     Json?                   // Email, SMS, Push toggles
+  security                          Json?                   // 2FA, session timeout, password policy
+  system                            Json?                   // Maintenance mode, backup settings
+  payment                           Json?                   // Currency, fees, payment methods
+  email                             Json?                   // SMTP config
+  
+  updatedAt                         DateTime                @updatedAt
+}
+
+model Notification {
+  id                                String                  @id @default(cuid())
+  userId                            String
+  user                              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title                             String
+  message                           String
+  type                              String                  @default("info") // info, success, warning, error
+  isRead                            Boolean                 @default(false)
+  link                              String?                 // Optional link to redirect to
+  
+  createdAt                         DateTime                @default(now())
+}
+
+model EmailLog {
+  id                                String                  @id @default(cuid())
+  recipient                         String
+  subject                           String
+  template                          String                  // Name of the template used
+  status                            String                  // SENT, FAILED
+  error                             String?
+  metadata                          Json?                   // Any extra data (like appointmentId)
+  
+  createdAt                         DateTime                @default(now())
 }

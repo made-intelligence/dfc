@@ -1,21 +1,22 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Search, 
-  Filter, 
-  UserPlus, 
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { AddAdminModal } from "@/components/admin/AddAdminModal";
+import {
+  Search,
+  Filter,
+  UserPlus,
   MoreHorizontal,
   Mail,
   Phone,
   Calendar,
   Shield,
-  Loader2
-} from 'lucide-react';
+} from "lucide-react";
+import { TableSkeleton } from "@/components/ui/loading";
 
 interface AdminData {
   id: string;
@@ -38,10 +39,16 @@ interface AdminsResponse {
 }
 
 export default function AdminsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [admins, setAdmins] = useState<AdminData[]>([]);
-  const [stats, setStats] = useState({ totalAdmins: 0, activeAdmins: 0, superAdmins: 0, newThisMonth: 0 });
+  const [stats, setStats] = useState({
+    totalAdmins: 0,
+    activeAdmins: 0,
+    superAdmins: 0,
+    newThisMonth: 0,
+  });
   const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     fetchAdmins();
@@ -51,15 +58,15 @@ export default function AdminsPage() {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      
+      if (searchTerm) params.append("search", searchTerm);
+
       const response = await fetch(`/api/admin/admins?${params}`);
       const data: AdminsResponse = await response.json();
-      
+
       setAdmins(data.admins);
       setStats(data.stats);
     } catch (error) {
-      console.error('Failed to fetch admins:', error);
+      console.error("Failed to fetch admins:", error);
     } finally {
       setLoading(false);
     }
@@ -72,7 +79,7 @@ export default function AdminsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Admin Management</h1>
           <p className="text-gray-600">Manage platform administrators</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowAddModal(true)}>
           <UserPlus className="h-4 w-4 mr-2" />
           Add Admin
         </Button>
@@ -148,13 +155,14 @@ export default function AdminsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
+            <TableSkeleton rows={5} />
           ) : (
             <div className="space-y-4">
               {admins.map((admin) => (
-                <div key={admin.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                <div
+                  key={admin.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
                       <Shield className="h-5 w-5 text-purple-600" />
@@ -162,12 +170,20 @@ export default function AdminsPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium">{admin.name}</h3>
-                        <Badge variant={admin.role === 'SUPERADMIN' ? 'default' : 'secondary'}>
+                        <Badge
+                          variant={
+                            admin.role === "SUPERADMIN"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
                           <Shield className="h-3 w-3 mr-1" />
                           {admin.role}
                         </Badge>
-                        <Badge variant={admin.isActive ? 'default' : 'secondary'}>
-                          {admin.isActive ? 'active' : 'inactive'}
+                        <Badge
+                          variant={admin.isActive ? "default" : "secondary"}
+                        >
+                          {admin.isActive ? "active" : "inactive"}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
@@ -183,7 +199,8 @@ export default function AdminsPage() {
                         )}
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          Joined {new Date(admin.createdAt).toLocaleDateString()}
+                          Joined{" "}
+                          {new Date(admin.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
@@ -197,6 +214,12 @@ export default function AdminsPage() {
           )}
         </CardContent>
       </Card>
+      
+      <AddAdminModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={fetchAdmins}
+      />
     </div>
   );
 }

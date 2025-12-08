@@ -1,24 +1,25 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Search, 
-  Filter, 
-  UserPlus, 
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Search,
+  Filter,
+  UserPlus,
   MoreHorizontal,
   Mail,
   Phone,
   Star,
   Calendar,
   Hospital,
-  Loader2,
-  Eye
-} from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+  Eye,
+} from "lucide-react";
+import { Loading, CardSkeleton, TableSkeleton } from "@/components/ui/loading";
 
 interface DoctorData {
   id: string;
@@ -44,12 +45,16 @@ interface DoctorsResponse {
 }
 
 export default function DoctorsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState("");
   const [doctors, setDoctors] = useState<DoctorData[]>([]);
-  const [stats, setStats] = useState({ totalDoctors: 0, activeDoctors: 0, avgRating: 0, newThisMonth: 0 });
+  const [stats, setStats] = useState({
+    totalDoctors: 0,
+    activeDoctors: 0,
+    avgRating: 0,
+    newThisMonth: 0,
+  });
   const [loading, setLoading] = useState(true);
-  const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
-  const [doctorDetailsLoading, setDoctorDetailsLoading] = useState(false);
 
   useEffect(() => {
     fetchDoctors();
@@ -59,38 +64,29 @@ export default function DoctorsPage() {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      
+      if (searchTerm) params.append("search", searchTerm);
+
       const response = await fetch(`/api/admin/doctors?${params}`);
       const data: DoctorsResponse = await response.json();
-      
+
       setDoctors(data.doctors);
       setStats(data.stats);
     } catch (error) {
-      console.error('Failed to fetch doctors:', error);
+      console.error("Failed to fetch doctors:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchDoctorDetails = async (doctorId: string) => {
-    try {
-      setDoctorDetailsLoading(true);
-      const response = await fetch(`/api/admin/doctors/${doctorId}`);
-      const data = await response.json();
-      setSelectedDoctor(data);
-    } catch (error) {
-      console.error('Failed to fetch doctor details:', error);
-    } finally {
-      setDoctorDetailsLoading(false);
-    }
-  };
+
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Doctors Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Doctors Management
+          </h1>
           <p className="text-gray-600">Manage all registered doctors</p>
         </div>
         <Button>
@@ -127,7 +123,9 @@ export default function DoctorsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Avg Rating</p>
-                <p className="text-2xl font-bold">{stats.avgRating.toFixed(1)}</p>
+                <p className="text-2xl font-bold">
+                  {stats.avgRating.toFixed(1)}
+                </p>
               </div>
               <Star className="h-8 w-8 text-yellow-600" />
             </div>
@@ -169,13 +167,14 @@ export default function DoctorsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
+            <TableSkeleton rows={6} />
           ) : (
             <div className="space-y-4">
               {doctors.map((doctor) => (
-                <div key={doctor.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                <div
+                  key={doctor.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                       <Hospital className="h-6 w-6 text-blue-600" />
@@ -184,8 +183,10 @@ export default function DoctorsPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-medium">{doctor.name}</h3>
                         <Badge variant="secondary">{doctor.specialty}</Badge>
-                        <Badge variant={doctor.isActive ? 'default' : 'secondary'}>
-                          {doctor.isActive ? 'active' : 'inactive'}
+                        <Badge
+                          variant={doctor.isActive ? "default" : "secondary"}
+                        >
+                          {doctor.isActive ? "active" : "inactive"}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -211,83 +212,13 @@ export default function DoctorsPage() {
                       </div>
                     </div>
                   </div>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => fetchDoctorDetails(doctor.id)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-3xl">
-                      <DialogHeader>
-                        <DialogTitle>Doctor Details</DialogTitle>
-                      </DialogHeader>
-                      {doctorDetailsLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-6 w-6 animate-spin" />
-                        </div>
-                      ) : selectedDoctor ? (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium">Name</label>
-                              <p className="text-sm text-gray-600">{selectedDoctor.name}</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium">Email</label>
-                              <p className="text-sm text-gray-600">{selectedDoctor.email}</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium">Phone</label>
-                              <p className="text-sm text-gray-600">{selectedDoctor.phone || 'N/A'}</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium">Specialty</label>
-                              <p className="text-sm text-gray-600">{selectedDoctor.specialty}</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium">License</label>
-                              <p className="text-sm text-gray-600">{selectedDoctor.license}</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium">Experience</label>
-                              <p className="text-sm text-gray-600">{selectedDoctor.experience} years</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium">Consultation Fee</label>
-                              <p className="text-sm text-gray-600">₦{selectedDoctor.consultationFee?.toLocaleString()}</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium">Rating</label>
-                              <p className="text-sm text-gray-600">{selectedDoctor.avgRating?.toFixed(1)} ({selectedDoctor.totalRatings} reviews)</p>
-                            </div>
-                          </div>
-                          {selectedDoctor.bio && (
-                            <div>
-                              <label className="text-sm font-medium">Bio</label>
-                              <p className="text-sm text-gray-600">{selectedDoctor.bio}</p>
-                            </div>
-                          )}
-                          {selectedDoctor.recentAppointments?.length > 0 && (
-                            <div>
-                              <h3 className="font-medium mb-2">Recent Appointments</h3>
-                              <div className="space-y-2">
-                                {selectedDoctor.recentAppointments.map((apt: any) => (
-                                  <div key={apt.id} className="flex justify-between text-sm p-2 bg-gray-50 rounded">
-                                    <span>{apt.patient}</span>
-                                    <span>{new Date(apt.date).toLocaleDateString()}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-                    </DialogContent>
-                  </Dialog>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push(`/admin/doctors/${doctor.id}`)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
                 </div>
               ))}
             </div>

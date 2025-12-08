@@ -1,8 +1,9 @@
-'use client';
+"use client";
 
-import { UserRole } from '@prisma/client';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { UserRole } from "@prisma/client";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { ToastProvider } from "@/components/ui/toast";
 
 export default function AdminLayout({
   children,
@@ -10,10 +11,10 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ProtectedRoute requiredRole={UserRole.ADMIN}>
-      <DashboardLayout>
-        {children}
-      </DashboardLayout>
+    <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPERADMIN]}>
+      <ToastProvider>
+        <DashboardLayout>{children}</DashboardLayout>
+      </ToastProvider>
     </ProtectedRoute>
   );
 }

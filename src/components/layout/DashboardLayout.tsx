@@ -1,26 +1,28 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { UserRole } from '@prisma/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { 
-  Menu, 
-  X, 
-  Home, 
-  Users, 
-  Calendar, 
-  FileText, 
-  Settings, 
+import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { UserRole } from "@prisma/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import {
+  Menu,
+  X,
+  Home,
+  Users,
+  Calendar,
+  FileText,
+  Settings,
   LogOut,
   Hospital,
   User,
   CreditCard,
   Clock,
   Activity,
-  Shield
-} from 'lucide-react';
+  Shield,
+} from "lucide-react";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -29,20 +31,42 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserPermissions();
+    }
+  }, [user?.id]);
+
+  const fetchUserPermissions = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch(`/api/admin/user-permissions?userId=${user.id}`);
+      const data = await response.json();
+      setUserPermissions(data.permissions || []);
+    } catch (error) {
+      console.error("Failed to fetch user permissions:", error);
+    }
+  };
+
+  const hasPermission = (permission: string) => {
+    return userPermissions.includes(permission) || user?.role === 'SUPERADMIN';
+  };
+
   // Prevent body scroll when sidebar is open on mobile
   useEffect(() => {
     if (sidebarOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
-    
+
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [sidebarOpen]);
 
@@ -50,45 +74,54 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/');
+    router.push("/");
   };
 
   const getNavigationItems = () => {
-    switch (user.role) {
-      case UserRole.ADMIN:
-        return [
-          { name: 'Dashboard', href: '/admin', icon: Home },
-          { name: 'Patients', href: '/admin/users', icon: Users },
-          { name: 'Doctors', href: '/admin/doctors', icon: Hospital },
-          { name: 'Appointments', href: '/admin/appointments', icon: Calendar },
-          { name: 'Analytics', href: '/admin/analytics', icon: Activity },
-          { name: 'Settings', href: '/admin/settings', icon: Settings },
-        ];
-      case UserRole.SUPERADMIN:
-        return [
-          { name: 'Dashboard', href: '/admin', icon: Home },
-          { name: 'Patients', href: '/admin/users', icon: Users },
-          { name: 'Doctors', href: '/admin/doctors', icon: Hospital },
-          { name: 'Manage Admins', href: '/admin/admins', icon: Shield },
-          { name: 'Appointments', href: '/admin/appointments', icon: Calendar },
-          { name: 'Analytics', href: '/admin/analytics', icon: Activity },
-          { name: 'Settings', href: '/admin/settings', icon: Settings },
-        ];
-      case UserRole.DOCTOR:
-        return [
-          { name: 'Dashboard', href: '/doctor', icon: Home },
-          { name: 'Schedule', href: '/doctor/schedule', icon: Clock },
-          { name: 'Appointments', href: '/doctor/appointments', icon: Calendar },
-          { name: 'Patients', href: '/doctor/patients', icon: Users },
-          { name: 'Medical Records', href: '/doctor/records', icon: FileText },
-          { name: 'Subscription', href: '/doctor/subscription', icon: CreditCard },
-          { name: 'Profile', href: '/doctor/profile', icon: User },
-        ];
-      case UserRole.PATIENT:
-        return [];
-      default:
-        return [];
+    const items = [];
+    
+    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
+      items.push({ name: "Dashboard", href: "/admin", icon: Home });
+      
+      if (hasPermission('manage_patients')) {
+        items.push({ name: "Patients", href: "/admin/users", icon: Users });
+      }
+      
+      if (hasPermission('manage_doctors')) {
+        items.push({ name: "Doctors", href: "/admin/doctors", icon: Hospital });
+      }
+      
+      if (hasPermission('manage_admins')) {
+        items.push({ name: "Manage Admins", href: "/admin/admins", icon: Shield });
+      }
+      
+      if (hasPermission('manage_permissions')) {
+        items.push({ name: "Permissions", href: "/admin/permissions", icon: Shield });
+      }
+      
+      items.push({ name: "Appointments", href: "/admin/appointments", icon: Calendar });
+      
+      if (hasPermission('view_analytics')) {
+        items.push({ name: "Analytics", href: "/admin/analytics", icon: Activity });
+      }
+      
+      if (hasPermission('system_settings')) {
+        items.push({ name: "Settings", href: "/admin/settings", icon: Settings });
+      }
+    } else if (user.role === UserRole.DOCTOR) {
+      items.push(
+        { name: "Dashboard", href: "/doctor", icon: Home },
+        { name: "Analytics", href: "/doctor/analytics", icon: Activity },
+        { name: "Schedule", href: "/doctor/schedule", icon: Clock },
+        { name: "Appointments", href: "/doctor/appointments", icon: Calendar },
+        { name: "Patients", href: "/doctor/patients", icon: Users },
+        { name: "Medical Records", href: "/doctor/records", icon: FileText },
+        { name: "Subscription", href: "/doctor/subscription", icon: CreditCard },
+        { name: "Profile", href: "/doctor/profile", icon: User }
+      );
     }
+    
+    return items;
   };
 
   const navigationItems = getNavigationItems();
@@ -98,22 +131,28 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-25 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/70 bg-opacity-25 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <div className={`
+      <div
+        className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-primary shadow-lg transform transition-transform duration-300 ease-in-out
         lg:fixed lg:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-blue-500">
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+      `}
+      >
+        <div className="flex items-center justify-between bg-white h-16 px-6 border-b border-blue-500">
           <div className="flex items-center">
-            <div className="text-xl font-bold text-white">
-              DFC <span className="text-blue-200">Medical</span>
-            </div>
+            <Image
+              src="/logo.png"
+              alt="DFC Medical"
+              width={200}
+              height={80}
+              className="h-20 w-auto"
+            />
           </div>
           <Button
             variant="ghost"
@@ -128,13 +167,15 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
         <nav className="mt-6 px-3 flex-1 overflow-y-auto">
           <div className="space-y-1">
             {navigationItems.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || 
+                (item.href === "/admin/users" && pathname.startsWith("/admin/users/")) ||
+                (item.href === "/admin/doctors" && pathname.startsWith("/admin/doctors/"));
               return (
                 <Button
                   key={item.name}
                   variant="ghost"
                   className={`w-full justify-start text-white hover:bg-blue-500 ${
-                    isActive ? 'bg-blue-500 text-white' : ''
+                    isActive ? "bg-blue-500 text-white" : ""
                   }`}
                   onClick={() => {
                     router.push(item.href);
@@ -160,7 +201,9 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
             </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-white">{user.name}</p>
-              <p className="text-xs text-blue-200 capitalize">{user.role.toLowerCase()}</p>
+              <p className="text-xs text-blue-200 capitalize">
+                {user.role.toLowerCase()}
+              </p>
             </div>
           </div>
           <Button
@@ -190,22 +233,19 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
                 <Menu className="h-5 w-5" />
               </Button>
               <h1 className="text-xl font-semibold text-gray-900">
-                {title || 'Dashboard'}
+                {title}
               </h1>
             </div>
-            
+
             <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                Welcome, {user.name}
-              </div>
+              <NotificationsDropdown />
+              <div className="text-sm text-gray-600">Welcome, {user.name}</div>
             </div>
           </div>
         </div>
 
         {/* Page content */}
-        <main className="p-6">
-          {children}
-        </main>
+        <main className="p-6">{children}</main>
       </div>
     </div>
   );
