@@ -128,6 +128,8 @@ model User {
   assignedTickets                   SecretariatTicket[]      @relation("TicketAssignee")
   secondOpinionCases                SecondOpinionCase[]      @relation("SecondOpinionPatient")
 
+  committeeMembers                  CommitteeMember[]
+
   @@unique([provider, providerId])
   @@index([role])
 }
@@ -1524,4 +1526,44 @@ model SPLAdminUser {
   role                              String                  @default("ADMIN") // ADMIN, COORDINATOR, READONLY
 
   createdAt                         DateTime                @default(now())
+}
+
+// ============================================
+// STANDING COMMITTEES
+// ============================================
+
+model StandingCommittee {
+  id                                String                  @id @default(cuid())
+  name                              String                  @unique
+  shortCode                         String                  @unique
+  description                       String?
+  mandate                           String?
+  isActive                          Boolean                 @default(true)
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  members                           CommitteeMember[]
+
+  @@index([isActive])
+}
+
+model CommitteeMember {
+  id                                String                  @id @default(cuid())
+  committeeId                       String
+  committee                         StandingCommittee       @relation(fields: [committeeId], references: [id])
+  userId                            String?
+  user                              User?                   @relation(fields: [userId], references: [id])
+  memberName                        String
+  role                              String                  @default("MEMBER") // CHAIR | DEPUTY_CHAIR | SECRETARY | MEMBER
+  isActive                          Boolean                 @default(true)
+  isUnlinked                        Boolean                 @default(false)
+  joinedAt                          DateTime                @default(now())
+  endedAt                           DateTime?
+  notes                             String?
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@unique([committeeId, userId])
+  @@index([committeeId])
+  @@index([userId])
 }

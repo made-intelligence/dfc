@@ -48,6 +48,12 @@ interface DashboardData {
     initiative: { name: string; type: string; status: string };
     pillar: { name: string } | null;
   }[];
+  standingCommittees: {
+    id: string;
+    role: string;
+    committeeName: string;
+    shortCode: string;
+  }[];
   recentTickets: {
     id: string;
     requestType: string | null;
@@ -326,7 +332,7 @@ export default function MemberDashboard() {
               View all
             </Link>
           </div>
-          {!data?.committees?.length ? (
+          {!data?.committees?.length && !data?.standingCommittees?.length ? (
             <div className="p-6 text-center">
               <Users className="h-8 w-8 text-gray-300 mx-auto mb-2" />
               <p className="text-sm text-gray-500">No committee assignments yet</p>
@@ -339,7 +345,20 @@ export default function MemberDashboard() {
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {data.committees.slice(0, 4).map((c) => (
+              {data?.standingCommittees?.map((sc) => (
+                <div key={sc.id} className="px-5 py-3.5 flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {sc.committeeName}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">Standing Committee</p>
+                  </div>
+                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[#0A6E75]/10 text-[#0A6E75] shrink-0 ml-3">
+                    {sc.role.replace(/_/g, " ")}
+                  </span>
+                </div>
+              ))}
+              {data?.committees?.slice(0, 4 - (data?.standingCommittees?.length || 0)).map((c) => (
                 <div key={c.id} className="px-5 py-3.5 flex items-center justify-between">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">

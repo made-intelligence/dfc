@@ -93,6 +93,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       items.push({ name: "SPL Partners", href: "/admin/spl", icon: Building2 });
       items.push({ name: "Clinical Governance", href: "/admin/clinical", icon: Shield });
       items.push({ name: "EXCO", href: "/admin/exco", icon: Shield });
+      items.push({ name: "Committees", href: "/admin/committees", icon: Users });
       items.push({ name: "Initiatives", href: "/admin/initiatives", icon: FileText });
       items.push({ name: "Appointments", href: "/admin/appointments", icon: Calendar });
 

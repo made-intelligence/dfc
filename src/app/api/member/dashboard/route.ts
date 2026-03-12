@@ -23,13 +23,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not a DFC member" }, { status: 403 });
     }
 
-    const [committees, recentTickets, openTicketsCount, notifications] =
+    const [committees, standingCommittees, recentTickets, openTicketsCount, notifications] =
       await Promise.all([
         prisma.initiativeMember.findMany({
           where: { dfcMemberId: dfcMember.id },
           include: {
             initiative: { select: { name: true, type: true, status: true } },
             pillar: { select: { name: true } },
+          },
+        }),
+        prisma.committeeMember.findMany({
+          where: { userId: payload.userId, isActive: true },
+          include: {
+            committee: { select: { name: true, shortCode: true } },
           },
         }),
         prisma.secretariatTicket.findMany({
@@ -69,13 +75,19 @@ export async function GET(request: NextRequest) {
         excoTermEnd: dfcMember.excoTermEnd,
         isBotMember: dfcMember.isBotMember,
       },
-      committeesCount: committees.length,
+      committeesCount: committees.length + standingCommittees.length,
       openTicketsCount,
       committees: committees.map((c) => ({
         id: c.id,
         role: c.role,
         initiative: c.initiative,
         pillar: c.pillar,
+      })),
+      standingCommittees: standingCommittees.map((sc) => ({
+        id: sc.id,
+        role: sc.role,
+        committeeName: sc.committee.name,
+        shortCode: sc.committee.shortCode,
       })),
       recentTickets,
       notifications,

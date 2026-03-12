@@ -13,7 +13,8 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "seed:eri": "tsx prisma/seed-eri.ts"
+    "seed:eri": "tsx prisma/seed-eri.ts",
+    "seed:committees": "tsx prisma/seed-committees.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
