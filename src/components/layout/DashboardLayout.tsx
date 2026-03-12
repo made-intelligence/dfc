@@ -24,6 +24,7 @@ import {
   Inbox,
   Building2,
   FolderOpen,
+  MessageSquare,
 } from "lucide-react";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 
@@ -96,6 +97,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       items.push({ name: "Committees", href: "/admin/committees", icon: Users });
       items.push({ name: "Initiatives", href: "/admin/initiatives", icon: FileText });
       items.push({ name: "Appointments", href: "/admin/appointments", icon: Calendar });
+      items.push({ name: "Beta Feedback", href: "/admin/beta-feedback", icon: MessageSquare });
 
       if (hasPermission('manage_admins')) {
         items.push({ name: "Manage Admins", href: "/admin/admins", icon: Shield });

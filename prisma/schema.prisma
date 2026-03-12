@@ -135,6 +135,7 @@ model User {
   secondOpinionCases                SecondOpinionCase[]      @relation("SecondOpinionPatient")
 
   committeeMembers                  CommitteeMember[]
+  betaFeedback                      BetaFeedback[]
 
   @@unique([provider, providerId])
   @@index([role])
@@ -2131,4 +2132,26 @@ model RefreshToken {
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
+}
+
+model BetaFeedback {
+  id          String    @id @default(cuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  name        String
+  email       String
+  role        String?   // e.g. "EXCO", "BOT", "MEMBER", "GUEST"
+  category    String    // BUG, FEATURE, UX, PERFORMANCE, OTHER
+  page        String?   // which page/feature the feedback is about
+  rating      Int?      // 1-5 overall satisfaction
+  message     String
+  screenshot  String?   // optional uploaded screenshot URL
+  userAgent   String?
+  status      String    @default("NEW") // NEW, REVIEWED, RESOLVED, DEFERRED
+  adminNotes  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@index([category])
 }
