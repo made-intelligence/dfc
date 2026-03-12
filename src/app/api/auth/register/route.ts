@@ -16,6 +16,7 @@ import { getDefaultPermissionsByRole } from "@/lib/permissions";
 import { sendEmail } from "@/lib/email/service";
 import Welcome from "@/emails/Welcome";
 import React from "react";
+import { logger } from "@/lib/logger";
 
 interface RegisterRequest {
   email: string;
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Role-specific validation
-    if (role === UserRole.DOCTOR) {
+    if (role === UserRole.DFC_MEMBER) {
       if (!specialty || !license || experience === undefined) {
         return NextResponse.json(
           {
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if doctor license already exists
-    if (role === UserRole.DOCTOR && license) {
+    if (role === UserRole.DFC_MEMBER && license) {
       const existingDoctor = await prisma.doctorProfile.findUnique({
         where: { license },
       });
@@ -136,8 +137,8 @@ export async function POST(request: NextRequest) {
       });
 
       // Create role-specific profile
-      if (role === UserRole.ADMIN) {
-        const defaultPermissions = await getDefaultPermissionsByRole('ADMIN');
+      if (role === UserRole.SECRETARIAT) {
+        const defaultPermissions = await getDefaultPermissionsByRole('SECRETARIAT');
         
         const adminProfile = await tx.adminProfile.create({
           data: {
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest) {
             }))
           });
         }
-      } else if (role === UserRole.DOCTOR) {
+      } else if (role === UserRole.DFC_MEMBER) {
         // Find or create specialty if provided
         let specialtyId: string | undefined;
         if (specialty) {
@@ -219,7 +220,7 @@ export async function POST(request: NextRequest) {
         metadata: { userId: result.id }
       });
     } catch (emailError) {
-      console.error('Failed to send welcome email:', emailError);
+      logger.error('RegisterWelcomeEmail', emailError);
       // Don't fail registration if email fails
     }
 
@@ -255,7 +256,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("Registration error:", error);
+    logger.error('Registration', error);
 
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

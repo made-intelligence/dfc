@@ -23,11 +23,13 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, User, Heart, FileText, Edit, Save, X, Camera, Upload } from "lucide-react";
+import { Loader2, User, Heart, FileText, Edit, Save, X, Camera, Upload, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
 import Topbar from "@/components/layout/Topbar";
+import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/toast";
 import { Loading } from "@/components/ui/loading";
+import HealthRecord from "@/components/profile/HealthRecord";
 
 interface MedicalRecord {
   id: string;
@@ -83,6 +85,7 @@ export default function ProfilePage() {
   const { addToast } = useToast();
   const [uploading, setUploading] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"profile" | "health-record">("profile");
 
   const [formData, setFormData] = useState({
     name: "",
@@ -269,31 +272,65 @@ export default function ProfilePage() {
             Manage your personal and medical information
           </p>
         </div>
-        {!isEditing ? (
-          <Button onClick={() => setIsEditing(true)}>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Profile
-          </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={saving}
-            >
-              <X className="h-4 w-4 mr-2" />
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              Save Changes
-            </Button>
-          </div>
+        {activeTab === "profile" && (
+          <>
+            {!isEditing ? (
+              <Button onClick={() => setIsEditing(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Profile
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={saving}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Save Changes
+                </Button>
+              </div>
+            )}
+          </>
         )}
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex gap-0 -mb-px" aria-label="Profile tabs">
+          <button
+            type="button"
+            onClick={() => setActiveTab("profile")}
+            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "profile"
+                ? "border-[#0A6E75] text-[#0A6E75]"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            <User className="h-4 w-4" />
+            Profile
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("health-record")}
+            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "health-record"
+                ? "border-[#0A6E75] text-[#0A6E75]"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            <ClipboardList className="h-4 w-4" />
+            Health Record
+          </button>
+        </nav>
       </div>
 
       {error && (
@@ -302,7 +339,16 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Health Record Tab */}
+      {activeTab === "health-record" && profile && (
+        <HealthRecord
+          patientId={profile.id}
+          bloodGroup={profile.bloodGroup}
+        />
+      )}
+
+      {/* Profile Tab */}
+      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${activeTab !== "profile" ? "hidden" : ""}`}>
         {/* Personal Information */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
@@ -698,6 +744,7 @@ export default function ProfilePage() {
         </div>
       </div>
       </div>
+      <Footer />
     </>
   );
 }

@@ -1,14 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { v4 as uuidv4 } from 'uuid';
 import React from 'react';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
+    // Require authentication — user must be logged in to verify payment
+    const token = getTokenFromCookies(request.headers.get("cookie"));
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { reference } = body;
-
-    console.log('Payment verification request for reference:', reference);
 
     if (!reference) {
       return NextResponse.json(
@@ -20,7 +31,7 @@ export async function POST(request: NextRequest) {
     const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
 
     if (!paystackSecretKey) {
-      console.error('Paystack secret key not configured');
+      logger.error('PaymentVerify', 'Paystack secret key not configured');
       return NextResponse.json(
         { error: "Paystack secret key not configured" },
         { status: 500 }
@@ -38,11 +49,9 @@ export async function POST(request: NextRequest) {
     );
 
     const verifyData = await verifyResponse.json();
-    
-    console.log('Paystack verification response:', JSON.stringify(verifyData, null, 2));
 
     if (!verifyResponse.ok || verifyData.status !== true || verifyData.data?.status !== "success") {
-      console.error('Payment verification failed:', {
+      logger.error('PaymentVerify', 'Payment verification failed', {
         httpOk: verifyResponse.ok,
         httpStatus: verifyResponse.status,
         paystackStatus: verifyData.status,
@@ -55,10 +64,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Payment verified successfully');
-
     const { metadata, amount, currency } = verifyData.data;
     const { doctorId, patientId, date, time, reason } = metadata;
+
+    // IDOR protection: verify the authenticated user is the patient
+    if (patientId && patientId !== payload.userId) {
+      logger.error('PaymentVerify', 'User mismatch', {
+        authenticatedUser: payload.userId,
+        paymentPatientId: patientId,
+      });
+      return NextResponse.json(
+        { error: "Payment does not belong to authenticated user" },
+        { status: 403 }
+      );
+    }
 
     // Check if payment already processed
     const existingPayment = await prisma.payment.findUnique({
@@ -66,14 +85,20 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingPayment) {
-      const existingAppointment = await prisma.appointment.findUnique({
-        where: { id: existingPayment.appointmentId },
-        select: { id: true, meetingLink: true }
-      });
-      return NextResponse.json({ 
-        success: true, 
-        appointmentId: existingAppointment?.id,
-        meetingLink: existingAppointment?.meetingLink,
+      if (existingPayment.appointmentId) {
+        const existingAppointment = await prisma.appointment.findUnique({
+          where: { id: existingPayment.appointmentId },
+          select: { id: true, meetingLink: true }
+        });
+        return NextResponse.json({
+          success: true,
+          appointmentId: existingAppointment?.id,
+          meetingLink: existingAppointment?.meetingLink,
+          message: "Payment already processed"
+        });
+      }
+      return NextResponse.json({
+        success: true,
         message: "Payment already processed"
       });
     }
@@ -159,7 +184,27 @@ export async function POST(request: NextRequest) {
       metadata: { appointmentId: appointment.id, type: 'doctor_notification' }
     });
 
-    await Promise.allSettled([emailPromise, doctorEmailPromise]);
+    // Create In-App Notifications
+    const notificationsPromise = prisma.notification.createMany({
+      data: [
+        {
+          userId: appointment.doctorId,
+          title: "New Appointment",
+          message: `You have a new appointment with ${appointment.patient.name} on ${date} at ${time}`,
+          type: "info",
+          link: `/doctor/appointments`,
+        },
+         {
+          userId: appointment.patientId,
+          title: "Appointment Confirmed",
+          message: `Your appointment with Dr. ${appointment.doctor.name} on ${date} at ${time} has been confirmed.`,
+          type: "success",
+          link: `/appointments`,
+        }
+      ]
+    });
+
+    await Promise.allSettled([emailPromise, doctorEmailPromise, notificationsPromise]);
 
     return NextResponse.json({ 
         success: true, 
@@ -167,14 +212,10 @@ export async function POST(request: NextRequest) {
         meetingLink 
     });
 
-  } catch (error: any) {
-    console.error("Payment verification exception:", {
-      message: error.message,
-      stack: error.stack,
-      error
-    });
+  } catch (error: unknown) {
+    logger.error('PaymentVerify', error);
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

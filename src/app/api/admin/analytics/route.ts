@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth, isAuthError } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString());
   try {
+    const auth = await requireAdminAuth(request);
+    if (isAuthError(auth)) return auth;
+
+    const { searchParams } = new URL(request.url);
+    const year = parseInt(searchParams.get('year') || new Date().getFullYear().toString());
     const now = new Date();
     const lastMonth = new Date(year, now.getMonth() - 1, 1);
     const thisMonth = new Date(year, now.getMonth(), 1);

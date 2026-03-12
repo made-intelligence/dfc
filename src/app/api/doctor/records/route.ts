@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       include: { doctorProfile: true },
     });
 
-    if (!user || user.role !== UserRole.DOCTOR || !user.doctorProfile) {
+    if (!user || user.role !== UserRole.DFC_MEMBER || !user.doctorProfile) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(records);
   } catch (error) {
-    console.error("Error fetching medical records:", error);
+    logger.error('DoctorRecords', error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
       include: { doctorProfile: true },
     });
 
-    if (!user || user.role !== UserRole.DOCTOR || !user.doctorProfile) {
+    if (!user || user.role !== UserRole.DFC_MEMBER || !user.doctorProfile) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(record);
   } catch (error) {
-    console.error("Error creating medical record:", error);
+    logger.error('DoctorRecords', error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

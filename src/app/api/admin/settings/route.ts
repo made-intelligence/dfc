@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { clearEmailConfigCache } from "@/lib/email/transporter";
+import { requireAdminAuth, isAuthError } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 const prisma = new PrismaClient();
 
@@ -47,8 +49,11 @@ const defaultSettings = {
   },
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (isAuthError(auth)) return auth;
+
     const settings = await prisma.systemSettings.findFirst();
     
     if (!settings) {
@@ -67,7 +72,7 @@ export async function GET() {
 
     return NextResponse.json(mergedSettings);
   } catch (error) {
-    console.error("Settings fetch error:", error);
+    logger.error('AdminSettings', error);
     return NextResponse.json(
       { error: "Failed to fetch settings" },
       { status: 500 },
@@ -77,6 +82,9 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (isAuthError(auth)) return auth;
+
     const newSettings = await request.json();
     
     // Check if settings exist
@@ -113,7 +121,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ message: "Settings updated successfully", settings: updated });
   } catch (error) {
-    console.error("Settings update error:", error);
+    logger.error('AdminSettings', error);
     return NextResponse.json(
       { error: "Failed to update settings" },
       { status: 500 },

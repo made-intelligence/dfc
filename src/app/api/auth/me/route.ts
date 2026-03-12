@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
           },
         },
         patientProfile: true,
+        dfcMember: true,
       },
     });
 
@@ -68,11 +70,25 @@ export async function GET(request: NextRequest) {
       isActive: user.isActive,
       createdAt: user.createdAt,
       profile:
-        user.role === "ADMIN" || user.role === "SUPERADMIN"
+        user.role === "SECRETARIAT" || user.role === "SUPERADMIN"
           ? user.adminProfile
-          : user.role === "DOCTOR"
+          : user.role === "DFC_MEMBER"
             ? user.doctorProfile
             : user.patientProfile,
+      dfcMember: user.dfcMember
+        ? {
+            id: user.dfcMember.id,
+            category: user.dfcMember.category,
+            status: user.dfcMember.status,
+            goodStanding: user.dfcMember.goodStanding,
+            duesExpiresAt: user.dfcMember.duesExpiresAt,
+            lastDuesPaidAt: user.dfcMember.lastDuesPaidAt,
+            isLegacy: user.dfcMember.isLegacy,
+            path: user.dfcMember.path,
+            memberNumber: user.dfcMember.memberNumber,
+            isBotMember: user.dfcMember.isBotMember,
+          }
+        : null,
     };
 
     return NextResponse.json({
@@ -80,7 +96,7 @@ export async function GET(request: NextRequest) {
       user: userData,
     });
   } catch (error) {
-    console.error("Get user error:", error);
+    logger.error('AuthMe', error);
 
     return NextResponse.json(
       { error: "Internal server error" },

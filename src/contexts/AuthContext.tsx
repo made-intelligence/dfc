@@ -19,6 +19,18 @@ export interface AuthUser {
   isActive: boolean;
   createdAt: string;
   profile?: any;
+  dfcMember?: {
+    id: string;
+    category: string;
+    status: string;
+    goodStanding: boolean;
+    duesExpiresAt: string | null;
+    lastDuesPaidAt: string | null;
+    isLegacy: boolean;
+    path: string | null;
+    memberNumber: string | null;
+    isBotMember: boolean;
+  } | null;
 }
 
 interface AuthContextType {
@@ -180,12 +192,12 @@ export function useRequireAuth(requiredRole?: UserRole) {
     if (!loading && user && requiredRole && user.role !== requiredRole) {
       // Redirect to appropriate dashboard
       const dashboardUrl =
-        user.role === "SUPERADMIN"
+        user.role === "SUPERADMIN" || user.role === "SECRETARIAT"
           ? "/admin"
-          : user.role === "ADMIN"
-            ? "/admin"
-            : user.role === "DOCTOR"
-              ? "/doctor"
+          : user.role === "DFC_MEMBER"
+            ? "/member"
+            : user.role === "HOSPITAL_ADMIN"
+              ? "/hospital"
               : "/";
       window.location.href = dashboardUrl;
     }

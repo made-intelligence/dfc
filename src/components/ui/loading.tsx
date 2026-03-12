@@ -27,9 +27,9 @@ export function Loading({ type = 'pulse', size = 'md', className = '' }: Loading
     return (
       <div className={`flex items-center justify-center ${sizeClasses[size]} ${className}`}>
         <div className="flex space-x-2">
-          <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
-          <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-          <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          <div className="w-3 h-3 bg-[#0D1F3C] rounded-full animate-bounce"></div>
+          <div className="w-3 h-3 bg-[#0D1F3C] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+          <div className="w-3 h-3 bg-[#0D1F3C] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
         </div>
       </div>
     );
@@ -42,7 +42,7 @@ export function Loading({ type = 'pulse', size = 'md', className = '' }: Loading
           {[...Array(5)].map((_, i) => (
             <div
               key={i}
-              className="w-2 bg-blue-500 rounded-full animate-pulse"
+              className="w-2 bg-[#0D1F3C] rounded-full animate-pulse"
               style={{
                 height: `${20 + Math.sin(i) * 10}px`,
                 animationDelay: `${i * 0.1}s`,
@@ -59,9 +59,9 @@ export function Loading({ type = 'pulse', size = 'md', className = '' }: Loading
   return (
     <div className={`flex items-center justify-center ${sizeClasses[size]} ${className}`}>
       <div className="relative">
-        <div className="w-12 h-12 border-4 border-blue-200 rounded-full"></div>
-        <div className="absolute top-0 left-0 w-12 h-12 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
-        <div className="absolute top-2 left-2 w-8 h-8 border-2 border-blue-300 rounded-full border-t-transparent animate-spin" style={{animationDirection: 'reverse', animationDuration: '0.8s'}}></div>
+        <div className="w-12 h-12 border-4 border-[#0D1F3C]/30 rounded-full"></div>
+        <div className="absolute top-0 left-0 w-12 h-12 border-4 border-[#0D1F3C] rounded-full border-t-transparent animate-spin"></div>
+        <div className="absolute top-2 left-2 w-8 h-8 border-2 border-[#0D1F3C]/50 rounded-full border-t-transparent animate-spin" style={{animationDirection: 'reverse', animationDuration: '0.8s'}}></div>
       </div>
     </div>
   );

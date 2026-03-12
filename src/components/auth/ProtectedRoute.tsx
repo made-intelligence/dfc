@@ -79,12 +79,16 @@ export function ProtectedRoute({
 function getDashboardUrl(role: UserRole): string {
   switch (role) {
     case UserRole.SUPERADMIN:
-    case UserRole.ADMIN:
+    case UserRole.SECRETARIAT:
       return "/admin";
-    case UserRole.DOCTOR:
-      return "/doctor";
+    case UserRole.DFC_MEMBER:
+      return "/member";
+    case UserRole.HOSPITAL_ADMIN:
+      return "/hospital";
+    case UserRole.SPL_ADMIN:
+      return "/spl";
     case UserRole.PATIENT:
-      return "/patient";
+      return "/appointments";
     default:
       return "/";
   }

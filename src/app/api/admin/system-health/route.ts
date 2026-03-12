@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth, isAuthError } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (isAuthError(auth)) return auth;
     // Test database connection
     const dbStart = Date.now();
     await prisma.user.count();

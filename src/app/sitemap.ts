@@ -6,15 +6,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Static routes
   const routes = [
-    "",
-    "/book",
-    "/auth/login",
-    "/faq",
+    { path: "", priority: 1 },
+    { path: "/book", priority: 0.9 },
+    { path: "/second-opinion", priority: 0.9 },
+    { path: "/about", priority: 0.7 },
+    { path: "/faq", priority: 0.6 },
+    { path: "/contact", priority: 0.6 },
+    { path: "/events", priority: 0.7 },
+    { path: "/partners", priority: 0.6 },
+    { path: "/privacy-policy", priority: 0.3 },
+    { path: "/terms", priority: 0.3 },
+    { path: "/auth/login", priority: 0.5 },
+    { path: "/auth/register", priority: 0.5 },
+    { path: "/auth/join", priority: 0.5 },
   ].map((route) => ({
-    url: `${baseUrl}${route}`,
+    url: `${baseUrl}${route.path}`,
     lastModified: new Date(),
-    changeFrequency: "daily" as const,
-    priority: route === "" ? 1 : 0.8,
+    changeFrequency: "weekly" as const,
+    priority: route.priority,
   }));
 
   // Dynamic routes (Doctors)

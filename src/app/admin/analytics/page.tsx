@@ -9,7 +9,6 @@ import {
   TrendingDown,
   Users,
   Calendar,
-  DollarSign,
   Activity,
   Download,
   BarChart3,
@@ -194,7 +193,7 @@ export default function AnalyticsPage() {
                   {analytics.metrics.revenueGrowth.toFixed(1)}% from last month
                 </div>
               </div>
-              <DollarSign className="h-8 w-8 text-green-600" />
+              <span className="text-2xl font-bold text-green-600">₦</span>
             </div>
           </CardContent>
         </Card>
@@ -202,7 +201,7 @@ export default function AnalyticsPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">New Patients</p>
+                <p className="text-sm text-gray-600">New Members</p>
                 <p className="text-2xl font-bold">
                   {analytics.metrics.newPatients}
                 </p>
@@ -387,7 +386,7 @@ export default function AnalyticsPage() {
                     <div>
                       <p className="font-medium">{item.specialty}</p>
                       <p className="text-sm text-gray-600">
-                        {item.count} doctors
+                        {item.count} members
                       </p>
                     </div>
                     <div className="text-right">

@@ -19,7 +19,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
     name: "",
     email: "",
     phone: "",
-    role: "ADMIN"
+    role: "SECRETARIAT"
   })
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
   const [permissions, setPermissions] = useState<any[]>([])
@@ -82,7 +82,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
           title: "Admin Created",
           description: `${formData.name} has been added as ${formData.role.toLowerCase()}`
         })
-        setFormData({ name: "", email: "", phone: "", role: "ADMIN" })
+        setFormData({ name: "", email: "", phone: "", role: "SECRETARIAT" })
         setSelectedPermissions([])
         onSuccess()
         onClose()
@@ -145,7 +145,7 @@ export function AddAdminModal({ isOpen, onClose, onSuccess }: AddAdminModalProps
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ADMIN">Admin</SelectItem>
+                <SelectItem value="SECRETARIAT">Secretariat</SelectItem>
                 <SelectItem value="SUPERADMIN">Super Admin</SelectItem>
               </SelectContent>
             </Select>

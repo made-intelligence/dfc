@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth, isAuthError } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (isAuthError(auth)) return auth;
     const permissions = await prisma.permission.findMany({
       orderBy: [{ category: "asc" }, { name: "asc" }]
     });
@@ -29,6 +32,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (isAuthError(auth)) return auth;
+
     const { name, description, category } = await request.json();
 
     if (!name || !description) {

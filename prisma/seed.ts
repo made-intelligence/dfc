@@ -140,7 +140,7 @@ async function main() {
         password: doctorPassword,
         name: doctorData.name,
         phone: doctorData.phone,
-        role: UserRole.DOCTOR,
+        role: UserRole.DFC_MEMBER,
         doctorProfile: {
           create: {
             slug: doctorData.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),

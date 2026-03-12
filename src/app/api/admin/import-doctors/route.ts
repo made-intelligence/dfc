@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { generateDoctorSlug } from "@/lib/utils/slug";
+import { requireAdminAuth, isAuthError } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (isAuthError(auth)) return auth;
+
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
@@ -54,7 +58,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const doctorData: any = {};
+      const doctorData: Record<string, string> = {};
       headers.forEach((header, index) => {
         doctorData[header] = values[index];
       });
@@ -78,7 +82,7 @@ export async function POST(request: NextRequest) {
               email: doctorData.email,
               password: hashedPassword,
               phone: doctorData.phone,
-              role: "DOCTOR",
+              role: "DFC_MEMBER",
               isActive: true,
             },
           });

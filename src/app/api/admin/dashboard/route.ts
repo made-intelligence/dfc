@@ -1,138 +1,95 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
+import { requireAdminAuth, isAuthError } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (isAuthError(auth)) return auth;
+
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Check if tables exist by trying simple queries first
-    let totalPatients = 0;
-    let activeDoctors = 0;
+    let totalMembers = 0;
+    let activeMembers = 0;
+    let pendingMembers = 0;
     let todayAppointments = 0;
-    let monthlyRevenue: { _sum: { amount: any | null } } = { _sum: { amount: null } };
-    let recentAppointments: any[] = [];
-    let topDoctors: any[] = [];
+    let monthlyRevenue: { _sum: { amount: Prisma.Decimal | number | null } } = { _sum: { amount: null } };
+    let secondOpinionCases = 0;
+    let recentAppointments: Array<{ patient?: { name: string } | null; doctor?: { name: string } | null; startTime: string; status: string }> = [];
+    let membersByCategory: { category: string; _count: number }[] = [];
 
-    // Get dashboard data with error handling for each query
-    try {
-      totalPatients = await prisma.user.count({
-        where: { role: "PATIENT" }
-      });
-    } catch (e) {
-      console.log("Error fetching patients:", e);
-    }
-
-    try {
-      activeDoctors = await prisma.doctorProfile.count({
-        where: { isAvailable: true }
-      });
-    } catch (e) {
-      console.log("Error fetching doctors:", e);
-    }
-
+    try { totalMembers = await prisma.dFCMember.count(); } catch {}
+    try { activeMembers = await prisma.dFCMember.count({ where: { status: "ACTIVE" } }); } catch {}
+    try { pendingMembers = await prisma.dFCMember.count({ where: { status: "PENDING" } }); } catch {}
     try {
       todayAppointments = await prisma.appointment.count({
-        where: {
-          appointmentDate: {
-            gte: today,
-            lt: tomorrow
-          }
-        }
+        where: { appointmentDate: { gte: today, lt: tomorrow } },
       });
-    } catch (e) {
-      console.log("Error fetching appointments:", e);
-    }
-
+    } catch {}
     try {
       monthlyRevenue = await prisma.payment.aggregate({
-        where: {
-          createdAt: { gte: thisMonth }
-        },
-        _sum: { amount: true }
+        where: { createdAt: { gte: thisMonth } },
+        _sum: { amount: true },
       });
-    } catch (e) {
-      console.log("Error fetching revenue:", e);
-    }
-
+    } catch {}
+    try {
+      secondOpinionCases = await prisma.secondOpinionCase.count({
+        where: { status: { in: ["SUBMITTED", "PAID", "ASSIGNED", "IN_REVIEW"] } },
+      });
+    } catch {}
     try {
       recentAppointments = await prisma.appointment.findMany({
-        take: 10,
+        take: 5,
         orderBy: { createdAt: "desc" },
         include: {
-          patient: {
-            select: { name: true }
-          },
-          doctor: {
-            select: { name: true }
-          }
-        }
+          patient: { select: { name: true } },
+          doctor: { select: { name: true } },
+        },
       });
-    } catch (e) {
-      console.log("Error fetching recent appointments:", e);
-    }
-
+    } catch {}
     try {
-      const doctorProfiles = await prisma.doctorProfile.findMany({
-        take: 10,
-        include: {
-          user: {
-            select: { name: true }
-          },
-          specialty: {
-            select: { name: true }
-          }
-        }
-      });
-      topDoctors = doctorProfiles;
-    } catch (e) {
-      console.log("Error fetching top doctors:", e);
-    }
+      membersByCategory = (await prisma.dFCMember.groupBy({
+        by: ["category"],
+        _count: true,
+      })).map((c) => ({ category: c.category, _count: typeof c._count === 'number' ? c._count : 0 }));
+    } catch {}
 
-    // Remove the Promise.all block since we're handling each query individually
-    /*
-    */
-
-    // Process top doctors with basic info (simplified)
-    const processedTopDoctors = topDoctors
-      .map(doctor => ({
-        name: doctor.user?.name || "Unknown Doctor",
-        specialty: doctor.specialty?.name || "General Practice",
-        rating: 4.5, // Default rating
-        appointments: 0 // Default appointments
-      }))
-      .slice(0, 4);
-
-    // Process recent appointments
-    const processedRecentAppointments = recentAppointments.slice(0, 4).map(appointment => ({
-      patient: appointment.patient?.name || "Unknown Patient",
-      doctor: appointment.doctor?.name || "Unknown Doctor",
-      time: appointment.startTime || "TBD",
-      status: appointment.status?.toLowerCase() || "pending"
+    const processedAppointments = recentAppointments.slice(0, 5).map((a) => ({
+      patient: a.patient?.name || "Unknown",
+      doctor: a.doctor?.name || "Unknown",
+      time: a.startTime || "TBD",
+      status: a.status?.toLowerCase() || "pending",
     }));
+
+    const categoryBreakdown = Object.fromEntries(
+      membersByCategory.map((c) => [c.category, c._count])
+    );
 
     return NextResponse.json({
       stats: {
-        totalPatients,
-        activeDoctors,
+        totalMembers,
+        activeMembers,
+        pendingMembers,
         todayAppointments,
-        monthlyRevenue: monthlyRevenue._sum.amount || 0
+        secondOpinionCases,
+        monthlyRevenue: monthlyRevenue._sum.amount || 0,
       },
-      recentAppointments: processedRecentAppointments,
-      topDoctors: processedTopDoctors,
+      categoryBreakdown,
+      recentAppointments: processedAppointments,
       systemHealth: {
         database: "operational",
-        apiResponse: "operational", 
-        paymentGateway: "operational"
-      }
+        apiResponse: "operational",
+        paymentGateway: "operational",
+      },
     });
-
   } catch (error) {
-    console.error("Dashboard API error:", error);
+    logger.error('AdminDashboard', error);
     return NextResponse.json(
       { error: "Failed to fetch dashboard data" },
       { status: 500 }

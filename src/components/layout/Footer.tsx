@@ -17,9 +17,9 @@ export default function Footer() {
               height={60}
               className="w-auto"
             />
-            <p className="text-gray-300">
-              Connecting you with world-class medical care right here in
-              Nigeria.
+            <p className="text-gray-300 mt-3">
+              Turning brain drain into brain gain. A global healthcare movement
+              reconnecting Nigerian diaspora doctors with patients at home.
             </p>
           </div>
 
@@ -36,14 +36,6 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/book"
-                  className="text-gray-300 hover:text-white transition-colors"
-                >
-                  Book Appointment
-                </Link>
-              </li>
-              <li>
-                <Link
                   href="/about"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
@@ -52,10 +44,26 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="partners"
+                  href="/book"
+                  className="text-gray-300 hover:text-white transition-colors"
+                >
+                  Find a Specialist
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/partners"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Partners
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/events"
+                  className="text-gray-300 hover:text-white transition-colors"
+                >
+                  Events
                 </Link>
               </li>
             </ul>
@@ -66,15 +74,15 @@ export default function Footer() {
             <ul className="space-y-2">
               <li>
                 <Link
-                href="#faq"
+                  href="/faq"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
-                  Faqs
+                  FAQs
                 </Link>
               </li>
               <li>
                 <Link
-                 href="/contact"
+                  href="/contact"
                   className="text-gray-300 hover:text-white transition-colors"
                 >
                   Contact Us
@@ -102,25 +110,34 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Follow Us</h4>
             <div className="flex space-x-4">
-              <Link
-                href="#"
+              <a
+                href="https://facebook.com/doctorsfoundationforcare"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-300 hover:text-white transition-colors"
               >
                 <Facebook className="h-5 w-5" />
-              </Link>
-              <Link
-                href="#"
+              </a>
+              <a
+                href="https://x.com/dfcmedical"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-300 hover:text-white transition-colors"
               >
                 <Twitter className="h-5 w-5" />
-              </Link>
-              <Link
-                href="#"
+              </a>
+              <a
+                href="https://instagram.com/doctorsfoundationforcare"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-300 hover:text-white transition-colors"
               >
                 <Instagram className="h-5 w-5" />
-              </Link>
+              </a>
             </div>
+            <p className="text-gray-400 mt-4 text-xs">
+              Email: info@doctorsfoundationforcare.org
+            </p>
           </div>
         </div>
 

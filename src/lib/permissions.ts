@@ -6,7 +6,7 @@ export async function getDefaultPermissionsByRole(role: string) {
     return await prisma.permission.findMany({
       where: { isActive: true }
     });
-  } else if (role === 'ADMIN') {
+  } else if (role === 'SECRETARIAT') {
     // Regular admins get basic permissions (excluding admin management and system control)
     return await prisma.permission.findMany({
       where: {

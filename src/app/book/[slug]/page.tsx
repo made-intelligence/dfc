@@ -43,7 +43,7 @@ export async function generateMetadata(
       : `Book a consultation with ${doctor.name}, a specialist in ${doctor.specialty}.`,
     openGraph: {
       title: `${doctor.name} - ${doctor.specialty} | DFC`,
-      description: `Book world-class medical consultation with ${doctor.name}.`,
+      description: `Schedule a consultation with ${doctor.name}.`,
       images: doctor.profileImage
         ? [doctor.profileImage, ...previousImages]
         : previousImages,

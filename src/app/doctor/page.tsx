@@ -15,11 +15,11 @@ import {
   Calendar,
   Users,
   Clock,
-  DollarSign,
   TrendingUp,
   CheckCircle,
   AlertCircle,
   Plus,
+  UserPen,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -70,13 +70,10 @@ export default function DoctorDashboard() {
       if (!user) return;
       
       try {
-        console.log('Fetching dashboard data...');
         const response = await fetch("/api/doctor/dashboard");
-        console.log('Response status:', response.status);
         
         if (response.ok) {
           const data = await response.json();
-          console.log('Dashboard data:', data);
           setDashboardData(data);
           setError(null);
         } else {
@@ -151,7 +148,7 @@ export default function DoctorDashboard() {
             <CardTitle className="text-sm font-medium">
               This Month's Revenue
             </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-bold text-muted-foreground">₦</span>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₦{dashboardData.stats.thisMonthRevenue.toLocaleString()}</div>
@@ -326,7 +323,7 @@ export default function DoctorDashboard() {
               className="h-20 flex-col space-y-2"
               onClick={() => router.push('/doctor/profile')}
             >
-              <DollarSign className="h-6 w-6" />
+              <UserPen className="h-6 w-6" />
               <span>Update Profile</span>
             </Button>
           </div>

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserPermissions } from "@/lib/permissions";
+import { requireAdminAuth, isAuthError } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (isAuthError(auth)) return auth;
+
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
 

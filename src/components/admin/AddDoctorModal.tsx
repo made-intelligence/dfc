@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,10 +131,10 @@ export default function AddDoctorModal({ isOpen, onClose, onSuccess }: AddDoctor
         setSelectedFile(null);
       } else {
         const error = await response.json();
-        addToast({ type: "error", title: "Creation Failed", description: error.error || "Failed to create doctor" });
+        addToast({ type: "error", title: "Creation Failed", description: error.error || "Failed to create member" });
       }
     } catch (error) {
-      addToast({ type: "error", title: "Error", description: "Error creating doctor" });
+      addToast({ type: "error", title: "Error", description: "Error creating member" });
     } finally {
       setLoading(false);
       setImageUploading(false);
@@ -160,7 +161,7 @@ export default function AddDoctorModal({ isOpen, onClose, onSuccess }: AddDoctor
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Doctor</DialogTitle>
+          <DialogTitle>Add New Member</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -212,7 +213,7 @@ export default function AddDoctorModal({ isOpen, onClose, onSuccess }: AddDoctor
             <div className="flex items-center gap-4">
               {profileImage && (
                 <div className="relative">
-                  <img src={profileImage} alt="Profile" className="w-16 h-16 rounded-full object-cover" />
+                  <Image src={profileImage} alt="Profile" width={64} height={64} className="w-16 h-16 rounded-full object-cover" />
                   <button
                     type="button"
                     onClick={() => {

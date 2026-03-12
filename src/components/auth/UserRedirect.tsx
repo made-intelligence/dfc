@@ -11,16 +11,24 @@ export default function UserRedirect() {
 
   useEffect(() => {
     if (!loading && user) {
-      // Redirect doctors and admins to their dashboards
-      if (user.role === UserRole.DOCTOR) {
-        router.push("/doctor/patients");
-      } else if (
-        user.role === UserRole.ADMIN ||
-        user.role === UserRole.SUPERADMIN
-      ) {
-        router.push("/admin");
+      switch (user.role) {
+        case UserRole.SUPERADMIN:
+        case UserRole.SECRETARIAT:
+          router.push("/admin");
+          break;
+        case UserRole.DFC_MEMBER:
+          router.push("/member");
+          break;
+        case UserRole.HOSPITAL_ADMIN:
+          router.push("/hospital");
+          break;
+        case UserRole.SPL_ADMIN:
+          router.push("/spl");
+          break;
+        case UserRole.PATIENT:
+          // Patients stay on homepage — they use the booking flow
+          break;
       }
-      // Patients stay on the landing page
     }
   }, [user, loading, router]);
 

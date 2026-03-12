@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       include: { doctorProfile: true },
     });
 
-    if (!user || user.role !== UserRole.DOCTOR || !user.doctorProfile) {
+    if (!user || user.role !== UserRole.DFC_MEMBER || !user.doctorProfile) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(transformedPatients);
   } catch (error) {
-    console.error("Error fetching patients:", error);
+    logger.error('DoctorPatients', error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

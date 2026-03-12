@@ -6,7 +6,7 @@ import crypto from 'crypto';
  */
 
 const ALGORITHM = 'aes-256-gcm';
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || 'your-encryption-key-change-in-production';
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || 'dev-only-key-do-not-use-in-production';
 
 // Ensure the key is exactly 32 bytes for AES-256
 function getEncryptionKey(): Buffer {

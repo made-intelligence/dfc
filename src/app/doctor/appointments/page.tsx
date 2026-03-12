@@ -12,7 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Calendar, Clock, User, Phone, Search, Filter } from "lucide-react";
+import { Calendar, Clock, User, Phone, Search, Filter, Video } from "lucide-react";
+import { isPast } from "date-fns";
 import { Loading } from "@/components/ui/loading";
 import { useToast } from "@/components/ui/toast";
 
@@ -30,6 +31,7 @@ interface Appointment {
     email: string;
     phone: string;
   };
+  meetingLink?: string;
 }
 
 export default function AppointmentsPage() {
@@ -205,6 +207,59 @@ export default function AppointmentsPage() {
                       </span>
                     </div>
                   )}
+
+                  {/* Join Button Logic */}
+                  {(() => {
+                      if (!appointment.meetingLink) return null;
+
+                      // Parse Appointment Date & Time
+                      // Assuming appointmentDate is YYYY-MM-DD or ISO
+                      const apptBase = new Date(appointment.appointmentDate);
+                      const [startH, startM] = appointment.startTime.split(':').map(Number);
+                      const [endH, endM] = appointment.endTime.split(':').map(Number);
+                      
+                      const startDateTime = new Date(apptBase);
+                      startDateTime.setHours(startH, startM, 0, 0);
+
+                      const endDateTime = new Date(apptBase);
+                      endDateTime.setHours(endH, endM, 0, 0);
+
+                      const now = new Date();
+                      
+                      // 10 minute buffer before start
+                      const joinWindowStart = new Date(startDateTime.getTime() - 10 * 60000); // 10 mins in ms
+
+                      const isTooEarly = now < joinWindowStart;
+                      const isEnded = now > endDateTime;
+                      const canJoin = !isTooEarly && !isEnded;
+
+                      // Show disabled if not joinable
+                      // if (isEnded) return null; // Optionally hide if ended, but user asked to "appear but disabled" generally.
+                      // Let's stick to showing it disabled for now as per specific request.
+
+                      return (
+                        <div className="mt-3">
+                           <div className="flex flex-col gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                                onClick={() => window.open(appointment.meetingLink, "_blank")}
+                                disabled={!canJoin}
+                                title={!canJoin ? `Link becomes active at ${joinWindowStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : "Join Meeting"}
+                              >
+                                <Video className="h-4 w-4 mr-2" />
+                                Join Video Call
+                              </Button>
+                              {isTooEarly && (
+                                <span className="text-xs text-amber-600 font-medium">
+                                  Available 10m before start
+                                </span>
+                              )}
+                           </div>
+                        </div>
+                      );
+                  })()}
                 </div>
 
                 <div className="flex flex-col gap-2 ml-4">

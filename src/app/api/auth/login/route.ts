@@ -8,6 +8,7 @@ import {
   AuthError,
   AUTH_ERRORS,
 } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -93,9 +94,9 @@ export async function POST(request: NextRequest) {
       profile:
         user.role === "SUPERADMIN"
           ? user.adminProfile
-          : user.role === "ADMIN"
+          : user.role === "SECRETARIAT"
             ? user.adminProfile
-            : user.role === "DOCTOR"
+            : user.role === "DFC_MEMBER"
               ? user.doctorProfile
               : user.patientProfile,
     };
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("Login error:", error);
+    logger.error('Login', error);
 
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

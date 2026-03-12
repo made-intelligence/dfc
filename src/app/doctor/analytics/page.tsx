@@ -15,7 +15,6 @@ import {
   Users,
   Clock,
   Calendar,
-  DollarSign,
 } from "lucide-react";
 import { Loading } from "@/components/ui/loading";
 

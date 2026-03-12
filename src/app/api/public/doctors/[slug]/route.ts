@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   request: NextRequest,
@@ -133,7 +134,7 @@ export async function GET(
 
     return NextResponse.json({ doctor: doctorData });
   } catch (error) {
-    console.error("Failed to fetch doctor:", error);
+    logger.error('PublicDoctorDetail', error);
     return NextResponse.json(
       { error: "Failed to fetch doctor" },
       { status: 500 },

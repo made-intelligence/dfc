@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { requireAdminAuth, isAuthError } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (isAuthError(auth)) return auth;
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const page = parseInt(searchParams.get("page") || "1");
@@ -112,6 +117,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdminAuth(request);
+    if (isAuthError(auth)) return auth;
+
     const body = await request.json();
     const {
       name,
@@ -160,7 +168,7 @@ export async function POST(request: NextRequest) {
           phone,
           password: hashedPassword,
           profileImage,
-          role: "DOCTOR",
+          role: "DFC_MEMBER",
         },
       });
 
@@ -189,7 +197,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error creating doctor:", error);
+    logger.error('AdminDoctors', error);
     return NextResponse.json(
       { error: "Failed to create doctor" },
       { status: 500 }

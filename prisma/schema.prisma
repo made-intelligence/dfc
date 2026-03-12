@@ -12,9 +12,11 @@ datasource db {
 
 enum UserRole {
   SUPERADMIN
-  ADMIN
-  DOCTOR
+  SECRETARIAT
+  DFC_MEMBER
   PATIENT
+  HOSPITAL_ADMIN
+  SPL_ADMIN
 }
 
 enum AppointmentStatus {
@@ -39,6 +41,62 @@ enum SubscriptionStatus {
   PENDING
 }
 
+// Credential verification
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  EXPIRED
+  REJECTED
+}
+
+// DFC Member enums
+enum DFCMemberCategory {
+  MEMBER             // Full diaspora member
+  ASSOCIATE_MEMBER   // Associate (in-training, etc.)
+  HONORARY_MEMBER    // Honorary appointment by GA
+  LEGACY_MEMBER      // Migrated from WhatsApp group
+}
+
+enum DFCMemberStatus {
+  ACTIVE
+  SUSPENDED          // Dues unpaid or under review
+  PENDING            // Awaiting credential verification
+  REVOKED            // Membership revoked
+}
+
+enum LegacyMemberStatus {
+  IMPORTED           // CSV imported, not yet contacted
+  SENT               // WhatsApp claim link sent
+  CLAIMED            // Member claimed their account
+  FAILED             // Send failed
+  EXPIRED            // Claim link expired
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  AWAITING_MEMBER
+  COMPLETED
+  CLOSED
+}
+
+enum InitiativeType {
+  TWG                // Technical Working Group
+  TASK_FORCE
+  COMMITTEE
+  PROJECT
+}
+
+enum InitiativeStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+// InitiativePillar is now a model (see below), not an enum
+
 model User {
   id                                String                  @id @default(cuid())
   email                             String                  @unique
@@ -59,12 +117,19 @@ model User {
   adminProfile                      AdminProfile?
   doctorProfile                     DoctorProfile?
   patientProfile                    PatientProfile?
+  dfcMember                         DFCMember?
+  hospitalAdminProfile              HospitalAdminUser?
+  splAdminProfile                   SPLAdminUser?
 
   createdAppointments               Appointment[]           @relation("PatientAppointments")
   doctorAppointments                Appointment[]           @relation("DoctorAppointments")
   notifications                     Notification[]
+  secretariatTickets                SecretariatTicket[]      @relation("TicketCreator")
+  assignedTickets                   SecretariatTicket[]      @relation("TicketAssignee")
+  secondOpinionCases                SecondOpinionCase[]      @relation("SecondOpinionPatient")
 
   @@unique([provider, providerId])
+  @@index([role])
 }
 
 model Permission {
@@ -114,6 +179,13 @@ model DoctorProfile {
   consultationFee                   Decimal                 @default(0.00) @db.Decimal(10, 2)
   currency                          String                  @default("NGN")
   country                           String                  @default("United Kingdom")
+  institution                       String?                 // Current hospital/institution
+  city                              String?                 // City of practice
+  subSpecialty                      String?
+  title                             String?                 // Dr., Prof., Mr., etc.
+  mdcnNumber                        String?                 // Nigerian MDCN licence
+  diasporaLicence                   String?                 // GMC, USMLE, etc.
+  consultationFeeNote               String?                 // e.g. "Fee varies — confirm at booking"
   isAvailable                       Boolean                 @default(true)
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
@@ -124,6 +196,13 @@ model DoctorProfile {
   ratings                           DoctorRating[]
   specialtyId                       String?
   specialty                         specialty?            @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+  secondOpinionCases                SecondOpinionCase[]      @relation("SecondOpinionSpecialist")
+
+  // EMR relations
+  encounters                        ClinicalEncounter[]
+
+  @@index([specialtyId])
+  @@index([isAvailable])
 }
 
 model PatientProfile {
@@ -135,13 +214,41 @@ model PatientProfile {
   address                           String?
   emergencyContact                  String?
   bloodGroup                        String?
-  allergies                         String?
+  allergies                         String?                 // Legacy free-text field — kept for backward compat
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
   appointments                      Appointment[]
   medicalRecords                    MedicalRecord[]
   ratings                           DoctorRating[]
   payments                          Payment[]
+
+  // Extended demographics
+  title                             String?
+  nationality                       String?
+  occupation                        String?
+  maritalStatus                     String?                 // Single | Married | Divorced | Widowed
+
+  // Clinical background
+  primaryPhysicianId                String?
+  nhisNumber                        String?
+  hmoName                           String?
+  hmoPolicyNumber                   String?
+  nextOfKinName                     String?
+  nextOfKinPhone                    String?
+  nextOfKinRelation                 String?
+
+  // EMR relations
+  problemList                       PatientProblem[]
+  allergiesStructured               PatientAllergy[]
+  medications                       PatientMedication[]
+  vitalSigns                        VitalSign[]
+  clinicalDocuments                 ClinicalDocument[]
+  labResults                        LabResult[]
+  accessGrants                      RecordAccessGrant[]
+  accessLogs                        RecordAccessLog[]
+  consentRecords                    PatientConsent[]
+  familyHistory                     FamilyHistoryEntry[]
+  encounters                        ClinicalEncounter[]
 }
 
 model DoctorSchedule {
@@ -196,6 +303,12 @@ model Appointment {
   notes                             String?
   consultationFee                   Float
   meetingLink                       String?
+  
+  patientJoinedAt                   DateTime?
+  doctorJoinedAt                    DateTime?
+
+  patientLocation                   String?
+  doctorLocation                    String?
 
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
@@ -203,6 +316,11 @@ model Appointment {
   // Relationships
   medicalRecord                     MedicalRecord?
   payments                          Payment[]
+  clinicalEncounter                 ClinicalEncounter?
+
+  @@index([doctorId, status])
+  @@index([patientId, status])
+  @@index([appointmentDate])
 }
 
 model MedicalRecord {
@@ -264,15 +382,19 @@ model DoctorRating {
 
 model Payment {
   id                                String                  @id @default(cuid())
-  appointmentId                     String
-  appointment                       Appointment             @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  appointmentId                     String?
+  appointment                       Appointment?            @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 
-  patientId                         String
-  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  patientId                         String?
+  patient                           PatientProfile?         @relation(fields: [patientId], references: [id])
 
+  userId                            String?                 // For non-appointment payments (dues, etc.)
   amount                            Decimal                 @default(0.00) @db.Decimal(10, 2)
   currency                          String                  @default("NGN")
   paymentReference                  String                  @unique
+  provider                          String                  @default("PAYSTACK") // PAYSTACK or STRIPE
+  paymentType                       String?                 // CONSULTATION, ANNUAL_DUES, SECOND_OPINION
+  metadata                          Json?
 
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
@@ -311,8 +433,10 @@ model Notification {
   type                              String                  @default("info") // info, success, warning, error
   isRead                            Boolean                 @default(false)
   link                              String?                 // Optional link to redirect to
-  
+
   createdAt                         DateTime                @default(now())
+
+  @@index([userId, isRead])
 }
 
 model EmailLog {
@@ -323,6 +447,1081 @@ model EmailLog {
   status                            String                  // SENT, FAILED
   error                             String?
   metadata                          Json?                   // Any extra data (like appointmentId)
-  
+
+  createdAt                         DateTime                @default(now())
+}
+
+// ============================================
+// DFC PLATFORM MODELS
+// ============================================
+
+model DFCMember {
+  id                                String                  @id @default(cuid())
+  userId                            String                  @unique
+  user                              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  category                          DFCMemberCategory       @default(MEMBER)
+  status                            DFCMemberStatus         @default(PENDING)
+  goodStanding                      Boolean                 @default(false)
+
+  // Registration pathway
+  path                              String?                 // diaspora, local_specialist, associate, legacy
+  isLegacy                          Boolean                 @default(false)
+
+  // Dues tracking
+  duesStatus                        String                  @default("NOT_YET_DUE") // PAID, WAIVED, OUTSTANDING, NOT_YET_DUE
+  lastDuesPaidAt                    DateTime?
+  duesExpiresAt                     DateTime?
+  duesPaidAmount                    Float?
+  registrationFeePaidAt             DateTime?
+
+  // WhatsApp
+  whatsappOptIn                     Boolean                 @default(false)
+
+  // Professional details
+  bio                               String?
+  nigerianLicence                   String?                 // MDCN number
+  acceptsReferrals                  Boolean                 @default(false)
+
+  // Metadata
+  memberNumber                      String?                 @unique // DFC-2024-001 format
+  effectiveDate                     DateTime?               // Constitutional membership start
+  notes                             String?
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  // Institution / affiliation
+  institution                       String?
+  isBotMember                       Boolean                 @default(false)
+
+  // EXCO — elected executive committee position
+  excoPosition                      String?                 // PRESIDENT, VICE_PRESIDENT, SECRETARY_GENERAL, TREASURER, PRO, WELFARE, etc.
+  excoElectedAt                     DateTime?
+  excoTermEnd                       DateTime?
+
+  // Verification & credentials
+  profileCompletionScore            Int                     @default(0)
+  lastVerifiedAt                    DateTime?
+  credentials                       MedicalCredential[]
+
+  // Endorsement relations
+  endorsementsGiven                 EndorsementRecord[]     @relation("EndorserRelation")
+  endorsementsReceived              EndorsementRecord[]     @relation("EndorsedRelation")
+  initiativeMembers                 InitiativeMember[]
+
+  @@index([status])
+  @@index([category])
+  @@index([goodStanding])
+}
+
+model EndorsementRecord {
+  id                                String                  @id @default(cuid())
+  endorserId                        String
+  endorsedId                        String
+  endorser                          DFCMember               @relation("EndorserRelation", fields: [endorserId], references: [id])
+  endorsed                          DFCMember               @relation("EndorsedRelation", fields: [endorsedId], references: [id])
+
+  relationshipType                  String                  // Colleague, Supervisor, Collaborator, Training, Research
+  statement                         String                  // min 80 chars
+  yearsKnown                        Int?
+  attestation                       Boolean                 @default(true)
+
+  createdAt                         DateTime                @default(now())
+
+  @@unique([endorserId, endorsedId])
+}
+
+model MedicalCredential {
+  id                                String                  @id @default(cuid())
+  dfcMemberId                       String
+  dfcMember                         DFCMember               @relation(fields: [dfcMemberId], references: [id], onDelete: Cascade)
+
+  type                              String                  // MDCN, GMC, HPCSA, AMA, CPSO, AHPRA, IMC, OTHER
+  registrationNumber                String
+  issuingBody                       String                  // e.g. "Medical and Dental Council of Nigeria"
+  country                           String
+  specialty                         String?
+  subSpecialty                      String?
+  issueDate                         DateTime?
+  expiryDate                        DateTime?
+
+  status                            VerificationStatus      @default(UNVERIFIED)
+  verifiedAt                        DateTime?
+  verifiedById                      String?                 // Secretariat user who verified
+  rejectionReason                   String?
+  documentUrl                       String?                 // Cloudinary URL of uploaded licence document
+  lastCheckedAt                     DateTime?
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([dfcMemberId])
+  @@index([registrationNumber])
+}
+
+model LegacyMember {
+  id                                String                  @id @default(cuid())
+  phone                             String                  // E.164 format
+  name                              String?
+  email                             String?
+  claimToken                        String                  @unique
+  status                            LegacyMemberStatus      @default(IMPORTED)
+  claimedByUserId                   String?
+  sentAt                            DateTime?
+  claimedAt                         DateTime?
+  expiresAt                         DateTime?
+  metadata                          Json?                   // Extra data from CSV import
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([phone])
+  @@index([status])
+}
+
+model SecretariatTicket {
+  id                                String                  @id @default(cuid())
+  reference                         String                  @unique @default(cuid()) // Human-readable ticket ref
+  userId                            String?
+  user                              User?                   @relation("TicketCreator", fields: [userId], references: [id])
+  assignedToId                      String?
+  assignedTo                        User?                   @relation("TicketAssignee", fields: [assignedToId], references: [id])
+
+  source                            String                  @default("WEB") // WEB, WHATSAPP, EMAIL
+  status                            TicketStatus            @default(OPEN)
+
+  // Request content
+  requestType                       String?                 // MEMBERSHIP_QUERY, DUES_PAYMENT, SECOND_OPINION, COMPLAINT, etc.
+  subject                           String?
+  rawMessage                        String
+  intent                            String?                 // AI-classified intent
+
+  // Contact info (for non-registered users via WhatsApp)
+  fromPhone                         String?
+  fromName                          String?
+
+  // AI-generated content
+  aiClassification                  Json?
+  notes                             String?                 // Coordinator/AI notes
+
+  // Second opinion specific
+  specialty                         String?
+  tier                              String?                 // STANDARD, PRIORITY, URGENT
+  documents                         Json?                   // Array of document URLs
+
+  resolvedAt                        DateTime?
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([status])
+  @@index([userId])
+  @@index([requestType])
+}
+
+model WhatsAppLog {
+  id                                String                  @id @default(cuid())
+  userId                            String?
+  phone                             String                  // E.164 format
+  direction                         String                  // INBOUND, OUTBOUND
+  templateName                      String?                 // Template used for outbound
+  messageBody                       String?
+  mediaUrl                          String?
+  waMessageId                       String?                 // Meta message ID
+  status                            String                  @default("SENT") // SENT, DELIVERED, READ, FAILED
+  error                             String?
+  metadata                          Json?
+
+  createdAt                         DateTime                @default(now())
+
+  @@index([phone])
+  @@index([userId])
+}
+
+model WhatsAppBroadcast {
+  id                                String                  @id @default(cuid())
+  templateName                      String
+  recipientCount                    Int                     @default(0)
+  sentCount                         Int                     @default(0)
+  failedCount                       Int                     @default(0)
+  status                            String                  @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  metadata                          Json?
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+}
+
+model Initiative {
+  id                                String                  @id @default(cuid())
+  name                              String                  @unique
+  description                       String?
+  type                              InitiativeType          @default(TWG)
+  status                            InitiativeStatus        @default(DRAFT)
+  remit                             String?                 // Written mandate
+  expectedOutputs                   String?
+
+  createdById                       String?
+  startDate                         DateTime?
+  endDate                           DateTime?
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  pillars                           InitiativePillar[]
+  members                           InitiativeMember[]
+}
+
+model InitiativePillar {
+  id                                String                  @id @default(cuid())
+  initiativeId                      String
+  initiative                        Initiative              @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+
+  name                              String
+  subtitle                          String?
+  focus                             String?                 // Long text describing focus areas
+  outputs                           String?                 // Key outputs
+  order                             Int                     @default(0)
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  members                           InitiativeMember[]
+
+  @@unique([initiativeId, name])
+}
+
+model InitiativeMember {
+  id                                String                  @id @default(cuid())
+  initiativeId                      String
+  initiative                        Initiative              @relation(fields: [initiativeId], references: [id], onDelete: Cascade)
+  dfcMemberId                       String
+  dfcMember                         DFCMember               @relation(fields: [dfcMemberId], references: [id], onDelete: Cascade)
+  pillarId                          String?
+  pillar                            InitiativePillar?       @relation(fields: [pillarId], references: [id], onDelete: SetNull)
+  role                              String                  @default("MEMBER") // CO_LEAD, LEAD, ADVISOR, MEMBER
+
+  joinedAt                          DateTime                @default(now())
+
+  @@unique([initiativeId, dfcMemberId, pillarId])
+}
+
+model LeadershipProfile {
+  id                                String                  @id @default(cuid())
+  name                              String
+  title                             String                  // e.g. "President", "Trustee", "Secretary"
+  group                             String                  // EXCO, BOT, FOUNDER
+  role                              String?                 // e.g. "President", "Vice President", "Treasurer"
+  bio                               String?
+  imageUrl                          String?
+  linkedinUrl                       String?
+  institution                       String?
+  location                          String?
+  order                             Int                     @default(0) // Display order within group
+  isActive                          Boolean                 @default(true)
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([group])
+}
+
+model DFCProject {
+  id                                String                  @id @default(cuid())
+  title                             String
+  summary                           String
+  description                       String?
+  status                            String                  @default("ACTIVE") // ACTIVE, COMPLETED, UPCOMING
+  type                              String?                 // e.g. "Emergency Response", "Policy Advocacy", "Research"
+  imageUrl                          String?
+  joinUrl                           String?
+  supportUrl                        String?
+  isPublished                       Boolean                 @default(false)
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+}
+
+// ============================================
+// SECOND OPINION SYSTEM
+// ============================================
+
+enum SecondOpinionStatus {
+  SUBMITTED        // Form filled, awaiting payment
+  PAID             // Payment confirmed, awaiting assignment
+  ASSIGNED         // Specialist assigned, awaiting review
+  IN_REVIEW        // Specialist actively reviewing
+  REPORT_DRAFT     // Report drafted, awaiting QA
+  COMPLETED        // Report delivered to patient
+  CANCELLED        // Cancelled by patient or coordinator
+  REFUNDED         // Payment refunded
+}
+
+enum SecondOpinionTier {
+  STANDARD         // ₦85,000 — written report, 72hrs
+  COMPLEX          // ₦150,000 — report + 20-min video, 5 days
+  ONCOLOGY         // ₦180,000 — report + 30-min video, 5 days
+}
+
+model SecondOpinionCase {
+  id                                String                  @id @default(cuid())
+  reference                         String                  @unique // DFC-SO-XXXXXX
+
+  // Patient / requester info
+  patientName                       String
+  patientDob                        DateTime?
+  contactEmail                      String
+  contactPhone                      String?
+  requesterType                     String                  @default("patient") // patient, physician
+  userId                            String?                 // Linked user (if logged in)
+  user                              User?                   @relation("SecondOpinionPatient", fields: [userId], references: [id])
+
+  // Clinical data
+  specialty                         String
+  diagnosis                         String
+  proposedTreatment                 String?
+  specificQuestions                  String?
+  documents                         Json?                   // Array of { url, name, type, uploadedAt }
+
+  // Service tier & payment
+  tier                              SecondOpinionTier       @default(STANDARD)
+  amountKobo                        Int                     @default(0) // Amount in kobo
+  paymentReference                  String?                 @unique
+  paidAt                            DateTime?
+
+  // Workflow
+  status                            SecondOpinionStatus     @default(SUBMITTED)
+  aiBrief                           String?                 // AI-generated clinical summary
+
+  // Specialist assignment
+  specialistId                      String?
+  specialist                        DoctorProfile?          @relation("SecondOpinionSpecialist", fields: [specialistId], references: [id])
+  assignedAt                        DateTime?
+  assignedById                      String?                 // Coordinator who assigned
+
+  // Review
+  reviewStartedAt                   DateTime?
+  specialistNotes                   String?                 // Internal specialist notes
+  reportContent                     String?                 // Final report (markdown/rich text)
+  reportPdfUrl                      String?                 // Generated PDF URL
+  reportDeliveredAt                 DateTime?
+
+  // Video call (for COMPLEX/ONCOLOGY tiers)
+  videoCallScheduledAt              DateTime?
+  videoCallLink                     String?
+  videoCallCompletedAt              DateTime?
+
+  // Coordinator notes
+  coordinatorNotes                  String?
+  cancelReason                      String?
+
+  // Metadata
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([status])
+  @@index([userId])
+  @@index([specialistId])
+  @@index([reference])
+}
+
+model DFCEvent {
+  id                                String                  @id @default(cuid())
+  title                             String
+  description                       String?
+  type                              String                  @default("GENERAL") // GENERAL, CONFERENCE, OUTREACH, WEBINAR, AGM, CAMP
+  date                              DateTime
+  endDate                           DateTime?
+  time                              String?                 // e.g. "10:00 AM WAT"
+  location                          String?
+  city                              String?
+  isVirtual                         Boolean                 @default(false)
+  virtualLink                       String?
+  imageUrl                          String?
+  registrationUrl                   String?
+  isPublished                       Boolean                 @default(false)
+  isFeatured                        Boolean                 @default(false)
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([date])
+  @@index([isPublished, date])
+}
+
+// ============================================
+// ELECTRONIC MEDICAL RECORDS (EMR)
+// ============================================
+
+model ClinicalEncounter {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  doctorId                          String
+  doctor                            DoctorProfile           @relation(fields: [doctorId], references: [id])
+  appointmentId                     String?                 @unique
+  appointment                       Appointment?            @relation(fields: [appointmentId], references: [id])
+
+  encounterType                     String                  // CONSULTATION | SECOND_OPINION | PROCEDURE | FOLLOW_UP | EMERGENCY
+  encounterDate                     DateTime
+  location                          String?
+  chiefComplaint                    String
+
+  // SOAP fields
+  subjective                        String?
+  objective                         String?
+  assessment                        String?
+  plan                              String?
+
+  // ICD-10 codes
+  primaryDiagnosis                  String?
+  secondaryDiagnoses                Json?                   // string[]
+
+  // AI Scribe integration
+  rawTranscript                     String?
+  scribeNotes                       String?
+
+  // Relations
+  documents                         ClinicalDocument[]
+  prescriptions                     Prescription[]
+  investigations                    InvestigationOrder[]
+  referrals                         EncounterReferral[]
+  vitalSigns                        VitalSign[]
+
+  // Metadata
+  status                            String                  @default("DRAFT") // DRAFT | SIGNED | AMENDED
+  signedAt                          DateTime?
+  signedById                        String?
+  isConfidential                    Boolean                 @default(false)
+  followUpDate                      DateTime?
+  followUpNotes                     String?
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([patientId, encounterDate])
+  @@index([doctorId])
+  @@index([status])
+}
+
+model VitalSign {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  encounterId                       String?
+  encounter                         ClinicalEncounter?      @relation(fields: [encounterId], references: [id])
+  recordedById                      String
+  recordedAt                        DateTime                @default(now())
+
+  systolicBP                        Int?
+  diastolicBP                       Int?
+  heartRate                         Int?
+  respiratoryRate                   Int?
+  temperature                       Decimal?                @db.Decimal(4, 1)
+  oxygenSat                         Decimal?                @db.Decimal(4, 1)
+  weight                            Decimal?                @db.Decimal(5, 1)
+  height                            Decimal?                @db.Decimal(5, 1)
+  bmi                               Decimal?                @db.Decimal(4, 1)
+  bloodGlucose                      Decimal?                @db.Decimal(5, 1)
+  notes                             String?
+
+  @@index([patientId, recordedAt])
+}
+
+model PatientProblem {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  addedById                         String
+  problem                           String
+  icdCode                           String?
+  status                            String                  @default("ACTIVE") // ACTIVE | RESOLVED | INACTIVE
+  onsetDate                         DateTime?
+  resolvedDate                      DateTime?
+  notes                             String?
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([patientId, status])
+}
+
+model PatientAllergy {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  addedById                         String
+  allergen                          String
+  allergyType                       String                  // DRUG | FOOD | ENVIRONMENTAL | OTHER
+  reaction                          String
+  severity                          String                  // MILD | MODERATE | SEVERE | LIFE_THREATENING
+  status                            String                  @default("ACTIVE") // ACTIVE | INACTIVE
+  notes                             String?
+  createdAt                         DateTime                @default(now())
+
+  @@index([patientId])
+}
+
+model PatientMedication {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  prescribedById                    String
+  prescriptionId                    String?
+
+  drugName                          String
+  brandName                         String?
+  dose                              String
+  form                              String?
+  route                             String?
+  frequency                         String
+  duration                          String?
+  indication                        String?
+  startDate                         DateTime                @default(now())
+  endDate                           DateTime?
+  status                            String                  @default("ACTIVE") // ACTIVE | COMPLETED | DISCONTINUED | ON_HOLD
+  discontinuedReason                String?
+  notes                             String?
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([patientId, status])
+}
+
+model Prescription {
+  id                                String                  @id @default(cuid())
+  encounterId                       String
+  encounter                         ClinicalEncounter       @relation(fields: [encounterId], references: [id])
+  patientId                         String
+  prescribedById                    String
+
+  rxNumber                          String                  @unique
+  status                            String                  @default("ACTIVE") // ACTIVE | DISPENSED | CANCELLED | EXPIRED
+  items                             PrescriptionItem[]
+  dispensedAt                       DateTime?
+  dispensedBy                       String?
+  notes                             String?
+  pdfUrl                            String?
+
+  createdAt                         DateTime                @default(now())
+  expiresAt                         DateTime
+
+  @@index([patientId])
+}
+
+model PrescriptionItem {
+  id                                String                  @id @default(cuid())
+  prescriptionId                    String
+  prescription                      Prescription            @relation(fields: [prescriptionId], references: [id])
+  drugName                          String
+  dose                              String
+  form                              String?
+  route                             String?
+  frequency                         String
+  duration                          String
+  quantity                          String?
+  instructions                      String?
+}
+
+model InvestigationOrder {
+  id                                String                  @id @default(cuid())
+  encounterId                       String
+  encounter                         ClinicalEncounter       @relation(fields: [encounterId], references: [id])
+  patientId                         String
+  orderedById                       String
+
+  type                              String                  // LAB | IMAGING | PATHOLOGY | OTHER
+  name                              String
+  instructions                      String?
+  urgency                           String                  @default("ROUTINE") // ROUTINE | URGENT | STAT
+  status                            String                  @default("ORDERED") // ORDERED | COLLECTED | RESULTED | REVIEWED
+  orderRef                          String?
+  resultId                          String?
+  result                            LabResult?
+
+  createdAt                         DateTime                @default(now())
+  resultedAt                        DateTime?
+
+  @@index([patientId])
+}
+
+model LabResult {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  investigationId                   String?                 @unique
+  investigation                     InvestigationOrder?     @relation(fields: [investigationId], references: [id])
+  uploadedById                      String
+
+  testName                          String
+  labName                           String?
+  reportDate                        DateTime
+  documentUrl                       String?
+
+  results                           Json?                   // [{ test, value, unit, refRange, flag }]
+
+  interpretation                    String?
+  reviewedById                      String?
+  reviewedAt                        DateTime?
+
+  isAbnormal                        Boolean                 @default(false)
+  notes                             String?
+  createdAt                         DateTime                @default(now())
+
+  @@index([patientId, reportDate])
+}
+
+model ClinicalDocument {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  encounterId                       String?
+  encounter                         ClinicalEncounter?      @relation(fields: [encounterId], references: [id])
+  uploadedById                      String
+
+  type                              String                  // LAB_REPORT | IMAGING | REFERRAL_LETTER | SPECIALIST_REPORT | SECOND_OPINION | CONSENT_FORM | DISCHARGE_SUMMARY | PRESCRIPTION | OTHER
+  title                             String
+  description                       String?
+  fileUrl                           String
+  fileType                          String                  // PDF | IMAGE | DICOM
+  fileSizeKb                        Int?
+  isPatientVisible                  Boolean                 @default(true)
+
+  createdAt                         DateTime                @default(now())
+
+  @@index([patientId, type])
+}
+
+model EncounterReferral {
+  id                                String                  @id @default(cuid())
+  encounterId                       String
+  encounter                         ClinicalEncounter       @relation(fields: [encounterId], references: [id])
+  patientId                         String
+  referredById                      String
+
+  referralType                      String                  // INTERNAL | EXTERNAL | SECOND_OPINION
+  specialty                         String
+  urgency                           String                  @default("ROUTINE")
+  referredToId                      String?
+  referredToName                    String?
+  referredToHospital                String?
+  clinicalReason                    String
+  letterUrl                         String?
+  status                            String                  @default("SENT") // SENT | ACCEPTED | COMPLETED
+  responseNotes                     String?
+
+  createdAt                         DateTime                @default(now())
+
+  @@index([patientId])
+}
+
+model FamilyHistoryEntry {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  addedById                         String
+  condition                         String
+  relation                          String                  // Father | Mother | Sibling | Grandparent
+  ageOfOnset                        Int?
+  deceased                          Boolean                 @default(false)
+  causeOfDeath                      String?
+  notes                             String?
+  createdAt                         DateTime                @default(now())
+
+  @@index([patientId])
+}
+
+model RecordAccessGrant {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  grantedToId                       String
+  scope                             String                  @default("READ") // READ | FULL
+  grantedAt                         DateTime                @default(now())
+  expiresAt                         DateTime?
+  revokedAt                         DateTime?
+  reason                            String?
+  isActive                          Boolean                 @default(true)
+
+  @@unique([patientId, grantedToId])
+  @@index([grantedToId])
+}
+
+model RecordAccessLog {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  accessedById                      String
+  accessedAt                        DateTime                @default(now())
+  action                            String                  // VIEWED | CREATED | UPDATED | DOWNLOADED | SHARED
+  resourceType                      String                  // ENCOUNTER | LAB_RESULT | MEDICATION | FULL_RECORD
+  resourceId                        String?
+  ipAddress                         String?
+  userAgent                         String?
+
+  @@index([patientId, accessedAt])
+  @@index([accessedById])
+}
+
+model PatientConsent {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  patient                           PatientProfile          @relation(fields: [patientId], references: [id])
+  type                              String                  // TREATMENT | TELEMEDICINE | SECOND_OPINION_SHARING | DATA_PROCESSING | RESEARCH | PHOTOGRAPHY
+  given                             Boolean
+  givenAt                           DateTime                @default(now())
+  revokedAt                         DateTime?
+  witnessName                       String?
+  documentUrl                       String?
+  notes                             String?
+
+  @@index([patientId, type])
+}
+
+// ============================================
+// CLINICAL DECISION SUPPORT (CDSS)
+// ============================================
+
+enum CDSSAlertLevel {
+  CRITICAL    // Red — drug-allergy interaction, critical lab value
+  WARNING     // Amber — potential interaction, missing investigation
+  INFO        // Blue — contextual suggestion, guideline reminder
+}
+
+enum CDSSAlertStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  DISMISSED
+  ACTIONED
+}
+
+model CDSSAlert {
+  id                                String                  @id @default(cuid())
+  patientId                         String
+  encounterId                       String?
+  generatedForId                    String                  // DoctorProfile.id
+  level                             CDSSAlertLevel
+  status                            CDSSAlertStatus         @default(ACTIVE)
+  category                          String                  // DRUG_ALLERGY | DRUG_INTERACTION | LAB_CRITICAL | DIFFERENTIAL | GUIDELINE | INVESTIGATION | FOLLOW_UP | FORMULARY | RISK_SCORE
+  title                             String
+  body                              String
+  sourceData                        Json?
+  suggestion                        String?
+  dismissedReason                   String?
+  acknowledgedAt                    DateTime?
+  dismissedAt                       DateTime?
+  createdAt                         DateTime                @default(now())
+
+  interactions                      CDSSInteractionLog[]
+
+  @@index([patientId, status])
+  @@index([encounterId])
+  @@index([generatedForId, status])
+}
+
+model CDSSInteractionLog {
+  id                                String                  @id @default(cuid())
+  alertId                           String
+  alert                             CDSSAlert               @relation(fields: [alertId], references: [id])
+  physicianId                       String
+  action                            String                  // VIEWED | ACKNOWLEDGED | DISMISSED | ACTIONED
+  notes                             String?
+  createdAt                         DateTime                @default(now())
+
+  @@index([physicianId])
+  @@index([alertId])
+}
+
+// ============================================
+// HOSPITAL PARTNER PORTAL
+// ============================================
+
+enum HospitalPartnerStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum HospitalTier {
+  STANDARD
+  PREMIUM
+  ENTERPRISE
+}
+
+model HospitalPartner {
+  id                                String                  @id @default(cuid())
+  name                              String
+  slug                              String                  @unique
+  status                            HospitalPartnerStatus   @default(PENDING)
+  tier                              HospitalTier            @default(STANDARD)
+
+  // Contact
+  email                             String                  @unique
+  phone                             String?
+  website                           String?
+  address                           String?
+  city                              String?
+  state                             String?
+  country                           String                  @default("Nigeria")
+
+  // Registration
+  rcNumber                          String?                 // CAC registration
+  licenseNumber                     String?                 // Hospital license
+  logoUrl                           String?
+
+  // Details
+  bedCount                          Int?
+  specialties                       Json?                   // string[]
+  description                       String?
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  adminUsers                        HospitalAdminUser[]
+  deploymentWindows                 DeploymentWindow[]
+  verificationRequests              SpecialistVerification[]
+
+  @@index([status])
+}
+
+model HospitalAdminUser {
+  id                                String                  @id @default(cuid())
+  userId                            String                  @unique
+  user                              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hospitalId                        String
+  hospital                          HospitalPartner         @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  role                              String                  @default("ADMIN") // ADMIN, MANAGER, READONLY
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+}
+
+model DeploymentWindow {
+  id                                String                  @id @default(cuid())
+  hospitalId                        String
+  hospital                          HospitalPartner         @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  title                             String
+  specialty                         String
+  startDate                         DateTime
+  endDate                           DateTime
+  status                            String                  @default("REQUESTED") // REQUESTED, APPROVED, CONFIRMED, COMPLETED, CANCELLED
+
+  // Requirements
+  specialistCount                   Int                     @default(1)
+  notes                             String?
+
+  // Approval
+  approvedById                      String?
+  approvedAt                        DateTime?
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([hospitalId])
+  @@index([status])
+}
+
+model SpecialistVerification {
+  id                                String                  @id @default(cuid())
+  hospitalId                        String
+  hospital                          HospitalPartner         @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  specialistName                    String
+  specialty                         String
+  licenseNumber                     String?
+  documentUrl                       String?
+  status                            VerificationStatus      @default(PENDING)
+
+  requestedById                     String?
+  verifiedById                      String?
+  verifiedAt                        DateTime?
+  rejectionReason                   String?
+  notes                             String?
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([hospitalId])
+  @@index([status])
+}
+
+// ============================================
+// SPL — SPECIALIST PARTNERS LTD
+// ============================================
+
+enum SPLContractStatus {
+  DRAFT
+  UNDER_REVIEW
+  ACTIVE
+  PAUSED
+  EXPIRED
+  TERMINATED
+}
+
+enum SPLContractModel {
+  FEE_FOR_SERVICE
+  SUBSCRIPTION
+  HYBRID
+}
+
+enum SPLCaseStatus {
+  SUBMITTED
+  TRIAGED
+  ASSIGNED
+  IN_REVIEW
+  REPORT_READY
+  DELIVERED
+  BILLED
+  PAID
+  CANCELLED
+}
+
+model SPLPartner {
+  id                                String                  @id @default(cuid())
+  name                              String
+  shortName                         String
+  type                              String                  // HMO, CORPORATE, GOVERNMENT, INSURER
+  status                            SPLContractStatus       @default(DRAFT)
+  logoUrl                           String?
+  primaryContact                    String?
+  primaryEmail                      String?                 @unique
+  primaryPhone                      String?
+  rcNumber                          String?                 // CAC registration number
+
+  contracts                         SPLContract[]
+  cases                             SPLCase[]
+  adminUsers                        SPLAdminUser[]
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+}
+
+model SPLContract {
+  id                                String                  @id @default(cuid())
+  partnerId                         String
+  partner                           SPLPartner              @relation(fields: [partnerId], references: [id])
+  model                             SPLContractModel
+  status                            SPLContractStatus       @default(DRAFT)
+  title                             String
+  description                       String?
+
+  // Scope
+  specialties                       Json?                   // string[] — null means all
+  serviceTypes                      Json?                   // e.g. ["SECOND_OPINION", "SPECIALIST_CONSULTATION"]
+
+  // Financial terms
+  currency                          String                  @default("NGN")
+  feeSchedule                       Json?                   // { serviceType: rateInNGN }
+
+  // Subscription terms
+  subscriptionFeeMonthly            Decimal?                @db.Decimal(12, 2)
+  subscribedVolume                  Int?
+  subscriptionPeriod                String?                 // MONTHLY, QUARTERLY, ANNUAL
+
+  // DFC platform fee
+  dfcPlatformFeePercent             Decimal                 @default(15) @db.Decimal(5, 2)
+
+  // Contract dates
+  startDate                         DateTime
+  endDate                           DateTime
+  autoRenew                         Boolean                 @default(false)
+  renewalNoticeDays                 Int                     @default(60)
+
+  // Document
+  contractUrl                       String?
+  contractSignedAt                  DateTime?
+
+  // Volume tracking
+  casesDeliveredThisPeriod          Int                     @default(0)
+  casesRemainingThisPeriod          Int?
+  revenueThisPeriod                 Decimal                 @default(0) @db.Decimal(12, 2)
+
+  cases                             SPLCase[]
+  invoices                          SPLInvoice[]
+
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([partnerId, status])
+}
+
+model SPLCase {
+  id                                String                  @id @default(cuid())
+  referenceNumber                   String                  @unique
+  partnerId                         String
+  partner                           SPLPartner              @relation(fields: [partnerId], references: [id])
+  contractId                        String
+  contract                          SPLContract             @relation(fields: [contractId], references: [id])
+  serviceType                       String
+  status                            SPLCaseStatus           @default(SUBMITTED)
+
+  // Patient info
+  patientRef                        String
+  patientName                       String
+  patientDob                        String?
+  patientEmail                      String?
+  patientPhone                      String?
+  membershipNumber                  String?
+
+  // Clinical
+  specialty                         String
+  diagnosis                         String
+  clinicalSummary                   String?
+  documentUrls                      Json?
+
+  // Workflow
+  triageNotes                       String?
+  assignedToId                      String?
+  aiBrief                           String?
+  reportText                        String?
+  reportPdfUrl                      String?
+  coordinatorNotes                  String?
+  deliveredAt                       DateTime?
+
+  // Financial
+  agreedFee                         Decimal?                @db.Decimal(12, 2)
+  dfcPlatformFee                    Decimal?                @db.Decimal(12, 2)
+  specialistFee                     Decimal?                @db.Decimal(12, 2)
+  invoiceId                         String?
+  paidAt                            DateTime?
+
+  submittedAt                       DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+
+  @@index([partnerId, status])
+  @@index([contractId])
+  @@index([referenceNumber])
+}
+
+model SPLInvoice {
+  id                                String                  @id @default(cuid())
+  invoiceNumber                     String                  @unique
+  contractId                        String
+  contract                          SPLContract             @relation(fields: [contractId], references: [id])
+  partnerId                         String
+  periodStart                       DateTime
+  periodEnd                         DateTime
+  caseCount                         Int
+  subtotal                          Decimal                 @db.Decimal(12, 2)
+  dfcFee                            Decimal                 @db.Decimal(12, 2)
+  total                             Decimal                 @db.Decimal(12, 2)
+  status                            String                  @default("DRAFT") // DRAFT, SENT, PAID, OVERDUE
+  dueDate                           DateTime
+  pdfUrl                            String?
+  paidAt                            DateTime?
+  notes                             String?
+
+  createdAt                         DateTime                @default(now())
+}
+
+model SPLAdminUser {
+  id                                String                  @id @default(cuid())
+  userId                            String                  @unique
+  user                              User                    @relation(fields: [userId], references: [id])
+  partnerId                         String
+  partner                           SPLPartner              @relation(fields: [partnerId], references: [id])
+  role                              String                  @default("ADMIN") // ADMIN, COORDINATOR, READONLY
+
   createdAt                         DateTime                @default(now())
 }

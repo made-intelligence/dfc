@@ -13,9 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Users,
-  Calendar,
-  Hospital,
-  TrendingUp,
   Clock,
   CheckCircle,
   XCircle,
@@ -26,20 +23,12 @@ import {
   Loader2,
 } from "lucide-react";
 import { Loading, CardSkeleton } from "@/components/ui/loading";
-import { useScrollAnimation } from "@/lib/useScrollAnimation";
-import { useCountUp } from "@/lib/useCountUp";
 import { useToast } from "@/components/ui/toast";
 import AddDoctorModal from "@/components/admin/AddDoctorModal";
 
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const { ref: statsRef, isVisible: statsVisible } = useScrollAnimation();
-  const { ref: appointmentsRef, isVisible: appointmentsVisible } =
-    useScrollAnimation();
-  const { ref: doctorsRef, isVisible: doctorsVisible } = useScrollAnimation();
-  const { ref: systemRef, isVisible: systemVisible } = useScrollAnimation();
-
   const [uploading, setUploading] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -78,13 +67,13 @@ export default function AdminDashboard() {
         // Fallback data if API fails
         setDashboardData({
           stats: {
-            totalPatients: 0,
-            activeDoctors: 0,
-            todayAppointments: 0,
-            monthlyRevenue: 0
+            totalMembers: 0,
+            activeMembers: 0,
+            pendingMembers: 0,
+            secondOpinionCases: 0
           },
           recentAppointments: [],
-          topDoctors: [],
+          categoryBreakdown: {},
           systemHealth: {
             database: "operational",
             apiResponse: "operational",
@@ -135,8 +124,8 @@ export default function AdminDashboard() {
       if (response.ok) {
                addToast({
           type: "success",
-          title: "Doctors Imported",
-          description: `Successfully imported ${result.imported} doctors`
+          title: "Members Imported",
+          description: `Successfully imported ${result.imported} members`
         })
       } else {
               addToast({
@@ -157,10 +146,10 @@ export default function AdminDashboard() {
     }
   };
 
-  // Simplified - show data directly without animations
-  const patientsCount = dashboardData?.stats?.totalPatients || 0;
-  const activeDoctorsCount = dashboardData?.stats?.activeDoctors || 0;
-  const appointmentsCount = dashboardData?.stats?.todayAppointments || 0;
+  const totalMembers = dashboardData?.stats?.totalMembers || 0;
+  const activeMembers = dashboardData?.stats?.activeMembers || 0;
+  const pendingMembers = dashboardData?.stats?.pendingMembers || 0;
+  const secondOpinionCases = dashboardData?.stats?.secondOpinionCases || 0;
 
   if (loading) {
     return (
@@ -198,8 +187,8 @@ export default function AdminDashboard() {
               </div>
               <p className="text-gray-600">
                 {isSuperAdmin
-                  ? "Full system control and management"
-                  : "Manage your medical platform"}
+                  ? "DFC platform overview and management"
+                  : "Manage the DFC platform"}
               </p>
             </div>
             <div className="flex gap-3">
@@ -220,18 +209,12 @@ export default function AdminDashboard() {
                 ) : (
                   <Upload className="h-4 w-4 mr-2" />
                 )}
-                Import Doctors
+                Import Members
               </Button>
               <Button onClick={() => setShowAddDoctorModal(true)}>
                 <UserPlus className="h-4 w-4 mr-2" />
-                Add New Doctor
+                Add Member
               </Button>
-              {hasPermission('manage_admins') && (
-                <Button variant="secondary">
-                  <Shield className="h-4 w-4 mr-2" />
-                  Manage Admins
-                </Button>
-              )}
             </div>
           </div>
         </div>
@@ -243,72 +226,88 @@ export default function AdminDashboard() {
           <Card className="transition-all duration-500 hover:shadow-lg hover:scale-105">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Total Patients
+                Total Members
               </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {patientsCount.toLocaleString()}
+                {totalMembers.toLocaleString()}
               </div>
-              {/* <p className="text-xs text-muted-foreground">
-                +12% from last month
-              </p> */}
             </CardContent>
           </Card>
 
           <Card className="transition-all duration-500 hover:shadow-lg hover:scale-105">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Active Doctors
+                Active Members
               </CardTitle>
-              <Hospital className="h-4 w-4 text-muted-foreground" />
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeDoctorsCount}</div>
-              {/* <p className="text-xs text-muted-foreground">
-                +8% from last month
-              </p> */}
+              <div className="text-2xl font-bold">{activeMembers}</div>
             </CardContent>
           </Card>
 
           <Card className="transition-all duration-500 hover:shadow-lg hover:scale-105">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Appointments Today
+                Pending Verification
               </CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{appointmentsCount}</div>
-              {/* <p className="text-xs text-muted-foreground">
-                +23% from yesterday
-              </p> */}
+              <div className="text-2xl font-bold">{pendingMembers}</div>
             </CardContent>
           </Card>
 
           <Card className="transition-all duration-500 hover:shadow-lg hover:scale-105">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Second Opinion Cases</CardTitle>
+              <AlertCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₦{((dashboardData?.stats?.monthlyRevenue || 0) / 100).toLocaleString()}
+                {secondOpinionCases}
               </div>
-              {/* <p className="text-xs text-muted-foreground">
-                +15% from last month
-              </p> */}
             </CardContent>
           </Card>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6 mb-8">
+          {/* Membership by Category */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Membership Breakdown</CardTitle>
+              <CardDescription>Members by category</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Object.entries(dashboardData?.categoryBreakdown || {}).map(([category, count]: [string, any], i: number) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div className="font-medium capitalize">
+                      {category.toLowerCase().replace(/_/g, " ")}
+                    </div>
+                    <Badge variant="secondary" className="text-sm">
+                      {count}
+                    </Badge>
+                  </div>
+                ))}
+                {Object.keys(dashboardData?.categoryBreakdown || {}).length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-4">No member data yet</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Recent Appointments */}
           <Card>
             <CardHeader>
               <CardTitle>Recent Appointments</CardTitle>
-              <CardDescription>Latest appointment bookings</CardDescription>
+              <CardDescription>Latest consultation bookings</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -344,41 +343,9 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Top Doctors */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Performing Doctors</CardTitle>
-              <CardDescription>
-                Based on patient ratings and appointments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {(dashboardData?.topDoctors || []).map((doctor: any, i: number) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                  >
-                    <div>
-                      <div className="font-medium">{doctor.name}</div>
-                      <div className="text-sm text-gray-600">
-                        {doctor.specialty}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium">
-                        ⭐ {doctor.rating}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {doctor.appointments} appointments
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                {(dashboardData?.recentAppointments || []).length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-4">No recent appointments</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -439,8 +406,8 @@ export default function AdminDashboard() {
           fetchDashboardData();
           addToast({
             type: "success",
-            title: "Doctor Created",
-            description: "New doctor has been successfully added"
+            title: "Member Created",
+            description: "New member has been successfully added"
           });
         }}
       />

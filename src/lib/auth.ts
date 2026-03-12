@@ -1,9 +1,14 @@
 import { SignJWT, jwtVerify, JWTPayload as JoseJWTPayload } from "jose";
+import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
+  throw new Error("JWT_SECRET environment variable is required in production");
+}
+
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "your-secret-key-change-in-production",
+  process.env.JWT_SECRET || "dev-only-secret-do-not-use-in-production",
 );
 
 export interface JWTPayload extends JoseJWTPayload {
@@ -38,7 +43,7 @@ export async function createToken(payload: JWTPayload): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("30d")
+    .setExpirationTime("7d")
     .sign(JWT_SECRET);
 }
 
@@ -46,8 +51,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
     return payload as JWTPayload;
-  } catch (error) {
-    console.error("Token verification failed:", error);
+  } catch {
     return null;
   }
 }
@@ -58,9 +62,11 @@ export function hasPermission(
   requiredRole: UserRole,
 ): boolean {
   const roleHierarchy = {
-    [UserRole.SUPERADMIN]: 4,
-    [UserRole.ADMIN]: 3,
-    [UserRole.DOCTOR]: 2,
+    [UserRole.SUPERADMIN]: 6,
+    [UserRole.SECRETARIAT]: 5,
+    [UserRole.DFC_MEMBER]: 4,
+    [UserRole.HOSPITAL_ADMIN]: 3,
+    [UserRole.SPL_ADMIN]: 2,
     [UserRole.PATIENT]: 1,
   };
 
@@ -69,10 +75,12 @@ export function hasPermission(
 
 export function canAccessRoute(userRole: UserRole, route: string): boolean {
   const routePermissions: Record<string, UserRole[]> = {
-    "/admin": [UserRole.ADMIN],
-    "/doctor": [UserRole.DOCTOR, UserRole.ADMIN],
-    "/patient": [UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN],
-    "/dashboard": [UserRole.PATIENT, UserRole.DOCTOR, UserRole.ADMIN],
+    "/admin": [UserRole.SECRETARIAT, UserRole.SUPERADMIN],
+    "/member": [UserRole.DFC_MEMBER, UserRole.SUPERADMIN],
+    "/doctor": [UserRole.DFC_MEMBER, UserRole.SUPERADMIN],
+    "/hospital": [UserRole.HOSPITAL_ADMIN, UserRole.SUPERADMIN],
+    "/patient": [UserRole.PATIENT, UserRole.DFC_MEMBER],
+    "/dashboard": [UserRole.PATIENT, UserRole.DFC_MEMBER, UserRole.SECRETARIAT],
   };
 
   const allowedRoles = routePermissions[route];
@@ -145,6 +153,35 @@ export function validatePhone(phone: string): boolean {
   // Nigerian phone number validation (basic)
   const phoneRegex = /^(\+234|0)[789][01]\d{8}$/;
   return phoneRegex.test(phone.replace(/\s/g, ""));
+}
+
+// Centralized admin auth guard — returns JWTPayload or a 401/403 NextResponse
+export async function requireAdminAuth(
+  request: NextRequest,
+): Promise<JWTPayload | NextResponse> {
+  const token = getTokenFromCookies(request.headers.get("cookie"));
+  if (!token)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const payload = await verifyToken(token);
+  if (!payload)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (
+    payload.role !== UserRole.SUPERADMIN &&
+    payload.role !== UserRole.SECRETARIAT
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  return payload;
+}
+
+// Helper to check if requireAdminAuth returned an error response
+export function isAuthError(
+  result: JWTPayload | NextResponse,
+): result is NextResponse {
+  return result instanceof NextResponse;
 }
 
 // Error types

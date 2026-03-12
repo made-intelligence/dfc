@@ -10,7 +10,7 @@ export default function DoctorLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ProtectedRoute requiredRole={UserRole.DOCTOR}>
+    <ProtectedRoute allowedRoles={[UserRole.DFC_MEMBER, UserRole.SUPERADMIN]}>
       <DashboardLayout>{children}</DashboardLayout>
     </ProtectedRoute>
   );

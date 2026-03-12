@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { UserRole, AppointmentStatus } from "@prisma/client";
+import { UserRole, AppointmentStatus, Prisma } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(appointments);
   } catch (error) {
-    console.error("Error fetching appointments:", error);
+    logger.error('PatientAppointments', error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
@@ -81,14 +82,90 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const { id, status } = await request.json();
+    // Rescheduling Logic
+    const { appointmentDate, startTime, endTime } = await request.json(); // Re-parsing body to get these fields if they exist
+    // Note: In Next.js request.json() can only be called once.
+    // So we need to parse it once at the top. 
+    // Wait, the previous code called `const { id, status } = await request.json();`.
+    // I need to change that line to capture all fields.
 
-    // Only allow patients to cancel their own appointments
-    if (status !== AppointmentStatus.CANCELLED) {
-      return NextResponse.json(
-        { error: "Patients can only cancel appointments" },
-        { status: 400 },
+    // Correction: I will replace the block from line 84.
+    
+    const body = await request.json();
+    const { id, status, appointmentDate: newDate, startTime: newStartTime, endTime: newEndTime } = body;
+
+    // Check if appointment exists
+    const existingAppointment = await prisma.appointment.findUnique({
+      where: { id, patientId: user.id }
+    });
+
+    if (!existingAppointment) {
+      return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
+    }
+
+    // Time Check Logic (Common for Cancel & Reschedule)
+    const apptDate = new Date(existingAppointment.appointmentDate);
+    const [hours, mins] = existingAppointment.startTime.split(':').map(Number);
+    apptDate.setHours(hours, mins, 0, 0);
+
+    const now = new Date();
+    const diffMs = apptDate.getTime() - now.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+
+    // 24 Hour Policy (1440 minutes)
+    if (diffMinutes < 1440) {
+       return NextResponse.json(
+        { error: "Appointments cannot be cancelled or rescheduled less than 24 hours in advance." },
+        { status: 400 }
       );
+    }
+
+    let updateData: Prisma.AppointmentUpdateInput = {};
+
+    // 1. Cancellation
+    if (status === AppointmentStatus.CANCELLED) {
+       updateData.status = AppointmentStatus.CANCELLED;
+    } 
+    // 2. Rescheduling
+    else if (newDate && newStartTime && newEndTime) {
+       // Validate new time is in future
+       const newStartDateTime = new Date(newDate);
+       const [newH, newM] = newStartTime.split(':').map(Number);
+       newStartDateTime.setHours(newH, newM, 0, 0);
+       
+       if (newStartDateTime <= now) {
+           return NextResponse.json({ error: "New appointment time must be in the future." }, { status: 400 });
+       }
+
+       // Check Conflict
+       const conflict = await prisma.appointment.findFirst({
+           where: {
+               doctorId: existingAppointment.doctorId,
+               appointmentDate: newDate,
+               status: { in: ['PENDING', 'CONFIRMED'] },
+               OR: [
+                   // Simple overlap check
+                   { startTime: { lte: newStartTime }, endTime: { gt: newStartTime } },
+                   { startTime: { lt: newEndTime }, endTime: { gte: newEndTime } }
+               ]
+           }
+       });
+
+       if (conflict) {
+           return NextResponse.json({ error: "The selected time slot is already booked." }, { status: 400 });
+       }
+
+       updateData.appointmentDate = newDate;
+       updateData.startTime = newStartTime;
+       updateData.endTime = newEndTime;
+       updateData.status = AppointmentStatus.PENDING; // Reset to PENDING for doctor to confirm? Or keep CONFIRMED?
+       // Let's reset to PENDING so doctor acknowledges the change.
+    }
+    else {
+         return NextResponse.json(
+            { error: "Invalid action. Provide status=CANCELLED or new date/time for rescheduling." },
+            { status: 400 }
+          );
     }
 
     const appointment = await prisma.appointment.update({
@@ -96,9 +173,7 @@ export async function PUT(request: NextRequest) {
         id,
         patientId: user.id,
       },
-      data: {
-        status: AppointmentStatus.CANCELLED,
-      },
+      data: updateData,
       include: {
         doctor: {
           select: {
@@ -124,7 +199,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(appointment);
   } catch (error) {
-    console.error("Error updating appointment:", error);
+    logger.error('PatientAppointments', error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

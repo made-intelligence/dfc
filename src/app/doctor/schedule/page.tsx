@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Clock, Plus, Edit, Trash2, Save, X } from "lucide-react";
 import { Loading } from "@/components/ui/loading";
+import { useToast } from "@/components/ui/toast";
 
 interface Schedule {
   id: string;
@@ -44,9 +45,13 @@ const DAYS = [
 
 export default function SchedulePage() {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [consultationFee, setConsultationFee] = useState("");
+  const [consultationFeeNote, setConsultationFeeNote] = useState("");
+  const [savingPricing, setSavingPricing] = useState(false);
   const [newSchedule, setNewSchedule] = useState({
     title: "",
     dayOfWeek: 1,
@@ -70,12 +75,41 @@ export default function SchedulePage() {
       const response = await fetch("/api/doctor/schedule");
       if (response.ok) {
         const data = await response.json();
-        setSchedules(data);
+        setSchedules(data.schedules);
+        if (data.consultationFee && data.consultationFee !== "0") {
+          setConsultationFee(data.consultationFee);
+        }
+        if (data.consultationFeeNote) {
+          setConsultationFeeNote(data.consultationFeeNote);
+        }
       }
     } catch (error) {
       console.error("Error fetching schedules:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSavePricing = async () => {
+    setSavingPricing(true);
+    try {
+      const res = await fetch("/api/doctor/schedule", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          consultationFee: parseFloat(consultationFee) || 0,
+          consultationFeeNote,
+        }),
+      });
+      if (res.ok) {
+        addToast({ title: "Pricing saved", type: "success" });
+      } else {
+        addToast({ title: "Failed to save pricing", type: "error" });
+      }
+    } catch {
+      addToast({ title: "Failed to save pricing", type: "error" });
+    } finally {
+      setSavingPricing(false);
     }
   };
 
@@ -106,9 +140,25 @@ export default function SchedulePage() {
             color: "#3B82F6"
           });
         }
+        addToast({
+          title: schedule.id ? "Schedule Updated" : "Schedule Added",
+          description: schedule.id ? "Your schedule has been updated successfully." : "New schedule block added successfully.",
+          type: "success",
+        });
+      } else {
+        addToast({
+          title: "Error",
+          description: "Failed to save schedule. Please try again.",
+          type: "error",
+        });
       }
     } catch (error) {
       console.error("Error saving schedule:", error);
+      addToast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        type: "error",
+      });
     }
   };
 
@@ -120,9 +170,25 @@ export default function SchedulePage() {
 
       if (response.ok) {
         fetchSchedules();
+        addToast({
+          title: "Schedule Deleted",
+          description: "Schedule block removed successfully.",
+          type: "success",
+        });
+      } else {
+        addToast({
+          title: "Error",
+          description: "Failed to delete schedule.",
+          type: "error",
+        });
       }
     } catch (error) {
       console.error("Error deleting schedule:", error);
+      addToast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        type: "error",
+      });
     }
   };
 
@@ -139,6 +205,55 @@ export default function SchedulePage() {
             Create flexible schedule blocks. Use different types: Available (bookable), Blocked (lunch/breaks), Holiday, or Emergency slots.
           </p>
         </div>
+      </div>
+
+      {/* Consultation Pricing */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-1">Consultation Pricing</h2>
+        <p className="text-sm text-gray-500 mb-4">Set your consultation fee. Patients will see this when booking.</p>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+          <div className="flex-1 max-w-xs">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Consultation fee (&#8358;)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="500"
+              value={consultationFee}
+              onChange={(e) => setConsultationFee(e.target.value)}
+              placeholder="e.g. 25000"
+              className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-base"
+            />
+          </div>
+          <div className="max-w-xs">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Fee note (optional)
+            </label>
+            <input
+              type="text"
+              value={consultationFeeNote}
+              onChange={(e) => setConsultationFeeNote(e.target.value)}
+              placeholder="e.g. Fee varies — confirm at booking"
+              className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-base"
+            />
+          </div>
+          <button
+            onClick={handleSavePricing}
+            disabled={savingPricing}
+            className="px-6 py-2.5 rounded-lg bg-[#0D1F3C] text-white text-sm font-medium hover:bg-[#0D1F3C]/90 disabled:opacity-50"
+          >
+            {savingPricing ? "Saving..." : "Save pricing"}
+          </button>
+        </div>
+
+        {consultationFee && (
+          <p className="text-sm text-gray-500 mt-3">
+            Patients will see: <span className="font-medium text-gray-700">&#8358;{Number(consultationFee).toLocaleString()}</span>
+            {consultationFeeNote && <span> &mdash; {consultationFeeNote}</span>}
+          </p>
+        )}
       </div>
 
       <Card>

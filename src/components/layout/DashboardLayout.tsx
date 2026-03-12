@@ -15,12 +15,15 @@ import {
   FileText,
   Settings,
   LogOut,
-  Hospital,
   User,
   CreditCard,
   Clock,
   Activity,
   Shield,
+  ShieldCheck,
+  Inbox,
+  Building2,
+  FolderOpen,
 } from "lucide-react";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 
@@ -80,26 +83,26 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const getNavigationItems = () => {
     const items = [];
     
-    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPERADMIN) {
+    if (user.role === UserRole.SECRETARIAT || user.role === UserRole.SUPERADMIN) {
       items.push({ name: "Dashboard", href: "/admin", icon: Home });
       
-      if (hasPermission('manage_patients')) {
-        items.push({ name: "Patients", href: "/admin/users", icon: Users });
-      }
-      
-      if (hasPermission('manage_doctors')) {
-        items.push({ name: "Doctors", href: "/admin/doctors", icon: Hospital });
-      }
-      
+      items.push({ name: "Members", href: "/admin/users", icon: Users });
+      items.push({ name: "Credentials", href: "/admin/credentials", icon: ShieldCheck });
+      items.push({ name: "Secretariat", href: "/admin/secretariat", icon: Inbox });
+      items.push({ name: "Second Opinion", href: "/admin/second-opinion", icon: FileText });
+      items.push({ name: "SPL Partners", href: "/admin/spl", icon: Building2 });
+      items.push({ name: "Clinical Governance", href: "/admin/clinical", icon: Shield });
+      items.push({ name: "EXCO", href: "/admin/exco", icon: Shield });
+      items.push({ name: "Initiatives", href: "/admin/initiatives", icon: FileText });
+      items.push({ name: "Appointments", href: "/admin/appointments", icon: Calendar });
+
       if (hasPermission('manage_admins')) {
         items.push({ name: "Manage Admins", href: "/admin/admins", icon: Shield });
       }
-      
+
       if (hasPermission('manage_permissions')) {
         items.push({ name: "Permissions", href: "/admin/permissions", icon: Shield });
       }
-      
-      items.push({ name: "Appointments", href: "/admin/appointments", icon: Calendar });
       
       if (hasPermission('view_analytics')) {
         items.push({ name: "Analytics", href: "/admin/analytics", icon: Activity });
@@ -108,14 +111,15 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       if (hasPermission('system_settings')) {
         items.push({ name: "Settings", href: "/admin/settings", icon: Settings });
       }
-    } else if (user.role === UserRole.DOCTOR) {
+    } else if (user.role === UserRole.DFC_MEMBER) {
       items.push(
         { name: "Dashboard", href: "/doctor", icon: Home },
+        { name: "My Cases", href: "/member/cases", icon: FileText },
         { name: "Analytics", href: "/doctor/analytics", icon: Activity },
         { name: "Schedule", href: "/doctor/schedule", icon: Clock },
         { name: "Appointments", href: "/doctor/appointments", icon: Calendar },
+        { name: "Patient Records", href: "/doctor/emr", icon: FolderOpen },
         { name: "Patients", href: "/doctor/patients", icon: Users },
-        { name: "Medical Records", href: "/doctor/records", icon: FileText },
         { name: "Subscription", href: "/doctor/subscription", icon: CreditCard },
         { name: "Profile", href: "/doctor/profile", icon: User }
       );
@@ -167,9 +171,8 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
         <nav className="mt-6 px-3 flex-1 overflow-y-auto">
           <div className="space-y-1">
             {navigationItems.map((item) => {
-              const isActive = pathname === item.href || 
-                (item.href === "/admin/users" && pathname.startsWith("/admin/users/")) ||
-                (item.href === "/admin/doctors" && pathname.startsWith("/admin/doctors/"));
+              const isActive = pathname === item.href ||
+                (item.href !== "/admin" && pathname.startsWith(item.href + "/"));
               return (
                 <Button
                   key={item.name}

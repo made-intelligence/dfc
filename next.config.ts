@@ -12,9 +12,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  experimental: {
-    serverComponentsExternalPackages: ['react-dom/server'],
-  },
+  serverExternalPackages: ['react-dom/server'],
 };
 
 export default withPWA({

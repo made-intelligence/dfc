@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -29,13 +30,13 @@ import {
   Clock,
   User,
   MapPin,
-  DollarSign,
   FileText,
   Video,
   XCircle,
 } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 import Topbar from "@/components/layout/Topbar";
+import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/toast";
 import { Loading } from "@/components/ui/loading";
 
@@ -64,6 +65,13 @@ interface Appointment {
   };
 }
 
+// ... existing imports ...
+
+// Helper
+const getDifferenceInMinutes = (date1: Date, date2: Date) => {
+    return Math.floor((date1.getTime() - date2.getTime()) / 60000);
+};
+
 export default function AppointmentsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -71,7 +79,14 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  
+  // Dialog States
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
+
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const { addToast } = useToast();
@@ -105,6 +120,13 @@ export default function AppointmentsPage() {
   const handleCancelClick = (appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setShowCancelDialog(true);
+  };
+
+  const handleRescheduleClick = (appointment: Appointment) => {
+      setSelectedAppointment(appointment);
+      setRescheduleDate(appointment.appointmentDate.split('T')[0]); // Pre-fill
+      setRescheduleTime(appointment.startTime);
+      setShowRescheduleDialog(true);
   };
 
   const handleCancelConfirm = async () => {
@@ -149,7 +171,71 @@ export default function AppointmentsPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const handleRescheduleConfirm = async () => {
+      if (!selectedAppointment || !rescheduleDate || !rescheduleTime) return;
+
+      try {
+           // Calculate End Time (Assuming same duration or 30 min default if we don't have duration)
+           // We'll keep it simple and just set end time to +30 mins or reuse existing duration
+           // Ideally we should calculate duration from old start/end
+           let newEndTime = "";
+           
+           const [oldStartH, oldStartM] = selectedAppointment.startTime.split(':').map(Number);
+           const [oldEndH, oldEndM] = selectedAppointment.endTime.split(':').map(Number);
+           const durationMinutes = (oldEndH * 60 + oldEndM) - (oldStartH * 60 + oldStartM);
+           
+           const [newStartH, newStartM] = rescheduleTime.split(':').map(Number);
+           const totalStartMinutes = newStartH * 60 + newStartM;
+           const totalEndMinutes = totalStartMinutes + durationMinutes;
+           
+           const newEndH = Math.floor(totalEndMinutes / 60);
+           const newEndM = totalEndMinutes % 60;
+           newEndTime = `${newEndH.toString().padStart(2, '0')}:${newEndM.toString().padStart(2, '0')}`;
+
+           const response = await fetch("/api/patient/appointments", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              id: selectedAppointment.id,
+              appointmentDate: rescheduleDate, // YYYY-MM-DD
+              startTime: rescheduleTime,
+              endTime: newEndTime
+            }),
+          });
+    
+          if (response.ok) {
+            fetchAppointments(); // Refresh list
+            addToast({
+              title: "Appointment Rescheduled",
+              description: "Your appointment has been successfully rescheduled.",
+              type: "success",
+            });
+            setShowRescheduleDialog(false);
+          } else {
+            const data = await response.json();
+            setError(data.error || "Failed to reschedule appointment");
+             addToast({
+              title: "Reschedule Failed",
+              description: data.error || "Failed to reschedule appointment",
+              type: "error",
+            });
+          }
+
+      } catch (e) {
+         setError("An error occurred while rescheduling");
+      }
+  };
+
+  const getStatusBadge = (appointment: Appointment) => {
+    const { status, appointmentDate, endTime } = appointment;
+    const isMissed = isAppointmentPast(appointmentDate, endTime) && (status === 'PENDING' || status === 'CONFIRMED');
+
+    if (isMissed) {
+         return <Badge variant="destructive">Missed</Badge>;
+    }
+
     const variants: Record<
       string,
       { variant: "default" | "secondary" | "destructive" | "outline"; label: string }
@@ -171,11 +257,15 @@ export default function AppointmentsPage() {
   };
 
   const canCancelAppointment = (appointment: Appointment) => {
-    return (
-      appointment.status !== "CANCELLED" &&
-      appointment.status !== "COMPLETED" &&
-      !isAppointmentPast(appointment.appointmentDate, appointment.endTime)
-    );
+      if (appointment.status === "CANCELLED" || appointment.status === "COMPLETED") return false;
+
+      // 24 Hour Check
+      const apptDate = new Date(appointment.appointmentDate);
+      const [hours, mins] = appointment.startTime.split(':').map(Number);
+      apptDate.setHours(hours, mins, 0, 0);
+      
+      const diffMinutes = getDifferenceInMinutes(apptDate, new Date());
+      return diffMinutes >= 1440; // Allow if more than 24h away
   };
 
   if (authLoading || loading) {
@@ -257,8 +347,8 @@ export default function AppointmentsPage() {
                             "General Practitioner"}
                         </CardDescription>
                       </div>
-                    </div>
-                    {getStatusBadge(appointment.status)}
+                  </div>
+                    {getStatusBadge(appointment)}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -284,13 +374,39 @@ export default function AppointmentsPage() {
                     </div>
                   )}
                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <DollarSign className="h-4 w-4" />
+                    <span className="text-sm font-bold">₦</span>
                     <span>
                       {appointment.doctorProfile.currency}{" "}
                       {appointment.consultationFee.toFixed(2)}
                     </span>
                   </div>
-                  {appointment.meetingLink && (
+                  {/* Join Button Logic - Only if timely */}
+                  {(() => {
+                      if (!appointment.meetingLink) return null;
+
+                      // Parse Appointment Date & Time
+                      const apptBase = new Date(appointment.appointmentDate);
+                      const [startH, startM] = appointment.startTime.split(':').map(Number);
+                      const [endH, endM] = appointment.endTime.split(':').map(Number);
+                      
+                      const startDateTime = new Date(apptBase);
+                      startDateTime.setHours(startH, startM, 0, 0);
+
+                      const endDateTime = new Date(apptBase);
+                      endDateTime.setHours(endH, endM, 0, 0);
+
+                      const now = new Date();
+                      
+                      // 10 minute buffer before start
+                      const joinWindowStart = new Date(startDateTime.getTime() - 10 * 60000); 
+
+                      const isTooEarly = now < joinWindowStart;
+                      const isEnded = now > endDateTime;
+                      const canJoin = !isTooEarly && !isEnded;
+
+                      // if (!canJoin) return null; // User wants it visible but disabled
+
+                     return (
                     <div className="pt-2">
                       <Button
                         variant="outline"
@@ -299,12 +415,15 @@ export default function AppointmentsPage() {
                         onClick={() =>
                           window.open(appointment.meetingLink, "_blank")
                         }
+                        disabled={!canJoin}
+                        title={!canJoin ? `Link becomes active at ${joinWindowStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : "Join Meeting"}
                       >
                         <Video className="h-4 w-4 mr-2" />
                         Join Video Call
                       </Button>
                     </div>
-                  )}
+                  );
+                  })()}
                   {canCancelAppointment(appointment) && (
                     <div className="pt-2">
                       <Button
@@ -320,6 +439,16 @@ export default function AppointmentsPage() {
                           <XCircle className="h-4 w-4 mr-2" />
                         )}
                         Cancel Appointment
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="w-full mt-2"
+                        onClick={() => handleRescheduleClick(appointment)}
+                        disabled={cancellingId === appointment.id}
+                      >
+                         <Clock className="h-4 w-4 mr-2" />
+                         Reschedule
                       </Button>
                     </div>
                   )}
@@ -361,7 +490,7 @@ export default function AppointmentsPage() {
                           <h3 className="font-semibold text-gray-900">
                             Dr. {appointment.doctor.name}
                           </h3>
-                          {getStatusBadge(appointment.status)}
+                          {getStatusBadge(appointment)}
                         </div>
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <span className="flex items-center gap-1">
@@ -412,7 +541,53 @@ export default function AppointmentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reschedule Dialog */}
+      <AlertDialog open={showRescheduleDialog} onOpenChange={setShowRescheduleDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reschedule Appointment</AlertDialogTitle>
+            <AlertDialogDescription>
+                Select a new date and time for your appointment with Dr. {selectedAppointment?.doctor.name}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="grid gap-4 py-4">
+               <div className="grid grid-cols-4 items-center gap-4">
+                   <label className="text-right text-sm font-medium">Date</label>
+                   <Input 
+                        type="date" 
+                        className="col-span-3" 
+                        min={new Date().toISOString().split('T')[0]}
+                        value={rescheduleDate}
+                        onChange={(e) => setRescheduleDate(e.target.value)}
+                   />
+               </div>
+               <div className="grid grid-cols-4 items-center gap-4">
+                   <label className="text-right text-sm font-medium">Time</label>
+                   <Input 
+                        type="time" 
+                        className="col-span-3" 
+                        value={rescheduleTime}
+                        onChange={(e) => setRescheduleTime(e.target.value)}
+                   />
+               </div>
+               {/* 
+                  Note: In a full production app, we would fetch available slots here. 
+                  For now, we rely on the backend to reject unavailable slots.
+               */}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button onClick={handleRescheduleConfirm} disabled={!rescheduleDate || !rescheduleTime}>
+                Confirm Reschedule
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </div>
+      <Footer />
     </>
   );
 }

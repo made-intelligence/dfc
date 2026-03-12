@@ -6,6 +6,9 @@ import { CheckCircle, XCircle, Calendar, Video, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Suspense } from "react";
+import { useToast } from "@/components/ui/toast";
+import Topbar from "@/components/layout/Topbar";
+import Footer from "@/components/layout/Footer";
 
 function PaymentCallbackContent() {
   const searchParams = useSearchParams();
@@ -15,6 +18,7 @@ function PaymentCallbackContent() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [meetingLink, setMeetingLink] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const { addToast } = useToast();
   
   // Use a ref to ensure verify only runs once (React 18 strict mode double-invokes effects)
   const hasVerified = useRef(false);
@@ -25,7 +29,6 @@ function PaymentCallbackContent() {
       hasVerified.current = true;
 
       try {
-        console.log('Verifying payment with reference:', reference);
         const response = await fetch("/api/payment/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -33,7 +36,6 @@ function PaymentCallbackContent() {
         });
 
         const data = await response.json();
-        console.log('Verification response:', { status: response.status, data });
 
         if (response.ok && data.success) {
           setStatus("success");
@@ -119,8 +121,15 @@ function PaymentCallbackContent() {
         <CardFooter className="flex flex-col gap-3">
           {status === "success" ? (
             <>
-                <Button className="w-full" onClick={() => router.push('/dashboard')}>
-                    Go to Dashboard
+                <Button className="w-full" onClick={() => {
+                  router.push('/appointments');
+                  addToast({
+                    title: "Appointment Booked",
+                    description: "Your appointment has been successfully scheduled!",
+                    type: "success",
+                  });
+                }}>
+                    Go to My Appointments
                 </Button>
                  {meetingLink && (
                     <Button variant="outline" className="w-full" onClick={() => router.push(meetingLink)}>
@@ -158,12 +167,16 @@ function PaymentCallbackContent() {
 
 export default function PaymentCallbackPage() {
     return (
-        <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="w-12 h-12 text-[#0A2463] animate-spin" />
-            </div>
-        }>
-            <PaymentCallbackContent />
-        </Suspense>
+        <>
+            <Topbar />
+            <Suspense fallback={
+                <div className="min-h-screen flex items-center justify-center">
+                    <Loader2 className="w-12 h-12 text-[#0A2463] animate-spin" />
+                </div>
+            }>
+                <PaymentCallbackContent />
+            </Suspense>
+            <Footer />
+        </>
     );
 }

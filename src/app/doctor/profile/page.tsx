@@ -122,8 +122,6 @@ export default function ProfilePage() {
       console.error("Error fetching specialties:", error);
     }
   };
-  console.log(profile);
-
   const handleSave = async () => {
     try {
       const response = await fetch("/api/doctor/profile", {
@@ -175,7 +173,7 @@ export default function ProfilePage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Doctor Profile</h1>
+          <h1 className="text-2xl font-bold">My Profile</h1>
           <p className="text-gray-600">
             Manage your professional profile and information
           </p>
@@ -372,7 +370,7 @@ export default function ProfilePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, bio: e.target.value })
                   }
-                  placeholder="Tell patients about your background, expertise, and approach to healthcare..."
+                  placeholder="Describe your background, expertise, and areas of specialisation..."
                   rows={4}
                 />
               ) : (

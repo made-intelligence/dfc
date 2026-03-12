@@ -53,7 +53,7 @@ export default function ImpactStats() {
               {patientsCount.toLocaleString()}+
             </p>
             <p className="text-[#832232] text-sm font-medium">
-              Patients Treated
+              Cases Handled
             </p>
           </div>
 

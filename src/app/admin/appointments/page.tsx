@@ -160,7 +160,7 @@ export default function AppointmentsPage() {
                   placeholder="Search appointments..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
+                  className="pl-10 w-full sm:w-64"
                 />
               </div>
               <Button variant="outline">

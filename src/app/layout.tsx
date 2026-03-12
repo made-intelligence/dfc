@@ -7,6 +7,7 @@ import { ToastProvider } from "@/components/ui/toast";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://dfcare.org"),
   title: "DFC | Doctors Foundation For Care",
   description:
     "a global healthcare movement and digital platform created to bridge the gap between Nigerians and the wealth of medical expertise across the world",

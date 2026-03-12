@@ -4,7 +4,6 @@ import {
   Star,
   MapPin,
   Clock,
-  DollarSign,
   Calendar,
   Award,
   Briefcase,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createLogoutCookie } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("Logout error:", error);
+    logger.error('Logout', error);
 
     return NextResponse.json(
       { error: "Internal server error" },

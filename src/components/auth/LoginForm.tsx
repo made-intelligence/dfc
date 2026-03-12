@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useScrollAnimation } from "@/lib/useScrollAnimation";
 import Link from "next/link";
+import { useToast } from "@/components/ui/toast";
 
 export function LoginForm() {
   const { ref: formRef, isVisible: formVisible } = useScrollAnimation();
@@ -25,6 +26,7 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { addToast } = useToast();
 
   const { login } = useAuth();
   const router = useRouter();
@@ -41,6 +43,12 @@ export function LoginForm() {
 
     if (result.success && result.user) {
       // Redirect based on the user's actual role from the backend
+      addToast({
+        title: "Login Successful",
+        description: `Welcome back, ${result.user.name || result.user.email}!`,
+        type: "success",
+      });
+
       if (redirectTo) {
         router.push(redirectTo);
       } else {
@@ -49,6 +57,11 @@ export function LoginForm() {
       }
     } else {
       setError(result.error || "Login failed");
+      addToast({
+        title: "Login Failed",
+        description: result.error || "Please check your credentials",
+        type: "error",
+      });
     }
 
     setLoading(false);
@@ -65,12 +78,14 @@ export function LoginForm() {
     switch (userRole) {
       case UserRole.SUPERADMIN:
         return "/admin";
-      case UserRole.ADMIN:
+      case UserRole.SECRETARIAT:
         return "/admin";
-      case UserRole.DOCTOR:
-        return "/doctor";
+      case UserRole.DFC_MEMBER:
+        return "/member";
+      case UserRole.HOSPITAL_ADMIN:
+        return "/hospital";
       case UserRole.PATIENT:
-        return "/";
+        return "/appointments";
       default:
         return "/";
     }

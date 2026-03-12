@@ -1,10 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail } from '@/lib/email/service';
 import BookingConfirmation from '@/emails/BookingConfirmation';
 import React from 'react';
+import { requireAdminAuth, isAuthError } from '@/lib/auth';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const authResult = await requireAdminAuth(request);
+    if (isAuthError(authResult)) return authResult;
+
     const { to } = await request.json();
 
     if (!to) {
@@ -29,7 +33,7 @@ export async function POST(request: Request) {
     } else {
       return NextResponse.json({ error: 'Failed to send email', details: emailResult.error }, { status: 500 });
     }
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

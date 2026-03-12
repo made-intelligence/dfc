@@ -1,119 +1,62 @@
 export const data = [
   {
-    question: "What is Doctors Foundation For Care (Doctors For Change)?",
+    question: "What is DFC?",
     answer:
-      "Doctors Foundation For Care (Doctors for Change) is a digital platform that connects Nigerians with qualified Nigerian doctors practicing abroad. It allows patients to access virtual consultations, second opinions, and specialist care from doctors who were trained in Nigeria and have gained international experience.",
+      "DFC (Doctors Foundation For Care), also known as Doctors for Change, is a global healthcare movement that reconnects Nigerian diaspora doctors with patients back home. We are a collective of physicians who trained outside Nigeria, working to bridge the gap created by brain drain. Through DFC, Nigerians can access specialist medical expertise from their own doctors abroad via consultations, specialist appointments, and second opinions.",
   },
   {
-    question:
-      "Who can use the platform?",
+    question: "Who can use the platform?",
     answer:
-      "Our platform serves two main groups: 1. Nigerians at home who want affordable access to top-quality healthcare and expert advice. 2. Nigerian doctors in the diaspora who wish to consult for Nigerian patients, mentor local doctors, and contribute to improving healthcare delivery back home.",
+      "Patients in Nigeria who want to consult a diaspora-trained specialist or request a second opinion. Nigerian physicians abroad who want to reconnect with patients at home and give back meaningfully. Hospitals and health organisations looking to partner with DFC members.",
   },
   {
-    question: "How does the platform work?",
+    question: "How does a consultation work?",
     answer:
-      "It’s simple: Patients browse verified diaspora doctors by specialty, name etc, They book a convenient time for an online consultation, The doctor reviews the case and conducts the consultation securely via video or chat, Prescriptions, referrals, or follow-ups are managed digitally through the platform through our partners.",
+      "Browse our specialist directory by specialty and location. Book a time that works for you during the doctor's availability window. Attend your consultation in person at a partner facility, or online via video call. The doctor provides their assessment, and any follow-up is managed through the platform.",
   },
   {
-    question:
-      "How are the doctors verified?",
+    question: "How are DFC doctors verified?",
     answer:
-      "Every doctor on Doctors for Change is: A Nigerian or Nigerian-trained doctor who has completed further specialist or residency training abroad, Licensed and in good standing with their medical council overseas, and Vetted through a detailed credentialing process before being approved to consult.",
+      "Every DFC member holds a valid medical licence, has completed specialist training abroad (UK, US, Canada, or equivalent), and has been endorsed by at least two existing DFC members. Credentials are checked by the DFC secretariat before a profile goes live.",
   },
   {
-    question: "What types of consultations are available?",
+    question: "What is a second opinion?",
     answer:
-      "We currently support: Specialist consultations (Cardiology, Obstetrics, Pediatrics, Surgery, Psychiatry, etc.), Second opinions for diagnosis or treatment plans, Pre-travel or post-operative consultations, Preventive health advice and wellness reviews, Mentorship and case collaboration for doctors in Nigeria",
+      "An independent review of your diagnosis or treatment plan by a specialist who was not involved in your original care. You submit your medical records, and a DFC specialist provides a written report with their assessment. It is not an emergency service.",
   },
   {
-    question:
-      "How much does it cost?",
+    question: "How much does a consultation cost?",
     answer:
-      "Consultation fees vary depending on the doctor’s specialty and country of practice, but our goal is to keep pricing affordable — typically a fraction of the cost of international hospital visits or overseas care. All prices are displayed clearly before booking, with no hidden charges.",
+      "Fees vary by specialist and consultation type. All prices are shown before you book. Second opinions start at \u20A685,000 for a standard written review. There are no hidden charges.",
   },
   {
-    question:
-      "Do diaspora doctors get paid for consultations?",
+    question: "How do I join DFC as a physician?",
     answer:
-      "Yes. Diaspora doctors are fairly compensated for their time and expertise. Payments are processed securely through the platform, and doctors can consult as often or as little as they choose — it’s fully flexible. There is a one-time onboarding process and a $100 yearly membership fee for diaspora doctors to maintain their verified profile and access platform tools, patient bookings, and support.",
+      "Click Join DFC on the homepage and complete the membership application. You will need to provide your medical credentials, training history, and at least two peer endorsements from existing DFC members. Annual membership dues apply.",
   },
   {
-    question:
-      "Is it legal for doctors abroad to consult Nigerian patients online?",
+    question: "What is the Emergency Response Initiative?",
     answer:
-      "Yes. Doctors for Change operates under telemedicine and cross-border consultation standards, ensuring that all participating doctors comply with both local (Nigerian) and international medical practice guidelines. Doctors provide advice and consultations within ethical and regulatory frameworks.",
+      "The ERI is DFC's flagship initiative for 2026. It is a six-pillar technical working group developing a national emergency response policy framework for Nigeria. Over 27 physicians are contributing across pillars covering referral coordination, community engagement, workforce training, data collection, financing, and governance.",
   },
   {
-    question:
-      "What happens if an abnormal result is found?",
+    question: "Can Nigerian hospitals partner with DFC?",
     answer:
-      "If we detect any irregularities, our team will guide you on the next steps. This may include consultation with a specialist, additional diagnostic tests, or starting a personalized care plan. We’re here to support you every step of the way.",
+      "Yes. We work with hospitals across Nigeria to host visiting specialists, run outreach programmes, and coordinate patient referrals. Interested institutions can contact the secretariat through the website.",
   },
   {
-    question:
-      "How are payments handled?",
+    question: "Is my medical information secure?",
     answer:
-      "Patients pay securely through the platform (using debit/credit card, transfer, or wallet). The platform automatically distributes payments to the consulting doctor after each completed session.",
+      "Yes. All communication and medical records are encrypted. We follow data protection best practices consistent with NDPR (Nigeria) and international standards.",
   },
   {
-    question:
-      "Is patient data secure?",
+    question: "How do I reschedule or cancel a booking?",
     answer:
-      "Absolutely. We take data privacy very seriously. All communication, medical records, and payment information are encrypted and stored in compliance with global data protection standards (HIPAA and NDPR)",
+      "Log in to your dashboard, go to your bookings, and select reschedule or cancel. Cancellation and refund terms are shown at the time of booking.",
   },
   {
-    question:
-      "Can patients get prescriptions or lab tests?",
+    question: "How do I contact DFC?",
     answer:
-      "Yes. After a consultation, your doctor can issue a digital prescription, which can be filled at local partner pharmacies or verified online. Doctors can also request lab tests or imaging, with results uploaded securely to your profile for review.",
-  },
-    {
-    question:
-      "Can diaspora doctors choose how much time to commit?",
-    answer:
-      "Yes. The platform is designed for flexibility. Doctors can set their availability, determine consultation duration, and choose how many patients they want to see per week or month.",
-  },
-      {
-    question:
-      "Can Nigerian hospitals or clinics partner with Doctors for Change?",
-    answer:
-      "Definitely. We actively partner with local hospitals and clinics to integrate diaspora consultations into their patient services, staff training, and case reviews. Interested institutions can contact us directly through the website.",
-  },
-        {
-    question:
-      "What makes Doctors for Change different from other telemedicine platforms?",
-    answer:
-      "Unlike general telehealth apps, Doctors for Change is built by Nigerians, for Nigerians — specifically to reconnect our diaspora doctors with the communities they care about. It combines affordability, authenticity, and global expertise to create a trusted bridge between home and abroad.",
-  },
-          {
-    question:
-      "How can I join as a diaspora doctor?",
-    answer:
-      "Simply click “Join DFC” on the homepage, complete your profile, and upload your credentials. Once verified, you can set your consultation rates, availability, and begin connecting with patients in Nigeria. Please note: A $100 yearly membership fee applies to maintain your profile, verification status, and access to our booking and payment system.",
-  },
-            {
-    question:
-      "What devices can I use for my online consultation?",
-    answer:
-      "You can use any smartphone, tablet, or computer with a camera and a stable internet connection. The platform is compatible with most browsers and supports both video and audio consultations.",
-  },
-              {
-    question:
-      "How do I reschedule or cancel a booking?",
-    answer:
-      "You can reschedule or cancel your appointment directly from your dashboard before your consultation time. Simply log in, go to your bookings, and choose “Reschedule” or “Cancel.” Fees are automatically adjusted according to our refund policy.",
-  },
-                {
-    question:
-      "What should I do if I have connection issues during my consultation?",
-    answer:
-      "If your video call disconnects, don’t worry — you can rejoin the session using the same link within a few minutes. If the issue persists, contact our technical support team immediately, and we’ll help you reconnect or reschedule at no extra charge.",
-  },
-                  {
-    question:
-      "How can I contact support?",
-    answer:
-      "You can reach our support team 24/7 through live chat on the website or by email at support@doctorsforchange.org. Our team is always available to assist with bookings, payments, or technical issues.",
+      "Email the secretariat at info@doctorsfoundationforcare.org, or use the contact form on the website. For urgent booking issues, use the live chat.",
   },
 ];

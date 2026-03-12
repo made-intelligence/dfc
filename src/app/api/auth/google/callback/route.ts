@@ -5,6 +5,7 @@ import { UserRole } from "@prisma/client";
 import { sendEmail } from "@/lib/email/service";
 import Welcome from "@/emails/Welcome";
 import React from "react";
+import { logger } from "@/lib/logger";
 
 interface GoogleTokenResponse {
   access_token: string;
@@ -151,7 +152,7 @@ export async function GET(request: NextRequest) {
           metadata: { userId: user.id, source: 'google_oauth' }
         });
       } catch (emailError) {
-        console.error('Failed to send welcome email:', emailError);
+        logger.error('GoogleCallbackWelcomeEmail', emailError);
       }
     } else if (user.provider === "local") {
       // Update existing local user to link Google account
@@ -184,7 +185,7 @@ export async function GET(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("Google OAuth callback error:", error);
+    logger.error('GoogleCallback', error);
     return NextResponse.redirect(
       new URL("/auth/login?error=Authentication failed", request.url),
     );

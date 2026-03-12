@@ -11,7 +11,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SUPERADMIN]}>
+    <ProtectedRoute allowedRoles={[UserRole.SECRETARIAT, UserRole.SUPERADMIN]}>
       <ToastProvider>
         <DashboardLayout>{children}</DashboardLayout>
       </ToastProvider>
