@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 
 // Verify Paystack payment for second opinion
 export async function POST(request: NextRequest) {
   try {
+    // Require authentication
+    const token = getTokenFromCookies(request.headers.get('cookie'));
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { reference } = await request.json();
 
     if (!reference) {
@@ -34,6 +45,15 @@ export async function POST(request: NextRequest) {
 
     if (!soCase) {
       return NextResponse.json({ error: 'Case not found for this payment' }, { status: 404 });
+    }
+
+    // IDOR: verify the authenticated user owns this case (or is admin)
+    if (soCase.userId && soCase.userId !== payload.userId && !['SUPERADMIN', 'SECRETARIAT'].includes(payload.role)) {
+      logger.error('SecondOpinionVerify', 'User mismatch', {
+        authenticatedUser: payload.userId,
+        caseUserId: soCase.userId,
+      });
+      return NextResponse.json({ error: 'Case does not belong to authenticated user' }, { status: 403 });
     }
 
     if (soCase.status === 'PAID' || soCase.status === 'ASSIGNED') {

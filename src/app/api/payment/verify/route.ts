@@ -79,6 +79,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Block non-admin users from verifying payments without patient context
+    if (!patientId && !['SUPERADMIN', 'SECRETARIAT'].includes(payload.role)) {
+      return NextResponse.json(
+        { error: "Payment missing patient context" },
+        { status: 403 }
+      );
+    }
+
     // Check if payment already processed
     const existingPayment = await prisma.payment.findUnique({
       where: { paymentReference: reference }
