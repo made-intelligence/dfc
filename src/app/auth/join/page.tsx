@@ -2,7 +2,15 @@ import { JoinDFCForm } from '@/components/join/JoinDFCForm';
 import Image from 'next/image';
 import Link from 'next/link';
 
-export const metadata = { title: 'Join DFC — Doctors Foundation for Care' };
+export const metadata = {
+  title: 'Join DFC as a Diaspora Physician',
+  description: 'Apply to join the Doctors Foundation For Care. For Nigerian physicians practising abroad who want to reconnect with patients at home. Membership includes specialist directory listing, second opinion referrals, and community.',
+  alternates: { canonical: '/auth/join' },
+  openGraph: {
+    title: 'Join DFC — Doctors Foundation For Care',
+    description: 'For Nigerian diaspora physicians. Apply for membership and reconnect with patients at home.',
+  },
+};
 
 export default function JoinPage() {
   return (

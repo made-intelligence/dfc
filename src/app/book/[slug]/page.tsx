@@ -1,5 +1,6 @@
 import { Metadata, ResolvingMetadata } from "next";
 import DoctorProfileClient from "@/components/booking/DoctorProfileClient";
+import { DoctorJsonLd } from "@/components/seo/JsonLd";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -36,16 +37,19 @@ export async function generateMetadata(
 
   const previousImages = (await parent).openGraph?.images || [];
 
+  const description = doctor.bio
+    ? doctor.bio.substring(0, 160)
+    : `Book a consultation with ${doctor.name}, a specialist in ${doctor.specialty}. World-trained Nigerian diaspora doctor available via DFC.`;
+
   return {
-    title: `${doctor.name} - ${doctor.specialty} | DFC`,
-    description: doctor.bio
-      ? doctor.bio.substring(0, 160)
-      : `Book a consultation with ${doctor.name}, a specialist in ${doctor.specialty}.`,
+    title: `Dr. ${doctor.name} — ${doctor.specialty} Specialist`,
+    description,
+    alternates: { canonical: `/book/${slug}` },
     openGraph: {
-      title: `${doctor.name} - ${doctor.specialty} | DFC`,
-      description: `Schedule a consultation with ${doctor.name}.`,
+      title: `Dr. ${doctor.name} — ${doctor.specialty} | Book Consultation`,
+      description,
       images: doctor.profileImage
-        ? [doctor.profileImage, ...previousImages]
+        ? [{ url: doctor.profileImage, width: 600, height: 600, alt: `Dr. ${doctor.name}` }, ...previousImages]
         : previousImages,
     },
   };
@@ -54,6 +58,20 @@ export async function generateMetadata(
 export default async function DoctorProfilePage({ params }: Props) {
   const { slug } = await params;
   const doctor = await getDoctor(slug);
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://dfcare.org";
 
-  return <DoctorProfileClient doctor={doctor} />;
+  return (
+    <>
+      {doctor && (
+        <DoctorJsonLd
+          name={`Dr. ${doctor.name}`}
+          specialty={doctor.specialty}
+          description={doctor.bio}
+          image={doctor.profileImage}
+          url={`${baseUrl}/book/${slug}`}
+        />
+      )}
+      <DoctorProfileClient doctor={doctor} />
+    </>
+  );
 }

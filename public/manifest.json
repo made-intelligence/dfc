@@ -1,21 +1,23 @@
 {
-  "name": "DFC App",
+  "name": "Doctors Foundation For Care",
   "short_name": "DFC",
-  "description": "A modern Progressive Web App built with Next.js",
+  "description": "Turning brain drain into brain gain. Connect with Nigerian diaspora doctors for consultations, second opinions, and specialist care.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#0D1F3C",
   "icons": [
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png"
     }
-  ]
+  ],
+  "categories": ["medical", "health"],
+  "lang": "en"
 }

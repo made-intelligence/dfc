@@ -5,9 +5,16 @@ import Footer from "@/components/layout/Footer";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Partners | DFC",
+  title: "Hospital & Institutional Partners",
   description:
-    "Partner with DFC to host visiting specialists, run outreach programmes, and strengthen healthcare delivery in Nigeria.",
+    "Partner with DFC to host visiting Nigerian diaspora specialists, run outreach programmes, and strengthen healthcare delivery across Nigeria.",
+  alternates: { canonical: "/partners" },
+  openGraph: {
+    title: "Partner with DFC — Doctors Foundation For Care",
+    description:
+      "Host visiting diaspora specialists, run outreach programmes, and transform healthcare delivery in Nigeria.",
+    images: [{ url: "/partners-hero.jpg", width: 1200, height: 630, alt: "DFC Hospital Partners" }],
+  },
 };
 
 export default function PartnersPage() {
