@@ -132,7 +132,9 @@ export async function GET(
       })),
     };
 
-    return NextResponse.json({ doctor: doctorData });
+    return NextResponse.json({ doctor: doctorData }, {
+      headers: { 'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=3600' },
+    });
   } catch (error) {
     logger.error('PublicDoctorDetail', error);
     return NextResponse.json(

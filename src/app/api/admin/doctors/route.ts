@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { requireAdminAuth, isAuthError } from "@/lib/auth";
+import { requireAdminAuth, isAuthError, validatePassword } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
@@ -146,18 +146,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate required fields
+    if (!name || !email || !password) {
+      return NextResponse.json(
+        { error: "name, email, and password are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate password strength
+    const pwCheck = validatePassword(password);
+    if (!pwCheck.isValid) {
+      return NextResponse.json(
+        { error: pwCheck.errors.join(". ") },
+        { status: 400 }
+      );
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Generate unique slug
-    const baseSlug = name.toLowerCase().replace(/[^a-z0-9]/g, "-");
-    let slug = baseSlug;
-    let counter = 1;
-    
-    while (await prisma.doctorProfile.findUnique({ where: { slug } })) {
-      slug = `${baseSlug}-${counter}`;
-      counter++;
-    }
+    // Generate unique slug (batch candidate check)
+    const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const candidates = [baseSlug, ...Array.from({ length: 9 }, (_, i) => `${baseSlug}-${i + 1}`)];
+    const existing = await prisma.doctorProfile.findMany({
+      where: { slug: { in: candidates } },
+      select: { slug: true },
+    });
+    const taken = new Set(existing.map(e => e.slug));
+    const slug = candidates.find(c => !taken.has(c)) || `${baseSlug}-${Date.now()}`;
 
     // Create user and doctor profile in transaction
     const result = await prisma.$transaction(async (tx) => {

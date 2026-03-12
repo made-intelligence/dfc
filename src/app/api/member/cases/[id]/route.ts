@@ -64,6 +64,25 @@ export async function PATCH(
   }
 
   const body = await request.json();
+
+  // Validate action if provided
+  const VALID_ACTIONS = ['start_review', 'submit_report'] as const;
+  if (body.action && !VALID_ACTIONS.includes(body.action)) {
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  }
+
+  // Validate field sizes
+  if (body.specialistNotes !== undefined) {
+    if (typeof body.specialistNotes !== 'string' || body.specialistNotes.length > 10000) {
+      return NextResponse.json({ error: 'specialistNotes must be a string under 10,000 characters' }, { status: 400 });
+    }
+  }
+  if (body.reportContent !== undefined) {
+    if (typeof body.reportContent !== 'string' || body.reportContent.length > 100000) {
+      return NextResponse.json({ error: 'reportContent must be a string under 100,000 characters' }, { status: 400 });
+    }
+  }
+
   const updateData: Prisma.SecondOpinionCaseUpdateInput = {};
 
   // Start review

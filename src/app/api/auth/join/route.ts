@@ -67,12 +67,14 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await hashPassword(password);
 
-    // Generate unique slug
-    let slug = generateDoctorSlug(name);
-    let slugSuffix = 1;
-    while (await prisma.doctorProfile.findUnique({ where: { slug } })) {
-      slug = generateDoctorSlug(name, slugSuffix++);
-    }
+    // Generate unique slug (batch candidate check)
+    const candidates = [generateDoctorSlug(name), ...Array.from({ length: 9 }, (_, i) => generateDoctorSlug(name, i + 1))];
+    const existingSlugs = await prisma.doctorProfile.findMany({
+      where: { slug: { in: candidates } },
+      select: { slug: true },
+    });
+    const takenSlugs = new Set(existingSlugs.map(e => e.slug));
+    const slug = candidates.find(c => !takenSlugs.has(c)) || generateDoctorSlug(name, Date.now());
 
     // Find or create specialty
     let specialtyId: string | null = null;

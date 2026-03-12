@@ -60,10 +60,10 @@ export async function POST(request: NextRequest) {
       medications: medications.map((m) => m.drugName),
     });
 
-    // Create alert for each reminder
-    for (const reminder of reminders) {
-      await prisma.cDSSAlert.create({
-        data: {
+    // Batch-create alerts for all reminders
+    if (reminders.length > 0) {
+      await prisma.cDSSAlert.createMany({
+        data: reminders.map((reminder) => ({
           patientId,
           encounterId: encounterId || null,
           generatedForId: doctorProfile.id,
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
           title: `[${reminder.category}] ${reminder.reminder.slice(0, 100)}`,
           body: reminder.reminder,
           sourceData: { diagnosis, category: reminder.category, priority: reminder.priority },
-        },
+        })),
       });
     }
 

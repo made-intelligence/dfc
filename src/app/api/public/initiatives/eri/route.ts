@@ -49,6 +49,8 @@ export async function GET() {
         memberCount: initiative._count.members,
         pillars,
       },
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=3600' },
     });
   } catch {
     return NextResponse.json({ initiative: null });

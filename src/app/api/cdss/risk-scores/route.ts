@@ -51,26 +51,27 @@ export async function POST(request: NextRequest) {
       bloodGlucose: latestVitals.bloodGlucose ? Number(latestVitals.bloodGlucose) : null,
     });
 
-    // Create alerts for HIGH/CRITICAL scores
-    for (const score of scores) {
-      if (score.level === 'CRITICAL' || score.level === 'WARNING') {
-        await prisma.cDSSAlert.create({
-          data: {
-            patientId,
-            encounterId: encounterId || null,
-            generatedForId: doctorProfile.id,
-            level: score.level,
-            category: 'RISK_SCORE',
-            title: `${score.scoreName}: ${score.interpretation}`,
-            body: score.recommendation,
-            sourceData: {
-              scoreName: score.scoreName,
-              score: score.score,
-              vitalsRecordedAt: latestVitals.recordedAt.toISOString(),
-            },
+    // Batch-create alerts for HIGH/CRITICAL scores
+    const alertableScores = scores.filter(
+      (score) => score.level === 'CRITICAL' || score.level === 'WARNING',
+    );
+    if (alertableScores.length > 0) {
+      await prisma.cDSSAlert.createMany({
+        data: alertableScores.map((score) => ({
+          patientId,
+          encounterId: encounterId || null,
+          generatedForId: doctorProfile.id,
+          level: score.level,
+          category: 'RISK_SCORE',
+          title: `${score.scoreName}: ${score.interpretation}`,
+          body: score.recommendation,
+          sourceData: {
+            scoreName: score.scoreName,
+            score: score.score,
+            vitalsRecordedAt: latestVitals.recordedAt.toISOString(),
           },
-        });
-      }
+        })),
+      });
     }
 
     return NextResponse.json({ scores, vitalsRecordedAt: latestVitals.recordedAt });

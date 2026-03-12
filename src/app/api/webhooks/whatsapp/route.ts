@@ -6,7 +6,16 @@ import { sendTextMessage } from '@/lib/whatsapp/service';
 import type { WhatsAppWebhookEntry } from '@/lib/whatsapp/types';
 import { logger } from '@/lib/logger';
 
+import crypto from 'crypto';
+
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'dfc_webhook_verify_secret';
+
+function timingSafeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
 // Webhook verification (GET)
 export async function GET(request: NextRequest) {
@@ -15,7 +24,7 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get('hub.verify_token');
   const challenge = searchParams.get('hub.challenge');
 
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+  if (mode === 'subscribe' && token && timingSafeEqual(token, VERIFY_TOKEN)) {
     return new NextResponse(challenge, { status: 200 });
   }
   return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -42,7 +51,18 @@ export async function POST(request: NextRequest) {
         }
 
         // Handle incoming messages
-        if (value.messages) {
+        if (value.messages && value.messages.length > 0) {
+          // Batch: collect unique phone suffixes and do a single user lookup
+          const phoneNumbers = value.messages.map((msg: { from: string }) => msg.from);
+          const uniqueSuffixes = [...new Set(phoneNumbers.map((p: string) => p.slice(-10)))];
+          const matchedUsers = await prisma.user.findMany({
+            where: { OR: uniqueSuffixes.map(suffix => ({ phone: { contains: suffix } })) },
+            select: { id: true, phone: true },
+          });
+          const phoneToUser = new Map(
+            matchedUsers.map(u => [u.phone?.slice(-10) || '', u])
+          );
+
           for (const msg of value.messages) {
             const phone = msg.from;
             const text = msg.text?.body || '';
@@ -59,10 +79,8 @@ export async function POST(request: NextRequest) {
               },
             });
 
-            // Match to existing user by phone
-            const matchedUser = await prisma.user.findFirst({
-              where: { phone: { contains: phone.slice(-10) } },
-            });
+            // Match to existing user by phone (from batch lookup)
+            const matchedUser = phoneToUser.get(phone.slice(-10)) || null;
 
             // Classify intent
             let classification;

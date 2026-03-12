@@ -58,22 +58,23 @@ export async function POST(request: NextRequest) {
       patientAge,
     );
 
-    // Create alerts for CRITICAL and MODERATE interactions
-    for (const interaction of interactions) {
-      if (interaction.severity === 'CRITICAL' || interaction.severity === 'MODERATE') {
-        await prisma.cDSSAlert.create({
-          data: {
-            patientId,
-            encounterId: encounterId || null,
-            generatedForId: doctorProfile.id,
-            level: interaction.severity === 'CRITICAL' ? 'CRITICAL' : 'WARNING',
-            category: 'DRUG_INTERACTION',
-            title: `${newDrug} interacts with ${interaction.withDrug}`,
-            body: `Mechanism: ${interaction.mechanism}\nClinical Effect: ${interaction.clinicalEffect}\nRecommendation: ${interaction.recommendation}`,
-            sourceData: { newDrug, withDrug: interaction.withDrug, severity: interaction.severity },
-          },
-        });
-      }
+    // Batch-create alerts for CRITICAL and MODERATE interactions
+    const alertableInteractions = interactions.filter(
+      (interaction) => interaction.severity === 'CRITICAL' || interaction.severity === 'MODERATE',
+    );
+    if (alertableInteractions.length > 0) {
+      await prisma.cDSSAlert.createMany({
+        data: alertableInteractions.map((interaction) => ({
+          patientId,
+          encounterId: encounterId || null,
+          generatedForId: doctorProfile.id,
+          level: interaction.severity === 'CRITICAL' ? 'CRITICAL' : 'WARNING',
+          category: 'DRUG_INTERACTION',
+          title: `${newDrug} interacts with ${interaction.withDrug}`,
+          body: `Mechanism: ${interaction.mechanism}\nClinical Effect: ${interaction.clinicalEffect}\nRecommendation: ${interaction.recommendation}`,
+          sourceData: { newDrug, withDrug: interaction.withDrug, severity: interaction.severity },
+        })),
+      });
     }
 
     return NextResponse.json({ interactions });
