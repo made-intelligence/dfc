@@ -7,7 +7,7 @@ export default function AboutPage() {
   return (
     <>
       <Topbar />
-      <main className="min-h-screen bg-white">
+      <main className="min-h-screen bg-[#F8F9FB]">
         <About />
         <CTA />
       </main>

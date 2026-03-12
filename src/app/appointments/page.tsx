@@ -290,7 +290,7 @@ export default function AppointmentsPage() {
     <>
       <Topbar />
       <div className="container mx-auto px-4 py-8 max-w-6xl mt-24">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">My Appointments</h1>
           <p className="text-gray-600 mt-1">
@@ -492,7 +492,7 @@ export default function AppointmentsPage() {
                           </h3>
                           {getStatusBadge(appointment)}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {format(
@@ -553,7 +553,7 @@ export default function AppointmentsPage() {
           </AlertDialogHeader>
           
           <div className="grid gap-4 py-4">
-               <div className="grid grid-cols-4 items-center gap-4">
+               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                    <label className="text-right text-sm font-medium">Date</label>
                    <Input 
                         type="date" 
@@ -563,7 +563,7 @@ export default function AppointmentsPage() {
                         onChange={(e) => setRescheduleDate(e.target.value)}
                    />
                </div>
-               <div className="grid grid-cols-4 items-center gap-4">
+               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                    <label className="text-right text-sm font-medium">Time</label>
                    <Input 
                         type="time" 

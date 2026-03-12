@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import CDSSPanel from "@/components/emr/CDSSPanel";
 import AllergyBanner from "@/components/emr/AllergyBanner";
+import ICD10Picker from "@/components/emr/ICD10Picker";
+import FormularyPicker from "@/components/emr/FormularyPicker";
+import InvestigationPicker from "@/components/emr/InvestigationPicker";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -700,29 +703,26 @@ function EncounterContent() {
           <h2 className="text-lg font-bold text-[#0D1F3C] mb-3">Assessment</h2>
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
+              <ICD10Picker
+                value={primaryDiagnosis}
+                codeValue={icd10Code}
+                onSelect={(name, code) => {
+                  setPrimaryDiagnosis(name);
+                  setIcd10Code(code);
+                }}
+                placeholder="Search diagnoses (ICD-10)..."
+                label="Primary Diagnosis"
+              />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Primary Diagnosis
+                  ICD-10 Code
                 </label>
                 <input
                   type="text"
-                  placeholder="Diagnosis"
-                  value={primaryDiagnosis}
-                  onChange={(e) => setPrimaryDiagnosis(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0A6E75]"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ICD-10 Code{" "}
-                  <span className="text-gray-400">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. J06.9"
+                  placeholder="Auto-filled or type manually"
                   value={icd10Code}
                   onChange={(e) => setIcd10Code(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0A6E75]"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-[#0A6E75] font-mono"
                 />
               </div>
             </div>
@@ -858,18 +858,15 @@ function EncounterContent() {
                     </button>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <input
-                      type="text"
-                      placeholder="Drug name *"
-                      value={item.drugName}
-                      onChange={(e) =>
-                        updatePrescriptionItem(
-                          item.id,
-                          "drugName",
-                          e.target.value,
-                        )
-                      }
-                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A6E75]"
+                    <FormularyPicker
+                      currentValue={item.drugName}
+                      onSelect={(drug) => {
+                        updatePrescriptionItem(item.id, "drugName", drug.drugName);
+                        if (drug.dose) updatePrescriptionItem(item.id, "dose", drug.dose);
+                        if (drug.form) updatePrescriptionItem(item.id, "form", drug.form);
+                        if (drug.route) updatePrescriptionItem(item.id, "route", drug.route);
+                        if (drug.frequency) updatePrescriptionItem(item.id, "frequency", drug.frequency);
+                      }}
                     />
                     <input
                       type="text"
@@ -1042,18 +1039,12 @@ function EncounterContent() {
                       <option value="PATHOLOGY">Pathology</option>
                       <option value="OTHER">Other</option>
                     </select>
-                    <input
-                      type="text"
-                      placeholder="Test/Study name *"
-                      value={item.name}
-                      onChange={(e) =>
-                        updateInvestigationItem(
-                          item.id,
-                          "name",
-                          e.target.value,
-                        )
-                      }
-                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A6E75]"
+                    <InvestigationPicker
+                      currentValue={item.name}
+                      onSelect={(inv) => {
+                        updateInvestigationItem(item.id, "name", inv.name);
+                        updateInvestigationItem(item.id, "type", inv.type);
+                      }}
                     />
                     <select
                       value={item.urgency}

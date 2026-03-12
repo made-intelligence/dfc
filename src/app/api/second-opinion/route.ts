@@ -4,6 +4,7 @@ import { summariseCaseForSpecialist } from '@/lib/ai/service';
 import { verifyToken, getTokenFromCookies, JWTPayload } from '@/lib/auth';
 import { SecondOpinionTier } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { validateFields, MAX_LENGTHS } from '@/lib/validation';
 
 const TIER_PRICES: Record<string, number> = {
   STANDARD: 8500000,  // ₦85,000 in kobo
@@ -11,11 +12,14 @@ const TIER_PRICES: Record<string, number> = {
   ONCOLOGY: 18000000, // ₦180,000 in kobo
 };
 
+import crypto from 'crypto';
+
 function generateReference(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.randomBytes(6);
   let code = '';
   for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[bytes[i] % chars.length];
   }
   return `DFC-SO-${code}`;
 }
@@ -38,12 +42,16 @@ export async function POST(request: NextRequest) {
       documents,
     } = body;
 
-    if (!patientName || !contactEmail || !specialty || !diagnosis) {
-      return NextResponse.json(
-        { error: 'patientName, contactEmail, specialty, and diagnosis are required.' },
-        { status: 400 }
-      );
-    }
+    const fieldError = validateFields(body, {
+      patientName: { required: true, maxLength: MAX_LENGTHS.shortText },
+      contactEmail: { required: true, maxLength: MAX_LENGTHS.email },
+      specialty: { required: true, maxLength: MAX_LENGTHS.shortText },
+      diagnosis: { required: true, maxLength: MAX_LENGTHS.longText },
+      proposedTreatment: { maxLength: MAX_LENGTHS.longText },
+      specificQuestions: { maxLength: MAX_LENGTHS.longText },
+      contactPhone: { maxLength: MAX_LENGTHS.phone },
+    });
+    if (fieldError) return fieldError;
 
     const validTier = tier && TIER_PRICES[tier] ? tier : 'STANDARD';
     const amountKobo = TIER_PRICES[validTier];
@@ -65,7 +73,9 @@ export async function POST(request: NextRequest) {
     let attempts = 0;
     while (await prisma.secondOpinionCase.findUnique({ where: { reference } })) {
       reference = generateReference();
-      if (++attempts > 10) break;
+      if (++attempts > 20) {
+        return NextResponse.json({ error: 'Unable to generate unique reference. Please try again.' }, { status: 500 });
+      }
     }
 
     const soCase = await prisma.secondOpinionCase.create({

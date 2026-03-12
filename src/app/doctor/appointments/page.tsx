@@ -5,7 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -121,7 +120,7 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      <div className="flex gap-4 items-center">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -151,7 +150,7 @@ export default function AppointmentsPage() {
         {filteredAppointments.map((appointment) => (
           <Card key={appointment.id}>
             <CardContent className="p-6">
-              <div className="flex justify-between items-start">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-4 mb-3">
                     <div className="flex items-center gap-2">
@@ -262,7 +261,7 @@ export default function AppointmentsPage() {
                   })()}
                 </div>
 
-                <div className="flex flex-col gap-2 ml-4">
+                <div className="flex flex-row sm:flex-col gap-2 sm:ml-4">
                   {appointment.status === "PENDING" && (
                     <>
                       <Button

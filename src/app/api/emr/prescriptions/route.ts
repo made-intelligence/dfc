@@ -4,6 +4,8 @@ import { UserRole } from '@prisma/client';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { checkRecordAccess } from '@/lib/emr/access';
 import { logger } from '@/lib/logger';
+import { requireConsent } from '@/lib/consent';
+import { validateFields, MAX_LENGTHS } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,11 +21,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { encounterId, patientId, items, notes } = body;
 
-    if (!encounterId || !patientId || !items || !Array.isArray(items) || items.length === 0) {
+    const fieldError = validateFields(body, {
+      encounterId: { required: true, maxLength: MAX_LENGTHS.shortText },
+      patientId: { required: true, maxLength: MAX_LENGTHS.shortText },
+      notes: { maxLength: MAX_LENGTHS.mediumText },
+    });
+    if (fieldError) return fieldError;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
-        { error: 'encounterId, patientId, and at least one item are required' },
+        { error: 'At least one prescription item is required' },
         { status: 400 },
       );
+    }
+
+    // Check consent for TREATMENT before creating prescription
+    const consentError = await requireConsent(patientId, 'TREATMENT');
+    if (consentError) {
+      return NextResponse.json({ error: consentError }, { status: 403 });
     }
 
     const access = await checkRecordAccess(

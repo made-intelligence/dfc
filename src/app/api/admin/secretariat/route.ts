@@ -4,6 +4,8 @@ import { Prisma } from '@prisma/client';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { UserRole } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { parsePagination } from '@/lib/pagination';
+import { validateFields, MAX_LENGTHS } from '@/lib/validation';
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,8 +24,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const source = searchParams.get('source');
     const requestType = searchParams.get('requestType');
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '20', 10);
+    const { page, limit, skip: paginationSkip } = parsePagination(searchParams);
 
     const where: Prisma.SecretariatTicketWhereInput = {};
     if (status) where.status = status as Prisma.EnumTicketStatusFilter;
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
         where,
         include: { user: { select: { name: true, email: true } } },
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
+        skip: paginationSkip,
         take: limit,
       }),
       prisma.secretariatTicket.count({ where }),
@@ -62,6 +63,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    const fieldError = validateFields(body, {
+      requestType: { required: true, maxLength: MAX_LENGTHS.shortText },
+      rawMessage: { maxLength: MAX_LENGTHS.longText },
+      subject: { maxLength: MAX_LENGTHS.shortText },
+      fromName: { maxLength: MAX_LENGTHS.shortText },
+      fromPhone: { maxLength: MAX_LENGTHS.phone },
+    });
+    if (fieldError) return fieldError;
+
     const ticket = await prisma.secretariatTicket.create({
       data: {
         source: body.source || 'WEB',

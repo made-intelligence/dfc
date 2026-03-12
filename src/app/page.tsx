@@ -7,6 +7,7 @@ import WhyChooseDFC from "@/components/layout/WhyChooseDFC";
 import ERISection from "@/components/layout/ERISection";
 import EventsSection from "@/components/layout/EventsSection";
 import ProjectsSection from "@/components/layout/ProjectsSection";
+import PartnersSection from "@/components/layout/PartnersSection";
 import MediaSection from "@/components/layout/MediaSection";
 import JoinDFCSection from "@/components/layout/JoinDFCSection";
 import UserRedirect from "@/components/auth/UserRedirect";
@@ -49,6 +50,7 @@ export default function HomePage() {
         <ERISection />
         <EventsSection />
         <ProjectsSection />
+        <PartnersSection />
         <MediaSection />
         <JoinDFCSection />
       </main>

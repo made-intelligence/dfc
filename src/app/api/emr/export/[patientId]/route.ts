@@ -4,6 +4,8 @@ import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { checkRecordAccess } from '@/lib/emr/access';
 import { UserRole } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { requireConsent } from '@/lib/consent';
+import { auditData } from '@/lib/audit';
 
 /**
  * GET /api/emr/export/[patientId]
@@ -34,6 +36,15 @@ export async function GET(
     if (!access.allowed) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
+
+    // Enforce DATA_PROCESSING consent before export
+    const consentError = await requireConsent(patientId, 'DATA_PROCESSING');
+    if (consentError) {
+      return NextResponse.json({ error: consentError }, { status: 403 });
+    }
+
+    // Audit the data export
+    auditData.export(payload.userId, 'patient', patientId, request);
 
     const [
       patientProfile,

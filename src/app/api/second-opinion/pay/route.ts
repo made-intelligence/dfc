@@ -6,10 +6,9 @@ import { logger } from '@/lib/logger';
 // Initialize Paystack payment for a second opinion case
 export async function POST(request: NextRequest) {
   try {
+    // Auth is optional — anonymous users can pay for their submitted cases
     const token = getTokenFromCookies(request.headers.get('cookie'));
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    const payload = await verifyToken(token);
-    if (!payload) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const payload = token ? await verifyToken(token) : null;
 
     const { caseId } = await request.json();
 
@@ -23,6 +22,14 @@ export async function POST(request: NextRequest) {
 
     if (!soCase) {
       return NextResponse.json({ error: 'Case not found' }, { status: 404 });
+    }
+
+    // If user is logged in, verify ownership (unless admin)
+    if (payload && soCase.userId && soCase.userId !== payload.userId) {
+      const isAdmin = ['SUPERADMIN', 'SECRETARIAT'].includes(payload.role);
+      if (!isAdmin) {
+        return NextResponse.json({ error: 'Case does not belong to authenticated user' }, { status: 403 });
+      }
     }
 
     if (soCase.status !== 'SUBMITTED') {

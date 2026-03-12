@@ -265,7 +265,7 @@ export default function ProfilePage() {
     <>
       <Topbar />
       <div className="container mx-auto px-4 py-8 max-w-6xl mt-24">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
           <p className="text-gray-600 mt-1">
@@ -305,7 +305,7 @@ export default function ProfilePage() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-6">
-        <nav className="flex gap-0 -mb-px" aria-label="Profile tabs">
+        <nav className="flex gap-0 -mb-px overflow-x-auto" aria-label="Profile tabs">
           <button
             type="button"
             onClick={() => setActiveTab("profile")}

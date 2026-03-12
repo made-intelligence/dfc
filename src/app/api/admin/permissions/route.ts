@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminAuth, isAuthError } from "@/lib/auth";
+import { auditAdmin } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,6 +63,12 @@ export async function POST(request: NextRequest) {
         category: category || "general"
       }
     });
+
+    auditAdmin.permissionChange(auth.userId, permission.id, {
+      action: "created",
+      name,
+      category: category || "general",
+    }, request);
 
     return NextResponse.json({
       message: "Permission created successfully",

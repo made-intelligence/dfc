@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
                 country: true,
                 subSpecialty: true,
                 title: true,
-                mdcnNumber: true,
+                // mdcnNumber excluded — sensitive credential, not for public API
               },
             },
           },
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
       country: m.user.doctorProfile?.country,
       bio: m.user.doctorProfile?.bio,
       title: m.user.doctorProfile?.title,
-      mdcnNumber: m.user.doctorProfile?.mdcnNumber,
+      // mdcnNumber removed — not exposed publicly
       status: m.status,
       category: m.category,
       endorsementCount: m.endorsementsReceived.length,

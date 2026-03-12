@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { clearEmailConfigCache } from "@/lib/email/transporter";
 import { requireAdminAuth, isAuthError } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { auditAdmin } from "@/lib/audit";
 
 const prisma = new PrismaClient();
 
@@ -118,6 +119,11 @@ export async function PUT(request: NextRequest) {
 
     // Clear email config cache to pick up new settings
     clearEmailConfigCache();
+
+    // Audit settings update
+    auditAdmin.settingsUpdate(auth.userId, {
+      sections: Object.keys(newSettings),
+    }, request);
 
     return NextResponse.json({ message: "Settings updated successfully", settings: updated });
   } catch (error) {

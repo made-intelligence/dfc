@@ -65,18 +65,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const { 
-      title, 
-      dayOfWeek, 
-      startTime, 
-      endTime, 
-      slotDuration, 
-      bufferTime, 
-      scheduleType, 
-      isRecurring, 
-      maxBookingsPerSlot, 
-      notes, 
-      color 
+    const {
+      title,
+      dayOfWeek,
+      startTime,
+      endTime,
+      slotDuration,
+      bufferTime,
+      scheduleType,
+      isRecurring,
+      maxBookingsPerSlot,
+      notes,
+      color,
+      consultationMode,
+      location,
     } = await request.json();
 
     const schedule = await prisma.doctorSchedule.create({
@@ -93,6 +95,8 @@ export async function POST(request: NextRequest) {
         maxBookingsPerSlot: maxBookingsPerSlot || 1,
         notes,
         color: color || '#3B82F6',
+        consultationMode: consultationMode || 'VIDEO',
+        location: location || null,
       },
     });
 
@@ -127,19 +131,21 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const { 
-      id, 
-      title, 
-      dayOfWeek, 
-      startTime, 
-      endTime, 
-      slotDuration, 
-      bufferTime, 
-      scheduleType, 
-      isRecurring, 
-      maxBookingsPerSlot, 
-      notes, 
-      color 
+    const {
+      id,
+      title,
+      dayOfWeek,
+      startTime,
+      endTime,
+      slotDuration,
+      bufferTime,
+      scheduleType,
+      isRecurring,
+      maxBookingsPerSlot,
+      notes,
+      color,
+      consultationMode,
+      location,
     } = await request.json();
 
     const schedule = await prisma.doctorSchedule.update({
@@ -159,6 +165,8 @@ export async function PUT(request: NextRequest) {
         maxBookingsPerSlot: maxBookingsPerSlot || 1,
         notes,
         color: color || '#3B82F6',
+        consultationMode: consultationMode || 'VIDEO',
+        location: location || null,
       },
     });
 

@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, Prisma } from '@prisma/client';
+import { PrismaClient, UserRole, ConsultationMode, Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -6,17 +6,13 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding database...');
 
-  // Clean existing data
-  await prisma.doctorRating.deleteMany();
-  await prisma.payment.deleteMany();
-  await prisma.appointment.deleteMany();
-  await prisma.doctorProfile.deleteMany();
-  await prisma.patientProfile.deleteMany();
-  await prisma.adminPermission.deleteMany();
-  await prisma.adminProfile.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.specialty.deleteMany();
-  await prisma.permission.deleteMany();
+  // Clean all data — CASCADE handles FK dependencies
+  const tableNames = await prisma.$queryRaw<{ tablename: string }[]>`
+    SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename != '_prisma_migrations'
+  `;
+  for (const { tablename } of tableNames) {
+    await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${tablename}" CASCADE`);
+  }
   
   console.log('🧹 Cleaned existing data...');
 
@@ -83,55 +79,110 @@ async function main() {
     }
   });
 
-  // Create sample doctors
+  // Create sample doctors — Nigerian diaspora physicians
+  // All doctors do video consults. Some also offer in-person sessions
+  // when visiting Nigeria (at their own facility or a DFC partner centre).
   const doctorsData = [
     {
-      email: 'sarah.johnson@dfc.com',
-      name: 'Dr. Sarah Johnson',
-      phone: '+234 802 345 6789',
-      license: 'MD-001-2024',
+      email: 'amina.yusuf@dfc.com',
+      name: 'Dr. Amina Yusuf',
+      phone: '+44 7700 900123',
+      license: 'GMC-7891234',
+      experience: 14,
+      consultationFee: 25000,
+      bio: 'Consultant cardiologist at Royal London Hospital with subspecialty interest in heart failure and cardiac imaging. Fellow of the Royal College of Physicians.',
+      specialtyName: 'Cardiology',
+      country: 'United Kingdom',
+      city: 'London',
+      institution: 'Royal London Hospital',
+      // Also sees patients in Lagos when visiting
+      offersInPerson: true,
+      inPersonLocation: 'DFC Partner Centre, Victoria Island, Lagos',
+    },
+    {
+      email: 'obioma.uchenna@dfc.com',
+      name: 'Dr. Obioma Uchenna',
+      phone: '+1 212 555 0198',
+      license: 'NY-MD-028451',
       experience: 10,
-      consultationFee: 15000,
-      bio: 'Experienced cardiologist with over 10 years of practice.',
-      specialtyName: 'Cardiology'
+      consultationFee: 35000,
+      bio: 'Board-certified neurologist specialising in movement disorders and epilepsy. Assistant Professor at Mount Sinai.',
+      specialtyName: 'Neurology',
+      country: 'United States',
+      city: 'New York',
+      institution: 'Mount Sinai Hospital',
+      offersInPerson: false,
+      inPersonLocation: null,
     },
     {
-      email: 'michael.brown@dfc.com', 
-      name: 'Dr. Michael Brown',
-      phone: '+234 803 456 7890',
-      license: 'MD-002-2024',
-      experience: 8,
-      consultationFee: 12000,
-      bio: 'Specialist in neurological disorders and brain health.',
-      specialtyName: 'Neurology'
-    },
-    {
-      email: 'emily.davis@dfc.com',
-      name: 'Dr. Emily Davis', 
-      phone: '+234 804 567 8901',
-      license: 'MD-003-2024',
-      experience: 12,
-      consultationFee: 18000,
-      bio: 'Pediatric specialist focusing on child healthcare.',
-      specialtyName: 'Pediatrics'
-    },
-    {
-      email: 'james.wilson@dfc.com',
-      name: 'Dr. James Wilson',
-      phone: '+234 805 678 9012', 
-      license: 'MD-004-2024',
-      experience: 15,
+      email: 'ngozi.okafor@dfc.com',
+      name: 'Dr. Ngozi Okafor',
+      phone: '+1 416 555 0234',
+      license: 'CPSO-109234',
+      experience: 18,
       consultationFee: 20000,
-      bio: 'Orthopedic surgeon specializing in joint replacements.',
-      specialtyName: 'Orthopedics'
-    }
+      bio: 'Paediatric consultant with expertise in neonatal care and childhood respiratory conditions. Active in community child health outreach across the GTA.',
+      specialtyName: 'Pediatrics',
+      country: 'Canada',
+      city: 'Toronto',
+      institution: 'SickKids Hospital',
+      // Visits Abuja quarterly
+      offersInPerson: true,
+      inPersonLocation: 'DFC Partner Centre, Wuse 2, Abuja',
+    },
+    {
+      email: 'chukwudi.eze@dfc.com',
+      name: 'Dr. Chukwudi Eze',
+      phone: '+44 7700 900456',
+      license: 'GMC-6523891',
+      experience: 22,
+      consultationFee: 30000,
+      bio: 'Consultant orthopaedic surgeon with subspecialty in hip and knee arthroplasty. Over two decades of surgical experience at NHS trusts across England.',
+      specialtyName: 'Orthopedics',
+      country: 'United Kingdom',
+      city: 'Manchester',
+      institution: 'Manchester Royal Infirmary',
+      // Has own consulting room in Lagos
+      offersInPerson: true,
+      inPersonLocation: 'Eze Orthopaedic Clinic, Lekki Phase 1, Lagos',
+    },
+    {
+      email: 'folake.adeyemi@dfc.com',
+      name: 'Dr. Folake Adeyemi',
+      phone: '+49 176 555 0789',
+      license: 'DE-BÄK-34521',
+      experience: 9,
+      consultationFee: 18000,
+      bio: 'Dermatologist specialising in skin of colour, eczema management, and cosmetic dermatology. Practising in Berlin with a growing teledermatology practice.',
+      specialtyName: 'Dermatology',
+      country: 'Germany',
+      city: 'Berlin',
+      institution: 'Charité University Hospital',
+      offersInPerson: false,
+      inPersonLocation: null,
+    },
+    {
+      email: 'emeka.nwosu@dfc.com',
+      name: 'Dr. Emeka Nwosu',
+      phone: '+44 7700 900321',
+      license: 'GMC-8912345',
+      experience: 16,
+      consultationFee: 22000,
+      bio: 'GP and family medicine specialist with a special interest in diabetes and cardiovascular risk management. NHS partner at a busy urban practice in Birmingham.',
+      specialtyName: 'General Practice',
+      country: 'United Kingdom',
+      city: 'Birmingham',
+      institution: 'Edgbaston Medical Centre',
+      offersInPerson: false,
+      inPersonLocation: null,
+    },
   ];
 
   const createdDoctors: Prisma.UserGetPayload<{ include: { doctorProfile: true } }>[] = [];
   for (const doctorData of doctorsData) {
     const specialty = createdSpecialties.find(s => s.name === doctorData.specialtyName);
     const doctorPassword = await bcrypt.hash('doctor123', 12);
-    
+
     const doctor = await prisma.user.upsert({
       where: { email: doctorData.email },
       update: {},
@@ -143,13 +194,15 @@ async function main() {
         role: UserRole.DFC_MEMBER,
         doctorProfile: {
           create: {
-            slug: doctorData.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+            slug: doctorData.name.replace(/^Dr\.\s*/i, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-$/, ''),
             license: doctorData.license,
             experience: doctorData.experience,
             consultationFee: doctorData.consultationFee,
             bio: doctorData.bio,
             specialtyId: specialty?.id,
-            country: ['United Kingdom', 'United States', 'Canada', 'Germany'][Math.floor(Math.random() * 4)]
+            country: doctorData.country,
+            city: doctorData.city,
+            institution: doctorData.institution,
           }
         }
       },
@@ -157,6 +210,91 @@ async function main() {
     });
     createdDoctors.push(doctor as any);
   }
+
+  // Create doctor schedules
+  // Each session is a single mode — video OR in-person, never mixed in the same block.
+  // But a doctor can have a video morning and in-person afternoon on the same day.
+  console.log('📅 Creating doctor schedules...');
+  for (let i = 0; i < doctorsData.length; i++) {
+    const doctorData = doctorsData[i];
+    const doctor = createdDoctors[i];
+    const profileId = doctor.doctorProfile!.id;
+
+    // Morning video sessions — Mon–Fri (all doctors)
+    for (const day of [1, 2, 3, 4, 5]) {
+      await prisma.doctorSchedule.create({
+        data: {
+          doctorId: profileId,
+          dayOfWeek: day,
+          startTime: '09:00',
+          endTime: '13:00',
+          slotDuration: 30,
+          scheduleType: 'AVAILABLE',
+          isRecurring: true,
+          consultationMode: ConsultationMode.VIDEO,
+          location: null,
+          title: 'Video Consultation',
+        },
+      });
+    }
+
+    if (doctorData.offersInPerson && doctorData.inPersonLocation) {
+      // Afternoon in-person sessions — Thu + Sat (separate session, same or different day)
+      for (const day of [4, 6]) {
+        await prisma.doctorSchedule.create({
+          data: {
+            doctorId: profileId,
+            dayOfWeek: day,
+            startTime: '14:00',
+            endTime: '18:00',
+            slotDuration: 45,
+            scheduleType: 'AVAILABLE',
+            isRecurring: true,
+            consultationMode: ConsultationMode.IN_PERSON,
+            location: doctorData.inPersonLocation,
+            title: 'In-Person Clinic (Nigeria)',
+          },
+        });
+      }
+
+      // Afternoon video on non-in-person days (Tue, Wed)
+      for (const day of [2, 3]) {
+        await prisma.doctorSchedule.create({
+          data: {
+            doctorId: profileId,
+            dayOfWeek: day,
+            startTime: '14:00',
+            endTime: '17:00',
+            slotDuration: 30,
+            scheduleType: 'AVAILABLE',
+            isRecurring: true,
+            consultationMode: ConsultationMode.VIDEO,
+            location: null,
+            title: 'Afternoon Teleconsult',
+          },
+        });
+      }
+    } else {
+      // Video-only doctors: afternoon video on Tue, Thu
+      for (const day of [2, 4]) {
+        await prisma.doctorSchedule.create({
+          data: {
+            doctorId: profileId,
+            dayOfWeek: day,
+            startTime: '14:00',
+            endTime: '17:00',
+            slotDuration: 30,
+            scheduleType: 'AVAILABLE',
+            isRecurring: true,
+            consultationMode: ConsultationMode.VIDEO,
+            location: null,
+            title: 'Afternoon Teleconsult',
+          },
+        });
+      }
+    }
+  }
+  console.log('✅ Created doctor schedules...');
 
   // Create sample patients
   const patientsData = [
@@ -266,6 +404,255 @@ async function main() {
     }
   }
 
+  // ─── Nigeria-Based Local Specialists (DFCMember + DoctorProfile) ───
+  // These are Nigeria-based doctors in the local specialist network.
+  // They appear on the /specialists page (not the /book diaspora directory).
+  console.log('🇳🇬 Seeding Nigeria-based local specialists...');
+
+  // Add more specialties needed for local specialists
+  const additionalSpecialties = [
+    { name: "Obstetrics & Gynaecology", description: "Women's reproductive health, pregnancy, and childbirth." },
+    { name: "Ophthalmology", description: "Eye and vision care, surgical and medical treatment." },
+    { name: "Psychiatry", description: "Mental health diagnosis, treatment, and prevention." },
+    { name: "Radiology", description: "Medical imaging and diagnostic interpretation." },
+    { name: "Oncology", description: "Cancer diagnosis, treatment, and management." },
+    { name: "Urology", description: "Urinary tract and male reproductive system disorders." },
+  ];
+
+  for (const specialty of additionalSpecialties) {
+    const created = await prisma.specialty.create({ data: specialty });
+    createdSpecialties.push(created);
+  }
+
+  const localSpecialistsData = [
+    {
+      email: 'adaeze.nwachukwu@lagos-uth.gov.ng',
+      name: 'Dr. Adaeze Nwachukwu',
+      phone: '+234 803 456 7890',
+      title: 'Dr.',
+      license: 'MDCN-45672',
+      experience: 20,
+      bio: 'Consultant obstetrician and gynaecologist at Lagos University Teaching Hospital (LUTH). Subspecialty in high-risk pregnancies and gynaecological oncology. Past president of the Nigerian Society of Gynaecology.',
+      specialtyName: 'Obstetrics & Gynaecology',
+      subSpecialty: 'Gynaecological Oncology',
+      country: 'Nigeria',
+      city: 'Lagos',
+      institution: 'Lagos University Teaching Hospital (LUTH)',
+      consultationFee: 15000,
+      path: 'local_specialist',
+      mdcnNumber: 'MDCN/RN/45672',
+      acceptsReferrals: true,
+    },
+    {
+      email: 'bayo.ogunlade@uch.edu.ng',
+      name: 'Prof. Bayo Ogunlade',
+      phone: '+234 806 789 0123',
+      title: 'Prof.',
+      license: 'MDCN-23891',
+      experience: 28,
+      bio: 'Professor of orthopaedic surgery at University College Hospital (UCH), Ibadan. Pioneer in minimally invasive joint replacement surgery in West Africa. Published over 60 peer-reviewed papers.',
+      specialtyName: 'Orthopedics',
+      subSpecialty: 'Joint Replacement Surgery',
+      country: 'Nigeria',
+      city: 'Ibadan',
+      institution: 'University College Hospital (UCH)',
+      consultationFee: 20000,
+      path: 'local_specialist',
+      mdcnNumber: 'MDCN/RN/23891',
+      acceptsReferrals: true,
+    },
+    {
+      email: 'chidinma.obi@nha-abuja.gov.ng',
+      name: 'Dr. Chidinma Obi',
+      phone: '+234 809 123 4567',
+      title: 'Dr.',
+      license: 'MDCN-56123',
+      experience: 12,
+      bio: 'Consultant paediatrician at National Hospital Abuja with special interest in paediatric infectious diseases and immunology. WHO-trained in childhood vaccination programme development.',
+      specialtyName: 'Pediatrics',
+      subSpecialty: 'Paediatric Infectious Disease',
+      country: 'Nigeria',
+      city: 'Abuja',
+      institution: 'National Hospital Abuja',
+      consultationFee: 12000,
+      path: 'local_specialist',
+      mdcnNumber: 'MDCN/RN/56123',
+      acceptsReferrals: true,
+    },
+    {
+      email: 'emeka.okoro@lasuth.gov.ng',
+      name: 'Dr. Emeka Okoro',
+      phone: '+234 802 345 6789',
+      title: 'Dr.',
+      license: 'MDCN-67234',
+      experience: 15,
+      bio: 'Consultant cardiologist and interventional specialist at Lagos State University Teaching Hospital (LASUTH). Trained at the National Heart Centre, Singapore. Performs coronary angiography and stenting.',
+      specialtyName: 'Cardiology',
+      subSpecialty: 'Interventional Cardiology',
+      country: 'Nigeria',
+      city: 'Lagos',
+      institution: 'LASUTH Ikeja',
+      consultationFee: 18000,
+      path: 'local_specialist',
+      mdcnNumber: 'MDCN/RN/67234',
+      acceptsReferrals: true,
+    },
+    {
+      email: 'fatima.abdullahi@abuth.gov.ng',
+      name: 'Dr. Fatima Abdullahi',
+      phone: '+234 807 234 5678',
+      title: 'Dr.',
+      license: 'MDCN-78345',
+      experience: 11,
+      bio: 'Consultant psychiatrist at Ahmadu Bello University Teaching Hospital, Zaria. Specialises in adolescent mental health, PTSD, and culturally informed psychotherapy. Advocates for mental health destigmatisation in Northern Nigeria.',
+      specialtyName: 'Psychiatry',
+      subSpecialty: 'Adolescent Psychiatry',
+      country: 'Nigeria',
+      city: 'Zaria',
+      institution: 'Ahmadu Bello University Teaching Hospital',
+      consultationFee: 10000,
+      path: 'local_specialist',
+      mdcnNumber: 'MDCN/RN/78345',
+      acceptsReferrals: true,
+    },
+    {
+      email: 'gbenga.afolabi@unilag.edu.ng',
+      name: 'Dr. Gbenga Afolabi',
+      phone: '+234 805 678 9012',
+      title: 'Dr.',
+      license: 'MDCN-89456',
+      experience: 17,
+      bio: 'Consultant ophthalmologist and vitreoretinal surgeon at the Eye Foundation Hospital, Lagos. Fellow of the West African College of Surgeons. Performed over 3,000 cataract surgeries.',
+      specialtyName: 'Ophthalmology',
+      subSpecialty: 'Vitreoretinal Surgery',
+      country: 'Nigeria',
+      city: 'Lagos',
+      institution: 'Eye Foundation Hospital',
+      consultationFee: 15000,
+      path: 'local_specialist',
+      mdcnNumber: 'MDCN/RN/89456',
+      acceptsReferrals: true,
+    },
+    {
+      email: 'halima.yusuf@unimaid.edu.ng',
+      name: 'Dr. Halima Yusuf',
+      phone: '+234 808 567 8901',
+      title: 'Dr.',
+      license: 'MDCN-91234',
+      experience: 14,
+      bio: 'Consultant oncologist at the University of Maiduguri Teaching Hospital. Specialises in breast cancer and palliative care. Runs a community cancer screening programme in Borno State.',
+      specialtyName: 'Oncology',
+      subSpecialty: 'Breast Oncology',
+      country: 'Nigeria',
+      city: 'Maiduguri',
+      institution: 'University of Maiduguri Teaching Hospital',
+      consultationFee: 12000,
+      path: 'local_specialist',
+      mdcnNumber: 'MDCN/RN/91234',
+      acceptsReferrals: true,
+    },
+    {
+      email: 'ikenna.eze@uniben.edu.ng',
+      name: 'Dr. Ikenna Eze',
+      phone: '+234 810 345 6789',
+      title: 'Dr.',
+      license: 'MDCN-34567',
+      experience: 19,
+      bio: 'Consultant urologist at the University of Benin Teaching Hospital (UBTH). Pioneer in laparoscopic urology in South-South Nigeria. Fellow of the International College of Surgeons.',
+      specialtyName: 'Urology',
+      subSpecialty: 'Laparoscopic Urology',
+      country: 'Nigeria',
+      city: 'Benin City',
+      institution: 'University of Benin Teaching Hospital (UBTH)',
+      consultationFee: 16000,
+      path: 'local_specialist',
+      mdcnNumber: 'MDCN/RN/34567',
+      acceptsReferrals: true,
+    },
+  ];
+
+  for (const spec of localSpecialistsData) {
+    const specialty = createdSpecialties.find(s => s.name === spec.specialtyName);
+    const password = await bcrypt.hash('specialist123', 12);
+    const slug = spec.name.replace(/^(Dr\.|Prof\.)\s*/i, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-$/, '');
+
+    const user = await prisma.user.create({
+      data: {
+        email: spec.email,
+        password,
+        name: spec.name,
+        phone: spec.phone,
+        role: UserRole.DFC_MEMBER,
+        doctorProfile: {
+          create: {
+            slug,
+            license: spec.license,
+            experience: spec.experience,
+            consultationFee: spec.consultationFee,
+            bio: spec.bio,
+            specialtyId: specialty?.id,
+            country: spec.country,
+            city: spec.city,
+            institution: spec.institution,
+            subSpecialty: spec.subSpecialty,
+            title: spec.title,
+            mdcnNumber: spec.mdcnNumber,
+          },
+        },
+        dfcMember: {
+          create: {
+            category: 'MEMBER',
+            status: 'ACTIVE',
+            goodStanding: true,
+            path: spec.path,
+            acceptsReferrals: spec.acceptsReferrals,
+            nigerianLicence: spec.mdcnNumber,
+            institution: spec.institution,
+            profileCompletionScore: 85,
+            lastVerifiedAt: new Date(),
+          },
+        },
+      },
+    });
+
+    // Create in-person schedule for local specialists (Mon-Fri mornings + afternoons)
+    const profileId = (await prisma.doctorProfile.findUnique({ where: { userId: user.id } }))!.id;
+    for (const day of [1, 2, 3, 4, 5]) {
+      await prisma.doctorSchedule.create({
+        data: {
+          doctorId: profileId,
+          dayOfWeek: day,
+          startTime: '08:00',
+          endTime: '13:00',
+          slotDuration: 30,
+          scheduleType: 'AVAILABLE',
+          isRecurring: true,
+          consultationMode: ConsultationMode.IN_PERSON,
+          location: spec.institution + ', ' + spec.city,
+          title: 'Morning Clinic',
+        },
+      });
+      // Afternoon clinic Mon/Wed/Fri
+      if (day === 1 || day === 3 || day === 5) {
+        await prisma.doctorSchedule.create({
+          data: {
+            doctorId: profileId,
+            dayOfWeek: day,
+            startTime: '14:00',
+            endTime: '17:00',
+            slotDuration: 30,
+            scheduleType: 'AVAILABLE',
+            isRecurring: true,
+            consultationMode: ConsultationMode.IN_PERSON,
+            location: spec.institution + ', ' + spec.city,
+            title: 'Afternoon Clinic',
+          },
+        });
+      }
+    }
+  }
+  console.log('✅ Created 8 Nigeria-based local specialists with DFC membership');
+
   console.log('✅ Database seeded successfully!');
 
   // Seed System Settings
@@ -332,7 +719,7 @@ async function main() {
   console.log('✅ Created test notifications');
   console.log('\n📋 Test Accounts:');
   console.log('Super Admin: superadmin@dfc.com / superadmin123');
-  console.log('Doctors: [doctor-email] / doctor123');
+  console.log('Doctors: amina.yusuf@dfc.com / doctor123 (+ 5 more)');
   console.log('Patients: [patient-email] / patient123');
 }
 

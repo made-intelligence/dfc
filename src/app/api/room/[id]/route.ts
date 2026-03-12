@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { requireConsent } from "@/lib/consent";
 
 export async function GET(
   request: NextRequest,
@@ -63,6 +64,20 @@ export async function GET(
         return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
+    // Check TELEMEDICINE consent for the patient
+    if (appointment.patientId) {
+      const patientProfile = await prisma.patientProfile.findUnique({
+        where: { userId: appointment.patientId },
+        select: { id: true },
+      });
+      if (patientProfile) {
+        const consentError = await requireConsent(patientProfile.id, 'TELEMEDICINE');
+        if (consentError) {
+          return NextResponse.json({ error: consentError }, { status: 403 });
+        }
+      }
+    }
+
     // Time Validation (10 minute buffer)
     const now = new Date();
     const apptDate = new Date(appointment.appointmentDate);
@@ -90,24 +105,28 @@ export async function GET(
          }, { status: 403 });
     }
 
-    // 0. Update Location if provided
+    // 0. Update Location if provided (sanitized)
     const url = new URL(request.url);
-    const location = url.searchParams.get("location");
+    const rawLocation = url.searchParams.get("location");
 
-    if (location) {
-        if (isDoctor) {
+    if (rawLocation) {
+        const location = rawLocation
+          .replace(/<[^>]*>/g, '')
+          .replace(/[<>"'&]/g, '')
+          .trim()
+          .slice(0, 255);
+
+        if (location && isDoctor) {
             await prisma.appointment.update({
                 where: { id: appointment.id },
                 data: { doctorLocation: location }
             });
-            // Update local object for response
             appointment.doctorLocation = location;
-        } else if (isPatient) {
+        } else if (location && isPatient) {
              await prisma.appointment.update({
                 where: { id: appointment.id },
                 data: { patientLocation: location }
             });
-             // Update local object for response
             appointment.patientLocation = location;
         }
     }

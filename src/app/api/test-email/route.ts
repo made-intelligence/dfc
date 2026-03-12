@@ -3,6 +3,7 @@ import { sendEmail } from '@/lib/email/service';
 import BookingConfirmation from '@/emails/BookingConfirmation';
 import React from 'react';
 import { requireAdminAuth, isAuthError } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to send email', details: emailResult.error }, { status: 500 });
     }
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+    logger.error('TestEmail', error);
+    return NextResponse.json({ error: 'Email sending failed' }, { status: 500 });
   }
 }

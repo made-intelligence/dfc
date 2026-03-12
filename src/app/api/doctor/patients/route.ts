@@ -39,15 +39,12 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         email: true,
-        phone: true,
         patientProfile: {
           select: {
+            id: true,
             dateOfBirth: true,
             gender: true,
-            address: true,
             bloodGroup: true,
-            allergies: true,
-            emergencyContact: true,
           },
         },
         _count: {

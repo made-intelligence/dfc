@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { uploadRateLimit } from "@/lib/rate-limit";
+import crypto from "crypto";
+
+const IMAGE_MAGIC_BYTES: Record<string, number[]> = {
+  "image/jpeg": [0xFF, 0xD8, 0xFF],
+  "image/png": [0x89, 0x50, 0x4E, 0x47],
+  "image/webp": [0x52, 0x49, 0x46, 0x46],
+  "image/gif": [0x47, 0x49, 0x46],
+};
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = await uploadRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     // Require authentication
     const token = getTokenFromCookies(request.headers.get("cookie"));
     if (!token) {
@@ -27,14 +39,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File size must be less than 5MB" }, { status: 400 });
     }
 
-    // Validate file type
+    // Validate declared file type
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json({ error: "Only image files are allowed" }, { status: 400 });
     }
 
+    // Validate file content matches declared type
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer).slice(0, 8);
+    const expectedMagic = IMAGE_MAGIC_BYTES[file.type];
+    if (expectedMagic && !expectedMagic.every((byte, i) => bytes[i] === byte)) {
+      return NextResponse.json({ error: "File content does not match declared type" }, { status: 400 });
+    }
+
+    // Generate safe filename
+    const ext = file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const safeFile = new File([buffer], `${crypto.randomUUID()}.${ext}`, { type: file.type });
+
     const cloudinaryFormData = new FormData();
-    cloudinaryFormData.append("file", file);
+    cloudinaryFormData.append("file", safeFile);
     cloudinaryFormData.append("upload_preset", process.env.CLOUDINARY_UPLOAD_PRESET || "");
 
     const response = await fetch(

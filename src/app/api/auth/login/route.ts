@@ -9,9 +9,15 @@ import {
   AUTH_ERRORS,
 } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { authRateLimit } from "@/lib/rate-limit";
+import { auditAuth } from "@/lib/audit";
+import { createRefreshToken, createRefreshCookie } from "@/lib/refresh-token";
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = await authRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const { email, password } = body;
 
@@ -34,13 +40,14 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
       include: {
-        adminProfile: true,
-        doctorProfile: true,
-        patientProfile: true,
+        adminProfile: { select: { id: true } },
+        doctorProfile: { select: { id: true, slug: true, consultationFee: true, specialtyId: true } },
+        patientProfile: { select: { id: true, gender: true } },
       },
     });
 
     if (!user) {
+      auditAuth.loginFailed(email, request);
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 },
@@ -49,6 +56,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user is active
     if (!user.isActive) {
+      auditAuth.loginFailed(email, request);
       return NextResponse.json(
         { error: "Account is deactivated. Please contact support." },
         { status: 401 },
@@ -69,6 +77,7 @@ export async function POST(request: NextRequest) {
     // Verify password
     const isValidPassword = await verifyPassword(password, user.password);
     if (!isValidPassword) {
+      auditAuth.loginFailed(email, request);
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 },
@@ -101,7 +110,13 @@ export async function POST(request: NextRequest) {
               : user.patientProfile,
     };
 
-    // Create response with auth cookie
+    // Issue refresh token
+    const refresh = await createRefreshToken(user.id, request);
+
+    // Audit successful login
+    auditAuth.login(user.id, request);
+
+    // Create response with auth cookie + refresh cookie
     const response = NextResponse.json({
       success: true,
       user: userData,
@@ -109,6 +124,7 @@ export async function POST(request: NextRequest) {
     });
 
     response.headers.set("Set-Cookie", createAuthCookie(token));
+    response.headers.append("Set-Cookie", createRefreshCookie(refresh.token));
 
     return response;
   } catch (error) {

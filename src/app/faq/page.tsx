@@ -9,7 +9,7 @@ export default function FaqPage() {
     <>
       <FAQJsonLd faqs={faqData} />
       <Topbar />
-      <main className="min-h-screen bg-white">
+      <main className="min-h-screen bg-[#F8F9FB]">
         <FAQ />
       </main>
       <Footer />

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { verifyToken, getTokenFromCookies, JWTPayload } from '@/lib/auth';
+import { audit } from '@/lib/audit';
+import { validateFields, MAX_LENGTHS } from '@/lib/validation';
 
 async function requireAdmin(request: NextRequest): Promise<JWTPayload | null> {
   const token = getTokenFromCookies(request.headers.get('cookie'));
@@ -61,6 +63,13 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
 
+  const fieldError = validateFields(body, {
+    coordinatorNotes: { maxLength: MAX_LENGTHS.longText },
+    cancelReason: { maxLength: MAX_LENGTHS.mediumText },
+    status: { maxLength: MAX_LENGTHS.shortText },
+  });
+  if (fieldError) return fieldError;
+
   const soCase = await prisma.secondOpinionCase.findUnique({ where: { id } });
   if (!soCase) {
     return NextResponse.json({ error: 'Case not found' }, { status: 404 });
@@ -108,6 +117,14 @@ export async function PATCH(
     where: { id },
     data: updateData,
   });
+
+  audit({
+    userId: admin.userId,
+    action: "ADMIN_ACTION",
+    resource: "second_opinion",
+    resourceId: id,
+    details: { action: "update", status: body.status, reference: soCase.reference },
+  }, request);
 
   return NextResponse.json({ success: true, case: updated });
 }

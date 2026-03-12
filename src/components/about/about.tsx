@@ -2,7 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Linkedin } from "lucide-react";
+import {
+  Linkedin,
+  Globe,
+  Stethoscope,
+  GraduationCap,
+  Users,
+  Heart,
+  Shield,
+  Lightbulb,
+  ArrowRight,
+  Building2,
+  HandshakeIcon,
+  Target,
+} from "lucide-react";
 
 interface LeadershipProfile {
   id: string;
@@ -17,125 +30,71 @@ interface LeadershipProfile {
   location: string | null;
 }
 
-// Fallback data shown while API loads or if no profiles exist yet
 const FALLBACK_GROUPS: Record<string, LeadershipProfile[]> = {
   FOUNDER: [
     {
-      id: "f1",
-      name: "Dr. Babaseyi Oyesola",
-      title: "Founder",
-      group: "FOUNDER",
-      role: "Founder",
-      bio: null,
-      imageUrl: null,
-      linkedinUrl: null,
-      institution: "A3C",
-      location: null,
+      id: "f1", name: "Dr. Babaseyi Oyesola", title: "Founder", group: "FOUNDER",
+      role: "Founder", bio: null, imageUrl: null, linkedinUrl: null, institution: "A3C", location: null,
     },
   ],
   EXCO: [
-    {
-      id: "e1",
-      name: "Dr. Debo Odulana",
-      title: "President",
-      group: "EXCO",
-      role: "President",
-      bio: null,
-      imageUrl: null,
-      linkedinUrl: null,
-      institution: null,
-      location: null,
-    },
-    {
-      id: "e2",
-      name: "Dr. Folake Kofo-Idowu",
-      title: "Vice President",
-      group: "EXCO",
-      role: "Vice President",
-      bio: null,
-      imageUrl: null,
-      linkedinUrl: null,
-      institution: null,
-      location: null,
-    },
-    {
-      id: "e3",
-      name: "Prof. Abdul Kareem Lateef",
-      title: "Treasurer",
-      group: "EXCO",
-      role: "Treasurer",
-      bio: null,
-      imageUrl: null,
-      linkedinUrl: null,
-      institution: null,
-      location: null,
-    },
+    { id: "e1", name: "Dr. Debo Odulana", title: "President", group: "EXCO", role: "President", bio: null, imageUrl: null, linkedinUrl: null, institution: null, location: null },
+    { id: "e2", name: "Dr. Folake Kofo-Idowu", title: "Vice President", group: "EXCO", role: "Vice President", bio: null, imageUrl: null, linkedinUrl: null, institution: null, location: null },
+    { id: "e3", name: "Prof. Abdul Kareem Lateef", title: "Treasurer", group: "EXCO", role: "Treasurer", bio: null, imageUrl: null, linkedinUrl: null, institution: null, location: null },
   ],
   BOT: [],
 };
 
 const GROUP_LABELS: Record<string, { title: string; description: string }> = {
-  FOUNDER: {
-    title: "Founder",
-    description: "",
-  },
+  FOUNDER: { title: "Founder", description: "" },
   EXCO: {
     title: "Executive Committee",
-    description:
-      "The EXCO manages the day-to-day affairs of DFC, implements General Assembly resolutions, and coordinates member activities.",
+    description: "The EXCO manages the day-to-day affairs of DFC, implements General Assembly resolutions, and coordinates member activities.",
   },
   BOT: {
     title: "Board of Trustees",
-    description:
-      "The Board of Trustees holds DFC property, oversees constitutional compliance, and safeguards the organisation's long-term interests.",
+    description: "The Board of Trustees holds DFC property, oversees constitutional compliance, and safeguards the organisation\u2019s long-term interests.",
   },
 };
 
 function PersonCard({ person }: { person: LeadershipProfile }) {
   return (
-    <div className="flex flex-col items-center text-center">
-      <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gray-100 border-2 border-gray-200 overflow-hidden mb-4">
-        {person.imageUrl ? (
-          <Image
-            src={person.imageUrl}
-            alt={person.name}
-            width={128}
-            height={128}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-[#0D1F3C] flex items-center justify-center">
-            <span className="text-white text-2xl font-bold">
-              {person.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .slice(0, 2)}
-            </span>
-          </div>
+    <div className="group relative">
+      <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-6 text-center">
+        {/* Avatar */}
+        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden mx-auto mb-4 ring-3 ring-white shadow-md">
+          {person.imageUrl ? (
+            <Image src={person.imageUrl} alt={person.name} width={112} height={112} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-[#0D1F3C] to-[#0A6E75] flex items-center justify-center">
+              <span className="text-white text-2xl font-bold">
+                {person.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+              </span>
+            </div>
+          )}
+        </div>
+        <h3 className="text-base font-bold text-[#0D1F3C]">{person.name}</h3>
+        {person.role && (
+          <p className="text-sm font-medium text-[#0A6E75] mt-1">{person.role}</p>
+        )}
+        {person.institution && (
+          <p className="text-sm text-gray-500 mt-0.5">{person.institution}</p>
+        )}
+        {person.location && (
+          <p className="text-xs text-gray-400 mt-0.5">{person.location}</p>
+        )}
+        {person.linkedinUrl && (
+          <a
+            href={person.linkedinUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm text-[#0A6E75] font-medium hover:underline"
+          >
+            <Linkedin className="w-3.5 h-3.5" />
+            LinkedIn
+          </a>
         )}
       </div>
-      <h3 className="text-base font-semibold text-[#0D1F3C]">{person.name}</h3>
-      {person.role && (
-        <p className="text-sm font-medium text-[#0A4A50] mt-0.5">{person.role}</p>
-      )}
-      {person.institution && (
-        <p className="text-sm text-gray-500 mt-0.5">{person.institution}</p>
-      )}
-      {person.location && (
-        <p className="text-xs text-gray-400 mt-0.5">{person.location}</p>
-      )}
-      {person.linkedinUrl && (
-        <a
-          href={person.linkedinUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-        >
-          <Linkedin className="w-3.5 h-3.5" />
-          LinkedIn
-        </a>
-      )}
     </div>
   );
 }
@@ -157,235 +116,253 @@ export default function About() {
 
   return (
     <>
-      {/* Hero */}
-      <section className="relative bg-[#0D1F3C] overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-            backgroundSize: "32px 32px",
-          }}
-        />
-        <div className="relative z-10 max-w-4xl mx-auto px-6 sm:px-8 pt-32 pb-16 lg:pt-36 lg:pb-20 text-center">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight">
-            About DFC
+      {/* ─── Hero ──────────────────────────────────────────── */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0D1F3C] via-[#0A3454] to-[#0A6E75]" />
+        {/* Floating orbs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute w-[600px] h-[600px] rounded-full bg-[#0A6E75]/20 blur-[120px] -top-48 -right-32" />
+          <div className="absolute w-[400px] h-[400px] rounded-full bg-white/[0.03] blur-[80px] bottom-0 left-[5%]" />
+          <div className="absolute w-[300px] h-[300px] rounded-full bg-[#0A6E75]/10 blur-[60px] top-1/3 left-1/2 -translate-x-1/2" />
+        </div>
+        {/* Pattern */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
+
+        <div className="relative z-10 max-w-4xl mx-auto px-6 sm:px-8 pt-32 pb-20 lg:pt-40 lg:pb-28 text-center">
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-6">
+            <Shield className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm font-medium text-white/90">CAC RN: 7723649</span>
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-[1.1] tracking-tight">
+            Turning Brain Drain
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-teal-200">
+              Into Brain Gain
+            </span>
           </h1>
-          <p className="mt-4 text-lg text-white/70 max-w-2xl mx-auto leading-relaxed">
-            Turning brain drain into brain gain. A global healthcare movement
-            reconnecting Nigerian diaspora doctors with patients at home.
-          </p>
-        </div>
-      </section>
-
-      {/* Who we are */}
-      <section className="py-16 sm:py-20 bg-white">
-        <div className="max-w-3xl mx-auto px-6 sm:px-8">
-          <h2 className="text-2xl font-bold text-[#0D1F3C] mb-6">
-            Who we are
-          </h2>
-          <div className="space-y-4 text-base text-gray-700 leading-relaxed">
-            <p>
-              Doctors Foundation For Care (Doctors for Change) is a collective of
-              physicians who have trained outside of Nigeria and are passionate
-              about improving Nigeria&apos;s healthcare system. We are a global
-              healthcare movement created to bridge the gap between Nigerians
-              and the wealth of medical expertise across the world.
-            </p>
-            <p>
-              As thousands of our brightest doctors leave the country to pursue
-              residency and specialist training abroad, a gap has grown in
-              Nigeria&apos;s healthcare system. DFC was built to bridge that
-              gap, reconnecting foreign-trained Nigerian doctors with patients
-              back home who still need their expertise, compassion, and care.
-            </p>
-            <p>
-              At DFC, we believe in the power of collaboration to revolutionise
-              healthcare in Nigeria. We focus on facilitating access to
-              innovative medical technologies, advanced techniques, and essential
-              training. Through this collaborative effort, DFC is committed to
-              delivering superior healthcare, driving systemic improvements, and
-              enhancing health outcomes across the nation.
-            </p>
-            <p>
-              Nigerians can book consultations, specialist appointments, and
-              second opinions with trusted Nigerian doctors practising across
-              the world. For diaspora doctors, DFC is a movement of return and
-              reconnection, a way to give back meaningfully and to strengthen a
-              healthcare system that shaped our beginnings.
-            </p>
-            <p>
-              DFC is constituted as a professional body with a General Assembly,
-              Executive Committee, and Board of Trustees. It is governed by a
-              written constitution and funded by membership dues.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Mission & Vision */}
-      <section className="py-16 sm:py-20 bg-gray-50">
-        <div className="max-w-3xl mx-auto px-6 sm:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-14">
-            <div className="bg-white rounded-2xl border border-gray-200 p-8">
-              <h2 className="text-xl font-bold text-[#0D1F3C] mb-4">
-                Our mission
-              </h2>
-              <p className="text-base text-gray-700 leading-relaxed">
-                To lead the advancement of medical practice in Nigeria,
-                facilitating access to innovative medical technologies, advanced
-                techniques, and training to deliver superior healthcare and
-                enhance health outcomes for all.
-              </p>
-            </div>
-            <div className="bg-white rounded-2xl border border-gray-200 p-8">
-              <h2 className="text-xl font-bold text-[#0D1F3C] mb-4">
-                Our vision
-              </h2>
-              <p className="text-base text-gray-700 leading-relaxed">
-                A future where Nigeria&apos;s healthcare system is a beacon of
-                excellence, innovation, and equitable care, empowered by
-                DFC&apos;s collaborative network.
-              </p>
-            </div>
-          </div>
-
-          <h2 className="text-2xl font-bold text-[#0D1F3C] mb-6">
-            What we do and why it matters
-          </h2>
-          <p className="text-base text-gray-700 leading-relaxed mb-8">
-            Nigeria&apos;s healthcare system is under immense strain, with
-            limited specialists, long wait times, and preventable deaths. Yet the
-            solution already exists within our own global medical community.
-            Thousands of Nigerian-trained doctors abroad are eager to contribute
-            their skills and give back to the system that raised them. DFC
-            transforms goodwill into impact.
+          <p className="mt-6 text-lg sm:text-xl text-white/60 max-w-2xl mx-auto leading-relaxed">
+            A global movement of Nigerian diaspora physicians reconnecting
+            with patients at home through world-class care.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* Stat chips */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-10">
             {[
-              {
-                title: "Bridge the brain drain",
-                text: "We turn brain drain into brain gain by reconnecting foreign-trained Nigerian doctors with their home country.",
-              },
-              {
-                title: "Empower diaspora specialists",
-                text: "We make it easy for Nigerian doctors abroad to consult, mentor, and impact care delivery from anywhere.",
-              },
-              {
-                title: "Innovative technologies",
-                text: "We facilitate access to innovative medical technologies and advanced techniques that improve patient outcomes.",
-              },
-              {
-                title: "Rebuild trust in care",
-                text: "We are building towards a future where Nigeria's healthcare system is a beacon of excellence and equitable care.",
-              },
-              {
-                title: "Policy and advocacy",
-                text: "Technical working groups developing policy frameworks, including the Emergency Response Initiative.",
-              },
-              {
-                title: "Training and mentorship",
-                text: "Hands-on fellowships and essential training for Nigerian doctors, led by experienced diaspora specialists.",
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="bg-white rounded-xl border border-gray-200 p-5"
-              >
-                <h3 className="font-semibold text-[#0D1F3C] mb-1">
-                  {item.title}
-                </h3>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  {item.text}
-                </p>
+              { icon: Stethoscope, label: "Diaspora Specialists" },
+              { icon: Globe, label: "7+ Countries" },
+              { icon: Users, label: "Growing Network" },
+            ].map((stat) => (
+              <div key={stat.label} className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl px-4 py-2.5">
+                <stat.icon className="w-4 h-4 text-emerald-400/80" />
+                <span className="text-sm font-medium text-white/80">{stat.label}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* For Diaspora Doctors */}
-      <section className="py-16 sm:py-20 bg-white">
-        <div className="max-w-3xl mx-auto px-6 sm:px-8">
-          <h2 className="text-2xl font-bold text-[#0D1F3C] mb-6">
-            For diaspora doctors
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+      {/* ─── Who We Are — Glass cards ──────────────────────── */}
+      <section className="relative py-20 sm:py-24 bg-[#F8F9FB]">
+        {/* Subtle background accent */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-[#0A6E75]/[0.03] blur-[100px] pointer-events-none" />
+
+        <div className="relative max-w-5xl mx-auto px-6 sm:px-8">
+          <div className="text-center mb-14">
+            <p className="text-sm font-semibold text-[#0A6E75] uppercase tracking-wider mb-3">Who we are</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#0D1F3C] leading-tight">
+              The Doctors Foundation For Care
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 shadow-sm p-8">
+              <p className="text-base text-gray-700 leading-relaxed">
+                Doctors Foundation For Care (Doctors for Change) is a collective of
+                physicians who have trained outside Nigeria and are passionate
+                about improving Nigeria&apos;s healthcare system. We are a global
+                healthcare movement created to bridge the gap between Nigerians
+                and the wealth of medical expertise across the world.
+              </p>
+              <p className="text-base text-gray-700 leading-relaxed mt-4">
+                As thousands of our brightest doctors leave the country to pursue
+                residency and specialist training abroad, a gap has grown in
+                Nigeria&apos;s healthcare system. DFC was built to bridge that
+                gap &mdash; reconnecting foreign-trained Nigerian doctors with patients
+                back home who still need their expertise, compassion, and care.
+              </p>
+            </div>
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 shadow-sm p-8">
+              <p className="text-base text-gray-700 leading-relaxed">
+                At DFC, we believe in the power of collaboration to revolutionise
+                healthcare in Nigeria. We focus on facilitating access to
+                innovative medical technologies, advanced techniques, and essential
+                training. Through this collaborative effort, DFC is committed to
+                delivering superior healthcare, driving systemic improvements, and
+                enhancing health outcomes across the nation.
+              </p>
+              <p className="text-base text-gray-700 leading-relaxed mt-4">
+                DFC is constituted as a professional body with a General Assembly,
+                Executive Committee, and Board of Trustees. It is governed by a
+                written constitution and funded by membership dues.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Mission & Vision — Glass morphism cards ────────── */}
+      <section className="relative py-20 sm:py-24 bg-gradient-to-b from-[#F8F9FB] to-white overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute w-[400px] h-[400px] rounded-full bg-[#0A6E75]/[0.04] blur-[100px] top-1/2 left-0 -translate-y-1/2" />
+          <div className="absolute w-[300px] h-[300px] rounded-full bg-rose-500/[0.03] blur-[80px] top-20 right-0" />
+        </div>
+
+        <div className="relative max-w-5xl mx-auto px-6 sm:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+            {/* Mission */}
+            <div className="relative bg-gradient-to-br from-[#0D1F3C] to-[#0A3454] rounded-3xl p-8 overflow-hidden">
+              <div className="absolute top-0 right-0 w-[200px] h-[200px] rounded-full bg-[#0A6E75]/30 blur-[60px]" />
+              <div className="relative">
+                <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center mb-5">
+                  <Target className="w-6 h-6 text-emerald-400" />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-4">Our Mission</h2>
+                <p className="text-base text-white/70 leading-relaxed">
+                  To lead the advancement of medical practice in Nigeria,
+                  facilitating access to innovative medical technologies, advanced
+                  techniques, and training to deliver superior healthcare and
+                  enhance health outcomes for all.
+                </p>
+              </div>
+            </div>
+            {/* Vision */}
+            <div className="relative bg-gradient-to-br from-[#0A6E75] to-[#0A3454] rounded-3xl p-8 overflow-hidden">
+              <div className="absolute bottom-0 left-0 w-[200px] h-[200px] rounded-full bg-emerald-400/20 blur-[60px]" />
+              <div className="relative">
+                <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center mb-5">
+                  <Lightbulb className="w-6 h-6 text-emerald-300" />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-4">Our Vision</h2>
+                <p className="text-base text-white/70 leading-relaxed">
+                  A future where Nigeria&apos;s healthcare system is a beacon of
+                  excellence, innovation, and equitable care, empowered by
+                  DFC&apos;s collaborative network of diaspora and local physicians.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* What we do */}
+          <div className="text-center mb-10">
+            <p className="text-sm font-semibold text-[#0A6E75] uppercase tracking-wider mb-3">What we do</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#0D1F3C] leading-tight">
+              Why DFC Matters
+            </h2>
+            <p className="mt-4 text-base text-gray-600 max-w-2xl mx-auto leading-relaxed">
+              Nigeria&apos;s healthcare system is under immense strain, with
+              limited specialists, long wait times, and preventable deaths. Yet the
+              solution already exists within our own global medical community.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
-              {
-                title: "Reconnect with home",
-                text: "Give back to Nigeria while staying fully engaged in your international career.",
-              },
-              {
-                title: "Consult without borders",
-                text: "Offer teleconsultations, mentorship, and second opinions from anywhere, on your schedule.",
-              },
-              {
-                title: "Earn meaningfully",
-                text: "Generate income for your time and expertise while contributing to a mission that matters.",
-              },
-              {
-                title: "Expand your reach",
-                text: "Build your personal brand and professional network across continents.",
-              },
-              {
-                title: "Collaborate with peers",
-                text: "Join a trusted community of Nigerian specialists creating solutions for homegrown challenges.",
-              },
-              {
-                title: "Turn brain drain into legacy",
-                text: "Be part of the generation redefining Nigerian healthcare for the better.",
-              },
+              { icon: Globe, title: "Bridge the brain drain", text: "We turn brain drain into brain gain by reconnecting foreign-trained Nigerian doctors with their home country.", color: "from-blue-500 to-indigo-600", bg: "bg-blue-50 text-blue-600" },
+              { icon: Stethoscope, title: "Empower diaspora specialists", text: "We make it easy for Nigerian doctors abroad to consult, mentor, and impact care delivery from anywhere.", color: "from-teal-500 to-emerald-600", bg: "bg-teal-50 text-teal-600" },
+              { icon: Lightbulb, title: "Innovative technologies", text: "We facilitate access to innovative medical technologies and advanced techniques that improve patient outcomes.", color: "from-amber-500 to-orange-600", bg: "bg-amber-50 text-amber-600" },
+              { icon: Heart, title: "Rebuild trust in care", text: "We are building towards a future where Nigeria\u2019s healthcare system is a beacon of excellence and equitable care.", color: "from-rose-500 to-pink-600", bg: "bg-rose-50 text-rose-600" },
+              { icon: Shield, title: "Policy and advocacy", text: "Technical working groups developing policy frameworks, including the Emergency Response Initiative.", color: "from-violet-500 to-purple-600", bg: "bg-violet-50 text-violet-600" },
+              { icon: GraduationCap, title: "Training and mentorship", text: "Hands-on fellowships and essential training for Nigerian doctors, led by experienced diaspora specialists.", color: "from-cyan-500 to-sky-600", bg: "bg-cyan-50 text-cyan-600" },
             ].map((item) => (
               <div
                 key={item.title}
-                className="bg-gray-50 rounded-xl p-5"
+                className="group bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 p-6"
               >
-                <h3 className="font-semibold text-[#0D1F3C] mb-1">
-                  {item.title}
-                </h3>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  {item.text}
-                </p>
+                <div className={`w-10 h-10 rounded-xl ${item.bg} flex items-center justify-center mb-4`}>
+                  <item.icon className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-[#0D1F3C] mb-2">{item.title}</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">{item.text}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Leadership */}
-      <section className="py-16 sm:py-20 bg-white">
-        <div className="max-w-5xl mx-auto px-6 sm:px-8">
+      {/* ─── For Diaspora Doctors ───────────────────────────── */}
+      <section className="relative py-20 sm:py-24 bg-[#F8F9FB] overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute w-[500px] h-[500px] rounded-full bg-[#0A6E75]/[0.04] blur-[100px] -bottom-32 right-0" />
+        </div>
+
+        <div className="relative max-w-5xl mx-auto px-6 sm:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold text-[#0D1F3C]">
+            <p className="text-sm font-semibold text-[#0A6E75] uppercase tracking-wider mb-3">For diaspora doctors</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#0D1F3C] leading-tight">
+              Your Expertise. Your Roots. Your Impact.
+            </h2>
+            <p className="mt-4 text-base text-gray-600 max-w-xl mx-auto">
+              For diaspora doctors, DFC is a movement of return and
+              reconnection &mdash; a way to give back meaningfully.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              { icon: Heart, title: "Reconnect with home", text: "Give back to Nigeria while staying fully engaged in your international career.", gradient: "from-rose-500 to-pink-500" },
+              { icon: Globe, title: "Consult without borders", text: "Offer teleconsultations, mentorship, and second opinions from anywhere, on your schedule.", gradient: "from-blue-500 to-indigo-500" },
+              { icon: Building2, title: "Earn meaningfully", text: "Generate income for your time and expertise while contributing to a mission that matters.", gradient: "from-emerald-500 to-teal-500" },
+              { icon: Users, title: "Expand your reach", text: "Build your personal brand and professional network across continents.", gradient: "from-violet-500 to-purple-500" },
+              { icon: HandshakeIcon, title: "Collaborate with peers", text: "Join a trusted community of Nigerian specialists creating solutions for homegrown challenges.", gradient: "from-amber-500 to-orange-500" },
+              { icon: GraduationCap, title: "Turn brain drain into legacy", text: "Be part of the generation redefining Nigerian healthcare for the better.", gradient: "from-cyan-500 to-sky-500" },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="group relative bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
+              >
+                <div className={`h-1 bg-gradient-to-r ${item.gradient}`} />
+                <div className="p-6">
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-4 shadow-sm`}>
+                    <item.icon className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="font-bold text-[#0D1F3C] mb-2">{item.title}</h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">{item.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Leadership ─────────────────────────────────────── */}
+      <section className="py-20 sm:py-24 bg-white">
+        <div className="max-w-5xl mx-auto px-6 sm:px-8">
+          <div className="text-center mb-14">
+            <p className="text-sm font-semibold text-[#0A6E75] uppercase tracking-wider mb-3">Our people</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#0D1F3C]">
               Leadership
             </h2>
-            <p className="mt-3 text-base text-gray-600">
+            <p className="mt-3 text-base text-gray-600 max-w-lg mx-auto">
               The people who govern and run DFC.
             </p>
           </div>
 
-          {/* Render each group */}
           {["FOUNDER", "EXCO", "BOT"].map((groupKey) => {
             const people = leadership[groupKey];
             if (!people || people.length === 0) return null;
             const meta = GROUP_LABELS[groupKey];
 
             return (
-              <div key={groupKey} className="mb-14 last:mb-0">
+              <div key={groupKey} className="mb-16 last:mb-0">
                 <div className="text-center mb-8">
-                  <h3 className="text-xl font-semibold text-[#0D1F3C]">
-                    {meta.title}
-                  </h3>
+                  <h3 className="text-xl font-bold text-[#0D1F3C]">{meta.title}</h3>
                   {meta.description && (
-                    <p className="mt-2 text-sm text-gray-500 max-w-lg mx-auto">
-                      {meta.description}
-                    </p>
+                    <p className="mt-2 text-sm text-gray-500 max-w-lg mx-auto">{meta.description}</p>
                   )}
                 </div>
                 <div
-                  className={`grid gap-8 justify-items-center ${
+                  className={`grid gap-6 justify-items-center ${
                     people.length === 1
                       ? "grid-cols-1 max-w-xs mx-auto"
                       : people.length === 2
@@ -401,7 +378,6 @@ export default function About() {
             );
           })}
 
-          {/* Placeholder if no EXCO/BOT data yet */}
           {(!leadership.EXCO || leadership.EXCO.length === 0) &&
             (!leadership.BOT || leadership.BOT.length === 0) && (
               <p className="text-center text-gray-400 text-sm mt-8">

@@ -97,29 +97,39 @@ export async function GET(
           endTime: schedule.endTime,
           slotDuration: schedule.slotDuration,
           scheduleType: schedule.scheduleType,
+          consultationMode: schedule.consultationMode,
+          location: schedule.location,
         });
 
         return acc;
       },
-      {} as Record<string, Array<{ startTime: string; endTime: string; slotDuration: number; scheduleType: string }>>,
+      {} as Record<string, Array<{ startTime: string; endTime: string; slotDuration: number; scheduleType: string; consultationMode: string; location: string | null }>>,
     );
+
+    // Derive consultation modes from schedules
+    const hasVideo = doctor.schedules.some((s) => s.consultationMode === "VIDEO" || s.consultationMode === "BOTH");
+    const hasInPerson = doctor.schedules.some((s) => s.consultationMode === "IN_PERSON" || s.consultationMode === "BOTH");
+    const clinicLocation = doctor.schedules.find((s) => s.consultationMode === "IN_PERSON" || s.consultationMode === "BOTH")?.location || null;
 
     const doctorData = {
       id: doctor.user.id,
       slug: doctor.slug,
       name: doctor.user.name,
       email: doctor.user.email,
-      phone: doctor.user.phone,
+      // phone removed from public API — contact via booking system
       profileImage: doctor.user.profileImage,
       specialty: doctor.specialty?.name || "General",
       specialtyDescription: doctor.specialty?.description,
-      license: doctor.license,
+      // license number removed from public API — sensitive credential
       experience: doctor.experience,
       bio: doctor.bio,
       consultationFee: doctor.consultationFee,
       currency: doctor.currency,
       country: doctor.country,
       isAvailable: doctor.isAvailable,
+      hasVideo,
+      hasInPerson,
+      clinicLocation,
       rating: avgRating,
       totalRatings: doctor.ratings.length,
       totalAppointments: doctor._count.appointments,

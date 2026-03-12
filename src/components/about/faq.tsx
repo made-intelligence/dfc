@@ -6,42 +6,55 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import Image from "next/image";
 import { data } from "./faqData";
+import { HelpCircle } from "lucide-react";
 
 const FAQ = () => {
   return (
     <>
-            <div className="relative pt-24 md:pt-42 pb-24 overflow-hidden">
-              {/* Background Image */}
-              <div className="absolute inset-0">
-                <Image
-                  src="/dfc-logo.png"
-                  alt="Healthcare team"
-                  fill
-                  className="object-cover opacity-10"
-                  priority
-                />
-              </div>
-    
-              <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 text-primary">
-                <h1 className="text-xl md:text-4xl font-bold leading-tight">
-                 Frequently Asked Questions <br /> (FAQs)
-                </h1>
-              </div>
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0D1F3C] via-[#0A3454] to-[#0A6E75]" />
+
+        {/* Floating orbs */}
+        <div className="absolute top-10 right-20 w-72 h-72 bg-[#0A6E75]/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-10 left-10 w-60 h-60 bg-white/5 rounded-full blur-3xl" />
+
+        {/* Pattern */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+
+        <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pt-32 md:pt-40 pb-16">
+          <p className="text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">Support</p>
+          <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight">
+            Frequently Asked Questions
+          </h1>
+          <p className="text-lg text-white/60 mt-4 max-w-xl">
+            Find answers to common questions about DFC services, membership, and consultations.
+          </p>
+        </div>
+      </section>
+
+      {/* FAQ Content */}
+      <section className="relative -mt-6 z-10 pb-16">
+        <div className="container mx-auto px-4 md:px-8 max-w-3xl">
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-white/60 shadow-sm p-6 md:p-8">
+            <div className="flex items-center gap-2 mb-6">
+              <HelpCircle className="w-5 h-5 text-[#0A6E75]" />
+              <h2 className="text-lg font-semibold text-[#0D1F3C]">{data.length} Questions</h2>
             </div>
-      <div className="container mx-auto px-4 md:px-8 py-6">
-        <Accordion type="single" collapsible className="w-full">
-          {data.map((faq, index) => (
-            <AccordionItem key={index} value={`item-${index}`}>
-              <AccordionTrigger className="text-left font-semibold text-primary">
-                {faq.question}
-              </AccordionTrigger>
-              <AccordionContent className="text-primary">{faq.answer}</AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </div>
+            <Accordion type="single" collapsible className="w-full">
+              {data.map((faq, index) => (
+                <AccordionItem key={index} value={`item-${index}`}>
+                  <AccordionTrigger className="text-left font-semibold text-[#0D1F3C] text-base">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-gray-700 text-base leading-relaxed">{faq.answer}</AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </div>
+      </section>
     </>
   );
 };

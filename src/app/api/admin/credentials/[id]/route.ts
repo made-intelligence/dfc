@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { requireAdminAuth, isAuthError } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { calculateProfileScore } from '@/lib/utils/profile-score';
+import { auditAdmin } from '@/lib/audit';
 
 export async function PATCH(
   request: NextRequest,
@@ -112,6 +113,12 @@ export async function PATCH(
         type: status === 'VERIFIED' ? 'success' : 'error',
       },
     });
+
+    auditAdmin.userUpdate(auth.userId, credential.dfcMember.userId, {
+      action: `credential_${status.toLowerCase()}`,
+      credentialType: credential.type,
+      credentialId: id,
+    }, request);
 
     return NextResponse.json({ success: true, credential: updated });
   } catch (error) {

@@ -244,7 +244,6 @@ export default function SpecialistProfilePage() {
                   {/* Name + badges */}
                   <div className="flex flex-wrap items-center gap-3 mb-2">
                     <h1 className="text-2xl sm:text-3xl font-bold text-white font-serif">
-                      {specialist.title ? `${specialist.title} ` : ""}
                       {specialist.name}
                     </h1>
 
@@ -728,7 +727,6 @@ export default function SpecialistProfilePage() {
               </h3>
               <p className="text-sm text-gray-500 mb-5">
                 Your endorsement helps verify{" "}
-                {specialist?.title ? `${specialist.title} ` : ""}
                 {specialist?.name}&apos;s credentials within the DFC network.
               </p>
 

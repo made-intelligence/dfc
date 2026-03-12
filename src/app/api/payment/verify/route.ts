@@ -1,21 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
+import { UserRole } from "@prisma/client";
 import { v4 as uuidv4 } from 'uuid';
 import React from 'react';
 import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
-    // Require authentication — user must be logged in to verify payment
+    // Try to authenticate — but allow guest verifications
     const token = getTokenFromCookies(request.headers.get("cookie"));
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    let authenticatedUserId: string | null = null;
+    let authenticatedRole: string | null = null;
 
-    const payload = await verifyToken(token);
-    if (!payload) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (token) {
+      const payload = await verifyToken(token);
+      if (payload) {
+        authenticatedUserId = payload.userId;
+        authenticatedRole = payload.role;
+      }
     }
 
     const body = await request.json();
@@ -65,12 +68,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { metadata, amount, currency } = verifyData.data;
-    const { doctorId, patientId, date, time, reason } = metadata;
+    const { doctorId, patientId, date, time, reason, isGuest, guestName, guestEmail, guestPhone, consultationMode, clinicLocation } = metadata;
 
-    // IDOR protection: verify the authenticated user is the patient
-    if (patientId && patientId !== payload.userId) {
+    // IDOR protection for authenticated users
+    if (authenticatedUserId && patientId && patientId !== authenticatedUserId) {
       logger.error('PaymentVerify', 'User mismatch', {
-        authenticatedUser: payload.userId,
+        authenticatedUser: authenticatedUserId,
         paymentPatientId: patientId,
       });
       return NextResponse.json(
@@ -79,8 +82,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Block non-admin users from verifying payments without patient context
-    if (!patientId && !['SUPERADMIN', 'SECRETARIAT'].includes(payload.role)) {
+    // For non-guest, non-admin requests — require auth
+    if (!isGuest && !authenticatedUserId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Block non-admin users from verifying payments without patient context (non-guest)
+    if (!isGuest && !patientId && !['SUPERADMIN', 'SECRETARIAT'].includes(authenticatedRole || '')) {
       return NextResponse.json(
         { error: "Payment missing patient context" },
         { status: 403 }
@@ -96,13 +104,30 @@ export async function POST(request: NextRequest) {
       if (existingPayment.appointmentId) {
         const existingAppointment = await prisma.appointment.findUnique({
           where: { id: existingPayment.appointmentId },
-          select: { id: true, meetingLink: true }
+          select: { id: true, meetingLink: true, patientId: true }
         });
+
+        // Check if the booking patient is a guest (no password, provider=guest)
+        let isGuestAccount = false;
+        let guestAccountEmail: string | undefined;
+        if (existingAppointment?.patientId) {
+          const bookingUser = await prisma.user.findUnique({
+            where: { id: existingAppointment.patientId },
+            select: { provider: true, password: true, email: true },
+          });
+          if (bookingUser && bookingUser.provider === "guest" && !bookingUser.password) {
+            isGuestAccount = true;
+            guestAccountEmail = bookingUser.email;
+          }
+        }
+
         return NextResponse.json({
           success: true,
           appointmentId: existingAppointment?.id,
           meetingLink: existingAppointment?.meetingLink,
-          message: "Payment already processed"
+          message: "Payment already processed",
+          isGuest: isGuestAccount,
+          guestEmail: guestAccountEmail,
         });
       }
       return NextResponse.json({
@@ -111,16 +136,63 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Get patient profile ID
-    const patientProfile = await prisma.patientProfile.findUnique({
-      where: { userId: patientId }
-    });
+    // Resolve patient: either existing user or create guest account
+    let resolvedPatientId: string;
+    let resolvedPatientProfileId: string;
+    let isNewGuestAccount = false;
 
-    if (!patientProfile) {
-      return NextResponse.json(
-        { error: "Patient profile not found" },
-        { status: 404 }
-      );
+    if (isGuest) {
+      // Check if a user with this email already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email: guestEmail.toLowerCase() },
+        include: { patientProfile: true },
+      });
+
+      if (existingUser) {
+        resolvedPatientId = existingUser.id;
+        if (existingUser.patientProfile) {
+          resolvedPatientProfileId = existingUser.patientProfile.id;
+        } else {
+          // User exists but no patient profile — create one
+          const newProfile = await prisma.patientProfile.create({
+            data: { userId: existingUser.id },
+          });
+          resolvedPatientProfileId = newProfile.id;
+        }
+      } else {
+        // Create guest account (no password — they'll claim it later)
+        const guestUser = await prisma.user.create({
+          data: {
+            email: guestEmail.toLowerCase(),
+            name: guestName,
+            phone: guestPhone || null,
+            role: UserRole.PATIENT,
+            password: null, // No password — guest account
+            provider: "guest",
+            patientProfile: {
+              create: {},
+            },
+          },
+          include: { patientProfile: true },
+        });
+
+        resolvedPatientId = guestUser.id;
+        resolvedPatientProfileId = guestUser.patientProfile!.id;
+        isNewGuestAccount = true;
+      }
+    } else {
+      resolvedPatientId = patientId;
+      const patientProfile = await prisma.patientProfile.findUnique({
+        where: { userId: patientId }
+      });
+
+      if (!patientProfile) {
+        return NextResponse.json(
+          { error: "Patient profile not found" },
+          { status: 404 }
+        );
+      }
+      resolvedPatientProfileId = patientProfile.id;
     }
 
     // Create Appointment
@@ -137,20 +209,22 @@ export async function POST(request: NextRequest) {
     const appointment = await prisma.appointment.create({
       data: {
         doctorId,
-        patientId,
+        patientId: resolvedPatientId,
         appointmentDate,
         startTime: time,
         endTime: endTime,
-        status: "CONFIRMED", 
+        status: "CONFIRMED",
         reason: reason || "Consultation",
         consultationFee: amount / 100,
         meetingLink: meetingLink,
+        consultationMode: consultationMode || "VIDEO",
+        clinicLocation: clinicLocation || null,
         payments: {
           create: {
             amount: amount / 100,
             currency: currency,
             paymentReference: reference,
-            patientId: patientProfile.id,
+            patientId: resolvedPatientProfileId,
           }
         }
       },
@@ -163,7 +237,7 @@ export async function POST(request: NextRequest) {
     // Send confirmation email asynchronously (don't block response)
     const { sendEmail } = await import('@/lib/email/service');
     const BookingConfirmation = (await import('@/emails/BookingConfirmation')).default;
-    
+
     const emailPromise = sendEmail({
       to: appointment.patient.email,
       subject: 'Booking Confirmation - DFC Medical',
@@ -177,7 +251,7 @@ export async function POST(request: NextRequest) {
       }),
       metadata: { appointmentId: appointment.id }
     });
-    
+
     const doctorEmailPromise = sendEmail({
       to: appointment.doctor.email,
       subject: 'New Appointment Booked - DFC Medical',
@@ -214,10 +288,12 @@ export async function POST(request: NextRequest) {
 
     await Promise.allSettled([emailPromise, doctorEmailPromise, notificationsPromise]);
 
-    return NextResponse.json({ 
-        success: true, 
+    return NextResponse.json({
+        success: true,
         appointmentId: appointment.id,
-        meetingLink 
+        meetingLink,
+        isGuest: isNewGuestAccount,
+        guestEmail: isNewGuestAccount ? guestEmail : undefined,
     });
 
   } catch (error: unknown) {

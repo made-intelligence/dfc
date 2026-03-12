@@ -82,15 +82,6 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    // Rescheduling Logic
-    const { appointmentDate, startTime, endTime } = await request.json(); // Re-parsing body to get these fields if they exist
-    // Note: In Next.js request.json() can only be called once.
-    // So we need to parse it once at the top. 
-    // Wait, the previous code called `const { id, status } = await request.json();`.
-    // I need to change that line to capture all fields.
-
-    // Correction: I will replace the block from line 84.
-    
     const body = await request.json();
     const { id, status, appointmentDate: newDate, startTime: newStartTime, endTime: newEndTime } = body;
 

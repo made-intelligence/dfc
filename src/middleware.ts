@@ -17,16 +17,74 @@ const ROLE_ROUTES: Record<string, string[]> = {
   "/spl": ["SPL_ADMIN", "SUPERADMIN"],
 };
 
+// CSRF: routes that skip validation (no session, external callers, or read-only)
+const CSRF_SKIP_PREFIXES = [
+  "/api/webhooks/",
+  "/api/pharmacy/",
+  "/api/public/",
+];
+const CSRF_SKIP_EXACT = [
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/join",
+  "/api/auth/legacy-claim",
+  "/api/auth/claim-account",
+  "/api/auth/csrf",
+  "/api/auth/refresh",
+  "/api/payment/initialize",
+  "/api/payment/verify",
+];
+
+/**
+ * Validate CSRF double-submit cookie for state-changing API requests.
+ * Returns a 403 response if invalid, or null if valid / not applicable.
+ */
+function validateCsrfInMiddleware(request: NextRequest): NextResponse | null {
+  const method = request.method.toUpperCase();
+  if (["GET", "HEAD", "OPTIONS"].includes(method)) return null;
+
+  const pathname = request.nextUrl.pathname;
+
+  // Skip non-API routes
+  if (!pathname.startsWith("/api/")) return null;
+
+  // Skip exempt routes
+  if (CSRF_SKIP_PREFIXES.some((p) => pathname.startsWith(p))) return null;
+  if (CSRF_SKIP_EXACT.includes(pathname)) return null;
+  if (pathname.startsWith("/api/auth/google/")) return null;
+
+  const cookieToken = request.cookies.get("csrf_token")?.value;
+  const headerToken = request.headers.get("x-csrf-token");
+
+  if (!cookieToken || !headerToken) {
+    return NextResponse.json({ error: "CSRF token missing" }, { status: 403 });
+  }
+
+  if (cookieToken.length !== headerToken.length || cookieToken !== headerToken) {
+    return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
+  }
+
+  return null;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip API routes, static files, auth pages
+  // Skip static files and auth pages early
   if (
-    pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/auth/") ||
     pathname === "/favicon.ico"
   ) {
+    return NextResponse.next();
+  }
+
+  // CSRF validation for state-changing API requests
+  const csrfError = validateCsrfInMiddleware(request);
+  if (csrfError) return csrfError;
+
+  // Skip remaining checks for API routes (auth handled per-route)
+  if (pathname.startsWith("/api/")) {
     return NextResponse.next();
   }
 

@@ -216,7 +216,7 @@ export function SecondOpinionForm() {
   }
 
   const canProceedStep1 = patientName.trim() && contactEmail.trim() && dateOfBirth;
-  const canProceedStep2 = resolvedSpecialty && diagnosis.trim().length >= 10;
+  const canProceedStep2 = resolvedSpecialty && diagnosis.trim().length >= 3;
   const canSubmit = selectedTier && consentShare && consentNotEmergency;
 
   const selectedTierData = TIERS.find((t) => t.id === selectedTier);

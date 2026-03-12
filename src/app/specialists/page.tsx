@@ -430,7 +430,6 @@ export default function SpecialistsPage() {
                       </div>
                       <div>
                         <h3 className="text-base font-semibold text-gray-900 group-hover:text-[#0D1F3C] transition-colors">
-                          {spec.title ? `${spec.title} ` : ""}
                           {spec.name}
                         </h3>
                         <p className="text-sm text-gray-600">

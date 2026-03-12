@@ -13,6 +13,7 @@ import {
 import { UserRole } from "@prisma/client";
 import { generateDoctorSlug } from "@/lib/utils/slug";
 import { getDefaultPermissionsByRole } from "@/lib/permissions";
+import { authRateLimit } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email/service";
 import Welcome from "@/emails/Welcome";
 import React from "react";
@@ -34,6 +35,9 @@ interface RegisterRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = await authRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body: RegisterRequest = await request.json();
     const {
       email,

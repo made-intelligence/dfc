@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { audit } from "@/lib/audit";
 
 const EXCO_POSITIONS = [
   "PRESIDENT",
@@ -101,6 +102,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    audit({
+      userId: admin.id,
+      action: "ADMIN_ACTION",
+      resource: "exco",
+      resourceId: dfcMemberId,
+      details: { action: "assign", position: excoPosition },
+    }, request);
+
     return NextResponse.json({ success: true, member: updated }, { status: 201 });
   } catch (error) {
     logger.error('AdminExco', error);
@@ -149,6 +158,14 @@ export async function PUT(request: NextRequest) {
       },
     });
 
+    audit({
+      userId: admin.id,
+      action: "ADMIN_ACTION",
+      resource: "exco",
+      resourceId: dfcMemberId,
+      details: { action: "update", position: excoPosition },
+    }, request);
+
     return NextResponse.json({ success: true, member: updated });
   } catch (error) {
     logger.error('AdminExco', error);
@@ -177,6 +194,15 @@ export async function DELETE(request: NextRequest) {
         excoTermEnd: null,
       },
     });
+
+    audit({
+      userId: admin.id,
+      action: "ADMIN_ACTION",
+      resource: "exco",
+      resourceId: dfcMemberId,
+      details: { action: "remove" },
+      severity: "WARN",
+    }, request);
 
     return NextResponse.json({ success: true });
   } catch (error) {

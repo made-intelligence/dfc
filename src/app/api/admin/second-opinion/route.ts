@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { verifyToken, getTokenFromCookies, JWTPayload } from '@/lib/auth';
+import { parsePagination } from '@/lib/pagination';
 
 async function requireAdmin(request: NextRequest): Promise<JWTPayload | null> {
   const token = getTokenFromCookies(request.headers.get('cookie'));
@@ -22,8 +23,7 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get('status');
   const tier = searchParams.get('tier');
   const search = searchParams.get('search');
-  const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '20');
+  const { page, limit, skip: _skip } = parsePagination(searchParams);
 
   const where: Prisma.SecondOpinionCaseWhereInput = {};
   if (status) where.status = status as Prisma.EnumSecondOpinionStatusFilter;

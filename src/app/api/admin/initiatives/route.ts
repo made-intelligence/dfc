@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { audit } from "@/lib/audit";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 
 async function requireAdmin(request: NextRequest) {
   const token = getTokenFromCookies(request.headers.get("cookie"));
@@ -52,9 +54,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, type, status, description, remit, expectedOutputs, startDate, endDate } = body;
 
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
+    const fieldError = validateFields(body, {
+      name: { required: true, maxLength: MAX_LENGTHS.shortText },
+      description: { maxLength: MAX_LENGTHS.longText },
+      remit: { maxLength: MAX_LENGTHS.longText },
+      expectedOutputs: { maxLength: MAX_LENGTHS.longText },
+    });
+    if (fieldError) return fieldError;
 
     const existing = await prisma.initiative.findUnique({ where: { name: name.trim() } });
     if (existing) {
@@ -78,6 +84,14 @@ export async function POST(request: NextRequest) {
         pillars: { orderBy: { order: "asc" } },
       },
     });
+
+    audit({
+      userId: admin.id,
+      action: "ADMIN_ACTION",
+      resource: "initiative",
+      resourceId: initiative.id,
+      details: { action: "create", name: initiative.name },
+    }, request);
 
     return NextResponse.json({ success: true, initiative }, { status: 201 });
   } catch (error) {
@@ -128,6 +142,14 @@ export async function PUT(request: NextRequest) {
       },
     });
 
+    audit({
+      userId: admin.id,
+      action: "ADMIN_ACTION",
+      resource: "initiative",
+      resourceId: id,
+      details: { action: "update", changes: Object.keys(data) },
+    }, request);
+
     return NextResponse.json({ success: true, initiative });
   } catch (error) {
     logger.error('AdminInitiatives', error);
@@ -149,6 +171,15 @@ export async function DELETE(request: NextRequest) {
     }
 
     await prisma.initiative.delete({ where: { id } });
+
+    audit({
+      userId: admin.id,
+      action: "ADMIN_ACTION",
+      resource: "initiative",
+      resourceId: id,
+      details: { action: "delete" },
+      severity: "WARN",
+    }, request);
 
     return NextResponse.json({ success: true });
   } catch (error) {

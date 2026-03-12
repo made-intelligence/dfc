@@ -6,15 +6,9 @@ import { logger } from '@/lib/logger';
 // Verify Paystack payment for second opinion
 export async function POST(request: NextRequest) {
   try {
-    // Require authentication
+    // Auth is optional — anonymous users return from Paystack redirect without a session
     const token = getTokenFromCookies(request.headers.get('cookie'));
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const payload = await verifyToken(token);
-    if (!payload) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const payload = token ? await verifyToken(token) : null;
 
     const { reference } = await request.json();
 
@@ -47,8 +41,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Case not found for this payment' }, { status: 404 });
     }
 
-    // IDOR: verify the authenticated user owns this case (or is admin)
-    if (soCase.userId && soCase.userId !== payload.userId && !['SUPERADMIN', 'SECRETARIAT'].includes(payload.role)) {
+    // IDOR: if user is logged in, verify ownership (unless admin)
+    if (payload && soCase.userId && soCase.userId !== payload.userId && !['SUPERADMIN', 'SECRETARIAT'].includes(payload.role)) {
       logger.error('SecondOpinionVerify', 'User mismatch', {
         authenticatedUser: payload.userId,
         caseUserId: soCase.userId,

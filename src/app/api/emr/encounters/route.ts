@@ -3,7 +3,10 @@ import { prisma } from '@/lib/prisma';
 import { UserRole } from '@prisma/client';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { checkRecordAccess } from '@/lib/emr/access';
+import { validateFields, MAX_LENGTHS } from '@/lib/validation';
 import { logger } from '@/lib/logger';
+import { parsePagination } from '@/lib/pagination';
+import { requireConsent } from '@/lib/consent';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,11 +17,16 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get('patientId');
-    const page = parseInt(searchParams.get('page') || '1', 10);
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const { page, limit, skip } = parsePagination(searchParams);
 
     if (!patientId) {
       return NextResponse.json({ error: 'patientId is required' }, { status: 400 });
+    }
+
+    // Check consent for TREATMENT before allowing encounter access
+    const consentError = await requireConsent(patientId, 'TREATMENT');
+    if (consentError) {
+      return NextResponse.json({ error: consentError }, { status: 403 });
     }
 
     const access = await checkRecordAccess(
@@ -27,8 +35,6 @@ export async function GET(request: NextRequest) {
     if (!access.allowed) {
       return NextResponse.json({ error: access.reason }, { status: 403 });
     }
-
-    const skip = (page - 1) * limit;
 
     const [encounters, total] = await Promise.all([
       prisma.clinicalEncounter.findMany({
@@ -74,11 +80,25 @@ export async function POST(request: NextRequest) {
       followUpDate, followUpNotes,
     } = body;
 
-    if (!patientId || !encounterType || !encounterDate || !chiefComplaint) {
-      return NextResponse.json(
-        { error: 'patientId, encounterType, encounterDate, and chiefComplaint are required' },
-        { status: 400 },
-      );
+    const fieldError = validateFields(body, {
+      patientId: { required: true, maxLength: MAX_LENGTHS.shortText },
+      encounterType: { required: true, maxLength: MAX_LENGTHS.shortText },
+      encounterDate: { required: true },
+      chiefComplaint: { required: true, maxLength: MAX_LENGTHS.longText },
+      subjective: { maxLength: MAX_LENGTHS.longText },
+      objective: { maxLength: MAX_LENGTHS.longText },
+      assessment: { maxLength: MAX_LENGTHS.longText },
+      plan: { maxLength: MAX_LENGTHS.longText },
+      primaryDiagnosis: { maxLength: MAX_LENGTHS.shortText },
+      followUpNotes: { maxLength: MAX_LENGTHS.mediumText },
+      location: { maxLength: MAX_LENGTHS.shortText },
+    });
+    if (fieldError) return fieldError;
+
+    // Check consent for TREATMENT before creating encounter
+    const consentError = await requireConsent(patientId, 'TREATMENT');
+    if (consentError) {
+      return NextResponse.json({ error: consentError }, { status: 403 });
     }
 
     const access = await checkRecordAccess(

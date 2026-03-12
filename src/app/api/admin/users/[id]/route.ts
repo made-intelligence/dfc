@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { UserRole, Prisma } from "@prisma/client";
 import { logger } from "@/lib/logger";
+import { auditAdmin } from "@/lib/audit";
 
 export async function GET(
   request: NextRequest,
@@ -203,6 +204,12 @@ export async function PATCH(
       where: { id: member.id },
       data,
     });
+
+    // Audit member status change
+    auditAdmin.memberStatusChange(payload.userId, member.id, {
+      changes: body,
+      memberId: member.id,
+    }, request);
 
     return NextResponse.json({ success: true, member: updated });
   } catch (error) {

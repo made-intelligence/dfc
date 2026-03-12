@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies, JWTPayload } from '@/lib/auth';
+import { audit } from '@/lib/audit';
 
 async function requireAdmin(request: NextRequest): Promise<JWTPayload | null> {
   const token = getTokenFromCookies(request.headers.get('cookie'));
@@ -69,6 +70,14 @@ export async function POST(
       link: `/member/cases/${soCase.id}`,
     },
   });
+
+  audit({
+    userId: admin.userId,
+    action: "SECOND_OPINION_ASSIGN",
+    resource: "second_opinion",
+    resourceId: id,
+    details: { specialistId, specialistName: specialist.user.name, reference: soCase.reference },
+  }, request);
 
   return NextResponse.json({
     success: true,

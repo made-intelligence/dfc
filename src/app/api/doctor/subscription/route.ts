@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import crypto from "crypto";
 
 export async function GET(request: NextRequest) {
   try {
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
     endDate.setDate(startDate.getDate() + duration);
 
     // Generate payment reference (in real app, this would come from payment gateway)
-    const paymentReference = `DFC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const paymentReference = `DFC-${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
 
     const subscription = await prisma.doctorSubscription.create({
       data: {

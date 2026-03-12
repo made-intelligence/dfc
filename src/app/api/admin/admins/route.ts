@@ -5,20 +5,25 @@ import bcrypt from "bcryptjs";
 import { getDefaultPermissionsByRole } from "@/lib/permissions";
 import { requireAdminAuth, isAuthError } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { parsePagination } from "@/lib/pagination";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+import { auditAdmin } from "@/lib/audit";
 
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAdminAuth(request);
     if (isAuthError(auth)) return auth;
 
-    const { name, email, phone, role, permissionIds } = await request.json();
+    const body = await request.json();
+    const { name, email, phone, role, permissionIds } = body;
 
-    if (!name || !email || !role) {
-      return NextResponse.json(
-        { error: "Name, email, and role are required" },
-        { status: 400 }
-      );
-    }
+    const fieldError = validateFields(body, {
+      name: { required: true, maxLength: MAX_LENGTHS.shortText },
+      email: { required: true, maxLength: MAX_LENGTHS.email },
+      phone: { maxLength: MAX_LENGTHS.phone },
+      role: { required: true, maxLength: MAX_LENGTHS.shortText },
+    });
+    if (fieldError) return fieldError;
 
     const existingUser = await prisma.user.findUnique({
       where: { email }
@@ -73,6 +78,11 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    auditAdmin.userCreate(auth.userId, newAdmin.id, {
+      role: newAdmin.role,
+      email: newAdmin.email,
+    }, request);
+
     return NextResponse.json({
       message: "Admin created successfully",
       admin: {
@@ -100,9 +110,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = parsePagination(searchParams);
 
     const adminWhere = search
       ? {

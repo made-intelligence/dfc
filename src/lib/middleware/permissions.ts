@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 
 export async function requirePermission(
@@ -7,7 +7,7 @@ export async function requirePermission(
   requiredPermission: string
 ) {
   try {
-    const token = request.cookies.get("auth-token")?.value ||
+    const token = getTokenFromCookies(request.headers.get("cookie")) ||
       request.headers.get("Authorization")?.replace("Bearer ", "");
 
     if (!token) {

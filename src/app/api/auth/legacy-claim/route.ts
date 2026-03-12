@@ -3,9 +3,13 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword, createToken, createAuthCookie, JWTPayload } from '@/lib/auth';
 import { UserRole } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { authRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = await authRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { token: claimToken, email, password, name } = await request.json();
 
     if (!claimToken || !email || !password) {

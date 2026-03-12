@@ -72,7 +72,7 @@ export default function Topbar() {
       } inset-x-0 top-0 z-50 transition-all duration-300`}
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <nav className="flex items-center justify-between h-18">
+        <nav className="flex items-center justify-between h-16 sm:h-20">
           <div className="flex shrink-0">
             <Link href="/" title="Home">
               <Image
@@ -80,7 +80,7 @@ export default function Topbar() {
                 src="/logo.png"
                 width={160}
                 height={60}
-                className="h-24 w-auto"
+                className="h-12 sm:h-16 w-auto"
               />
             </Link>
           </div>
@@ -198,7 +198,7 @@ export default function Topbar() {
           {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
-              className="text-gray-900"
+              className="text-gray-900 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle menu"
             >

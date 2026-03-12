@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { requireAdminAuth, isAuthError, validatePassword } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { parsePagination } from "@/lib/pagination";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
+import { auditAdmin } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,9 +14,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = parsePagination(searchParams);
 
     const where = search
       ? {
@@ -134,6 +135,16 @@ export async function POST(request: NextRequest) {
       specialtyId,
     } = body;
 
+    const fieldError = validateFields(body, {
+      name: { required: true, maxLength: MAX_LENGTHS.shortText },
+      email: { required: true, maxLength: MAX_LENGTHS.email },
+      phone: { maxLength: MAX_LENGTHS.phone },
+      password: { required: true },
+      bio: { maxLength: MAX_LENGTHS.longText },
+      license: { maxLength: MAX_LENGTHS.shortText },
+    });
+    if (fieldError) return fieldError;
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -203,6 +214,11 @@ export async function POST(request: NextRequest) {
 
       return { user, doctorProfile };
     });
+
+    auditAdmin.userCreate(auth.userId, result.user.id, {
+      role: "DFC_MEMBER",
+      email: result.user.email,
+    }, request);
 
     return NextResponse.json({
       message: "Doctor created successfully",

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
+    const body = await request.json();
     const {
       appointmentId,
       diagnosis,
@@ -82,7 +84,18 @@ export async function POST(request: NextRequest) {
       medications,
       followUpDate,
       notes,
-    } = await request.json();
+    } = body;
+
+    // Validate field lengths
+    const validationError = validateFields(body, {
+      appointmentId: { required: true, maxLength: MAX_LENGTHS.shortText },
+      diagnosis: { required: true, maxLength: MAX_LENGTHS.longText },
+      symptoms: { maxLength: MAX_LENGTHS.longText },
+      treatment: { maxLength: MAX_LENGTHS.longText },
+      medications: { maxLength: MAX_LENGTHS.mediumText },
+      notes: { maxLength: MAX_LENGTHS.longText },
+    });
+    if (validationError) return validationError;
 
     // Verify the appointment belongs to this doctor
     const appointment = await prisma.appointment.findFirst({

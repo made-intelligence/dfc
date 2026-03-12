@@ -42,14 +42,14 @@ export async function generateMetadata(
     : `Book a consultation with ${doctor.name}, a specialist in ${doctor.specialty}. World-trained Nigerian diaspora doctor available via DFC.`;
 
   return {
-    title: `Dr. ${doctor.name} — ${doctor.specialty} Specialist`,
+    title: `${doctor.name} — ${doctor.specialty} Specialist`,
     description,
     alternates: { canonical: `/book/${slug}` },
     openGraph: {
-      title: `Dr. ${doctor.name} — ${doctor.specialty} | Book Consultation`,
+      title: `${doctor.name} — ${doctor.specialty} | Book Consultation`,
       description,
       images: doctor.profileImage
-        ? [{ url: doctor.profileImage, width: 600, height: 600, alt: `Dr. ${doctor.name}` }, ...previousImages]
+        ? [{ url: doctor.profileImage, width: 600, height: 600, alt: doctor.name }, ...previousImages]
         : previousImages,
     },
   };
@@ -64,7 +64,7 @@ export default async function DoctorProfilePage({ params }: Props) {
     <>
       {doctor && (
         <DoctorJsonLd
-          name={`Dr. ${doctor.name}`}
+          name={doctor.name}
           specialty={doctor.specialty}
           description={doctor.bio}
           image={doctor.profileImage}

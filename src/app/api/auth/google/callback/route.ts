@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get("code");
-    const state = searchParams.get("state") || "/";
+    const rawState = searchParams.get("state") || "/";
+    // Prevent open redirect — only allow relative paths starting with /
+    const state = rawState.startsWith("/") && !rawState.startsWith("//") ? rawState : "/";
     const error = searchParams.get("error");
 
     if (error) {

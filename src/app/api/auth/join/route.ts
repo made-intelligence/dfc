@@ -11,9 +11,13 @@ import {
 import { generateDoctorSlug } from '@/lib/utils/slug';
 import { UserRole, DFCMemberCategory, DFCMemberStatus } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { authRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = await authRateLimit(request);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = await request.json();
     const {
       title,

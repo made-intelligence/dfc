@@ -34,6 +34,12 @@ enum ScheduleType {
   EMERGENCY     // Emergency time block
 }
 
+enum ConsultationMode {
+  VIDEO         // Teleconsult / video call only
+  IN_PERSON     // Physical clinic visit only
+  BOTH          // Patient chooses at booking time
+}
+
 enum SubscriptionStatus {
   ACTIVE
   EXPIRED
@@ -275,10 +281,14 @@ model DoctorSchedule {
   validFrom                         DateTime?
   validUntil                        DateTime?
   
+  // Consultation mode & location
+  consultationMode                  ConsultationMode        @default(VIDEO)
+  location                          String?                 // Clinic name/address for IN_PERSON or BOTH
+
   // Metadata
   notes                             String?
   color                             String?                 @default("#3B82F6")
-  
+
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
 
@@ -304,7 +314,9 @@ model Appointment {
   reason                            String?
   notes                             String?
   consultationFee                   Float
+  consultationMode                  ConsultationMode        @default(VIDEO)
   meetingLink                       String?
+  clinicLocation                    String?                 // For IN_PERSON appointments
   
   patientJoinedAt                   DateTime?
   doctorJoinedAt                    DateTime?
@@ -496,6 +508,7 @@ model DFCMember {
   // Institution / affiliation
   institution                       String?
   isBotMember                       Boolean                 @default(false)
+  paystackSubAccountCode            String?
 
   // EXCO — elected executive committee position
   excoPosition                      String?                 // PRESIDENT, VICE_PRESIDENT, SECRETARY_GENERAL, TREASURER, PRO, WELFARE, etc.
@@ -1282,6 +1295,8 @@ model HospitalPartner {
   adminUsers                        HospitalAdminUser[]
   deploymentWindows                 DeploymentWindow[]
   verificationRequests              SpecialistVerification[]
+  clinicalSpaces                    ClinicalSpace[]
+  paystackSubAccountCode            String?
 
   @@index([status])
 }
@@ -1455,6 +1470,8 @@ model SPLCase {
   partner                           SPLPartner              @relation(fields: [partnerId], references: [id])
   contractId                        String
   contract                          SPLContract             @relation(fields: [contractId], references: [id])
+  hmoPartnerId                      String?
+  hmoPartner                        HMOPartner?             @relation("HMOCases", fields: [hmoPartnerId], references: [id])
   serviceType                       String
   status                            SPLCaseStatus           @default(SUBMITTED)
 
@@ -1566,4 +1583,552 @@ model CommitteeMember {
   @@unique([committeeId, userId])
   @@index([committeeId])
   @@index([userId])
+}
+
+// ============================================
+// PHASE 2 — MEMBER VALUE & RENEWAL
+// ============================================
+
+model ProfileViewLog {
+  id              String    @id @default(cuid())
+  profileUserId   String    // User.id of the physician whose profile was viewed
+  viewerType      String    // HOSPITAL_ADMIN | PATIENT | DFC_MEMBER | SPL_ADMIN | ANONYMOUS | HMO
+  viewerUserId    String?   // null for anonymous
+  source          String?   // DIRECTORY | SECOND_OPINION | SPL | HOSPITAL_PORTAL
+  city            String?   // viewer's inferred location
+  viewedAt        DateTime  @default(now())
+
+  @@index([profileUserId, viewedAt])
+  @@index([viewerType])
+}
+
+model EarningsLedger {
+  id              String    @id @default(cuid())
+  userId          String    // DFC member User.id
+  amount          Decimal   @db.Decimal(12, 2)
+  currency        String    @default("NGN")
+  source          String    // SECOND_OPINION | DEPLOYMENT | SPL_CASE | SPACE_BOOKING_MARKUP | DIAGNOSTIC_MARKUP
+  sourceId        String    // ID of the source record
+  description     String
+  status          String    @default("PENDING") // PENDING | SETTLED | HELD
+  settledAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId, source])
+  @@index([status])
+}
+
+// ============================================
+// PHASE 2 — MEMBER REPUTATION LAYER
+// ============================================
+
+model ClinicalQuestion {
+  id              String             @id @default(cuid())
+  submittedBy     String?            // User.id — null for anonymous
+  specialty       String             // routed specialty
+  title           String             // short question title
+  body            String             // full question
+  slug            String?            @unique
+  visibility      String             @default("PUBLIC") // PUBLIC | PRIVATE | MEMBERS_ONLY
+  status          String             @default("OPEN")   // OPEN | ANSWERED | CLOSED
+  answers         ClinicalAnswer[]
+  viewCount       Int                @default(0)
+  createdAt       DateTime           @default(now())
+
+  @@index([specialty, status])
+  @@index([slug])
+}
+
+model ClinicalAnswer {
+  id              String             @id @default(cuid())
+  questionId      String
+  question        ClinicalQuestion   @relation(fields: [questionId], references: [id])
+  authorId        String             // DFC member User.id
+  body            String
+  isAccepted      Boolean            @default(false)
+  helpfulCount    Int                @default(0)
+  notHelpfulCount Int                @default(0)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([authorId])
+  @@index([questionId])
+}
+
+model MemberReputationScore {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  overallScore          Int       @default(0)
+  answersGiven          Int       @default(0)
+  helpfulRating         Decimal   @db.Decimal(4, 1) @default(0)
+  profileViews90d       Int       @default(0)
+  cmeHours              Int       @default(0)
+  casesReviewed         Int       @default(0)
+  deploymentsCompleted  Int       @default(0)
+  endorsementsReceived  Int       @default(0)
+  credentialsVerified   Boolean   @default(false)
+  bySpecialty           Json?     // { "Cardiology": 87, "Internal Medicine": 65 }
+  lastCalculatedAt      DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+// ============================================
+// PHASE 2 — CLINICAL WORKSPACE MARKETPLACE
+// ============================================
+
+model ClinicalSpace {
+  id                    String              @id @default(cuid())
+  hospitalId            String
+  hospital              HospitalPartner     @relation(fields: [hospitalId], references: [id])
+  name                  String              // "Consulting Room 3", "Procedure Suite A"
+  type                  String              // CONSULTING_ROOM | PROCEDURE_ROOM | MINOR_THEATRE | MAJOR_THEATRE | ENDOSCOPY_SUITE | DIAGNOSTIC_SUITE
+  floor                 String?
+  capacity              Int                 @default(1)
+  equipment             Json?               // ["ECG machine", "Ultrasound"]
+  amenities             Json?               // ["Private waiting area", "Ensuite toilet"]
+  images                Json?               // Cloudinary URLs
+  isActive              Boolean             @default(true)
+
+  // Pricing (DFC rate — what DFC charges members)
+  hourlyRate            Decimal?            @db.Decimal(10, 2)
+  halfDayRate           Decimal?            @db.Decimal(10, 2) // 4 hours
+  fullDayRate           Decimal?            @db.Decimal(10, 2) // 8 hours
+  currency              String              @default("NGN")
+
+  // Partner rate (what DFC pays the hospital — never shown to members)
+  partnerHourlyRate     Decimal?            @db.Decimal(10, 2)
+  partnerHalfDayRate    Decimal?            @db.Decimal(10, 2)
+  partnerFullDayRate    Decimal?            @db.Decimal(10, 2)
+
+  bookings              SpaceBooking[]
+  availability          SpaceAvailability[]
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([hospitalId, type, isActive])
+}
+
+model SpaceAvailability {
+  id              String        @id @default(cuid())
+  spaceId         String
+  space           ClinicalSpace @relation(fields: [spaceId], references: [id])
+  dayOfWeek       Int?          // 0-6, null = specific date only
+  specificDate    DateTime?     // for one-off availability
+  startTime       String        // "08:00"
+  endTime         String        // "17:00"
+  isBlocked       Boolean       @default(false) // hospital-side blocks
+  blockedReason   String?
+
+  @@index([spaceId])
+}
+
+model SpaceBooking {
+  id                  String        @id @default(cuid())
+  spaceId             String
+  space               ClinicalSpace @relation(fields: [spaceId], references: [id])
+  memberId            String        // User.id of the DFC member
+  bookingDate         DateTime
+  startTime           String        // "09:00"
+  endTime             String        // "13:00"
+  durationType        String        // HOURLY | HALF_DAY | FULL_DAY
+  durationHours       Decimal       @db.Decimal(4, 1)
+
+  // Pricing
+  memberRate          Decimal       @db.Decimal(10, 2) // DFC rate (what member pays)
+  partnerRate         Decimal       @db.Decimal(10, 2) // what DFC pays hospital
+  dfcMargin           Decimal       @db.Decimal(10, 2) // memberRate - partnerRate
+  currency            String        @default("NGN")
+
+  status              String        @default("PENDING")
+  // PENDING | CONFIRMED | CANCELLED_BY_MEMBER | CANCELLED_BY_HOSPITAL | COMPLETED
+
+  // Credential passport — attached at time of booking
+  credentialSnapshot  Json          // member's credentials at booking time
+  indemnityValid      Boolean       // verified at booking time
+
+  // Payment
+  paymentReference    String?
+  paymentStatus       String        @default("UNPAID") // UNPAID | PAID | REFUNDED
+
+  purpose             String?       // what the member will use the space for
+  specialEquipment    String?       // any special equipment requests
+  notes               String?
+
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([memberId, bookingDate])
+  @@index([spaceId, bookingDate])
+}
+
+// ============================================
+// PHASE 2 — DIAGNOSTIC NETWORK
+// ============================================
+
+model DiagnosticPartner {
+  id              String                    @id @default(cuid())
+  name            String                    @unique // "Cerba-Lancet" | "Synlab" | "Beaconhealth" | "Firmcare"
+  slug            String                    @unique
+  logoUrl         String?
+  integrationMode String                    // API | EMAIL_PDF | SFTP_PDF | MANUAL
+  apiBaseUrl      String?
+  apiKeyEnvVar    String?                   // name of env variable holding the API key
+  resultEmailAddr String?                   // email address results come from (for parsing)
+  isActive        Boolean                   @default(true)
+  centres         DiagnosticCentre[]
+  rateSchedules   DiagnosticRateSchedule[]
+  createdAt       DateTime                  @default(now())
+}
+
+model DiagnosticCentre {
+  id              String              @id @default(cuid())
+  partnerId       String
+  partner         DiagnosticPartner   @relation(fields: [partnerId], references: [id])
+  name            String              // "Cerba-Lancet Victoria Island"
+  address         String
+  city            String
+  state           String
+  phone           String?
+  email           String?
+  coordinates     Json?               // { lat, lng }
+  openingHours    Json?               // { mon: "08:00-18:00", ... }
+  capabilities    Json?               // LOINC codes of tests available at this centre
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+
+  @@index([city, isActive])
+}
+
+model DiagnosticRateSchedule {
+  id                  String            @id @default(cuid())
+  partnerId           String
+  partner             DiagnosticPartner @relation(fields: [partnerId], references: [id])
+  loincCode           String            // LOINC code
+  investigationName   String            // human readable
+  partnerRate         Decimal           @db.Decimal(10, 2) // what DFC pays — NEVER shown to members
+  dfcRate             Decimal           @db.Decimal(10, 2) // DFC floor — what members see
+  dfcMargin           Decimal           @db.Decimal(5, 2)  // percentage
+  currency            String            @default("NGN")
+  turnaroundHours     Int               // expected result turnaround
+  effectiveFrom       DateTime
+  effectiveTo         DateTime?         // null = current rate
+  negotiatedBy        String?           // DFC officer
+  approvedByExCo      Boolean           @default(false)
+  createdAt           DateTime          @default(now())
+
+  @@index([partnerId, loincCode])
+  @@index([effectiveFrom, effectiveTo])
+}
+
+model DiagnosticReferral {
+  id                  String    @id @default(cuid())
+  referralCode        String    @unique // DFC-REF-[6 char alphanumeric]
+  patientId           String    // PatientProfile.id
+  orderedById         String    // DoctorProfile.id
+  investigationId     String    // InvestigationOrder.id
+  partnerId           String?   // preferred or auto-selected partner
+  centreId            String?   // specific centre if patient selected one
+  loincCode           String
+  investigationName   String
+  dfcRate             Decimal   @db.Decimal(10, 2)
+  physicianMarkup     Decimal   @db.Decimal(10, 2) @default(0)
+  patientPrice        Decimal   @db.Decimal(10, 2) // dfcRate + markup
+  status              String    @default("ISSUED")
+  // ISSUED | TRANSMITTED | PATIENT_ARRIVED | SAMPLE_COLLECTED | PROCESSING | RESULTED | REVIEWED | CANCELLED
+  qrCodeUrl           String?   // Cloudinary URL of generated QR
+  expiresAt           DateTime  // 14 days from issue
+  transmittedAt       DateTime? // when sent electronically to partner
+  resultId            String?   // LabResult.id when resulted
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([patientId])
+  @@index([orderedById])
+  @@index([status])
+}
+
+// ============================================
+// PHASE 2 — STRUCTURED EMR (ICD-10, FORMULARY)
+// ============================================
+
+model DiagnosisCode {
+  id                String    @id @default(cuid())
+  code              String    @unique // e.g. "I10"
+  name              String    // e.g. "Essential (primary) hypertension"
+  chapter           String    // e.g. "IX — Diseases of the circulatory system"
+  block             String?   // e.g. "I10-I16"
+  isNigerianTop     Boolean   @default(false) // true for top 2000 Nigerian codes
+  nigeriaWeighting  Int       @default(0)     // 0-100, higher surfaces first
+  isDSM5            Boolean   @default(false) // true for psychiatric codes
+  searchTerms       String?   // comma-separated common aliases for search
+
+  @@index([code])
+  @@index([nigeriaWeighting])
+  @@index([isDSM5])
+}
+
+model FormularyDrug {
+  id                String    @id @default(cuid())
+  genericName       String    // "Amlodipine"
+  brandNames        Json?     // ["Norvasc", "Amlopine"]
+  atcCode           String?   // WHO ATC code
+  doseStrengths     Json      // ["2.5mg", "5mg", "10mg"]
+  forms             Json      // ["Tablet", "Capsule"]
+  routes            Json      // ["Oral"]
+  frequencies       Json      // ["Once daily", "Twice daily"]
+  indication        String?   // primary indication
+  nigeriaAvailable  String    @default("WIDELY_AVAILABLE") // WIDELY_AVAILABLE | LIMITED | RARELY_AVAILABLE
+  esml              Boolean   @default(false) // on Nigerian Essential Medicines List
+  nigeriaWeighting  Int       @default(0)
+  isControlled      Boolean   @default(false)
+  notes             String?   // availability notes
+
+  // === CLINICAL DECISION SUPPORT FIELDS ===
+  // Contraindications & safety
+  pregnancyCategory     String?   // FDA: A | B | C | D | X | N (not classified)
+  lactationSafe         String?   // SAFE | CAUTION | CONTRAINDICATED | UNKNOWN
+  contraindications     Json?     // ["Severe hepatic impairment", "Pregnancy"]
+  blackBoxWarnings      Json?     // ["Risk of suicidal thinking in adolescents"]
+  sideEffects           Json?     // { common: ["Nausea"], serious: ["Stevens-Johnson"], frequency: { "Nausea": "10-20%" } }
+  isHighAlert           Boolean   @default(false) // ISMP high-alert medication
+
+  // Dosing guardrails
+  maxDosePerDay         String?   // "4g" | "80mg" — human readable
+  renalAdjustment       Json?     // { mild: "No adjustment", moderate: "Reduce 50%", severe: "Contraindicated", dialysis: "Supplemental dose" }
+  hepaticAdjustment     Json?     // { mild: "No adjustment", moderate: "Reduce 25-50%", severe: "Avoid" }
+  paediatricDosing      Json?     // { weightBased: "10mg/kg/dose", maxPaed: "500mg", minAge: "2 years" }
+  geriatricNotes        String?   // "Start low, go slow. Increased fall risk."
+
+  // Classification
+  therapeuticClassId    String?
+  therapeuticClass      TherapeuticClass? @relation(fields: [therapeuticClassId], references: [id])
+  formularyTier         String    @default("UNRESTRICTED") // FIRST_LINE | SECOND_LINE | RESTRICTED | NON_FORMULARY | UNRESTRICTED
+  nafdacRegNumber       String?   // Nigerian NAFDAC registration
+
+  // Interactions
+  interactionsA         DrugInteraction[] @relation("InteractionDrugA")
+  interactionsB         DrugInteraction[] @relation("InteractionDrugB")
+
+  @@index([genericName])
+  @@index([nigeriaWeighting])
+  @@index([atcCode])
+  @@index([therapeuticClassId])
+}
+
+// ============================================
+// THERAPEUTIC CLASS HIERARCHY
+// ============================================
+
+model TherapeuticClass {
+  id          String              @id @default(cuid())
+  name        String              @unique // "ACE Inhibitors"
+  category    String              // "Cardiovascular" — top-level grouping
+  parentId    String?
+  parent      TherapeuticClass?   @relation("ClassHierarchy", fields: [parentId], references: [id])
+  children    TherapeuticClass[]  @relation("ClassHierarchy")
+  description String?
+  drugs       FormularyDrug[]
+
+  @@index([category])
+  @@index([parentId])
+}
+
+// ============================================
+// DRUG-DRUG INTERACTION ENGINE
+// ============================================
+
+model DrugInteraction {
+  id              String        @id @default(cuid())
+  drugAId         String
+  drugA           FormularyDrug @relation("InteractionDrugA", fields: [drugAId], references: [id])
+  drugBId         String
+  drugB           FormularyDrug @relation("InteractionDrugB", fields: [drugBId], references: [id])
+
+  severity        String        // CRITICAL | MAJOR | MODERATE | MINOR
+  mechanism       String        // "CYP3A4 inhibition" | "Additive QT prolongation" | "Reduced absorption"
+  clinicalEffect  String        // "Increased risk of bleeding"
+  management      String        // "Avoid combination" | "Monitor INR closely" | "Separate doses by 2 hours"
+  evidence        String        @default("ESTABLISHED") // ESTABLISHED | PROBABLE | SUSPECTED | THEORETICAL
+  source          String?       // "BNF" | "Lexicomp" | "ISMP" | "UpToDate"
+
+  @@unique([drugAId, drugBId])
+  @@index([drugAId])
+  @@index([drugBId])
+  @@index([severity])
+}
+
+// ============================================
+// PHASE 2 — PRESCRIPTION MANAGEMENT & E-PHARMACY
+// ============================================
+
+model PartnerPharmacy {
+  id              String                    @id @default(cuid())
+  name            String                    // "Healthplus Victoria Island"
+  chain           String?                   // "Healthplus" | "Medplus" | "Independent"
+  address         String
+  city            String
+  phone           String
+  email           String?
+  type            String                    // PHYSICAL | ONLINE | BOTH
+  onlineOrderUrl  String?                   // for e-pharmacies
+  apiEndpoint     String?                   // for API-connected pharmacies
+  paystackSubAccountCode String?
+  isActive        Boolean                   @default(true)
+  dispensingLogs  PharmacyDispensingLog[]
+  createdAt       DateTime                  @default(now())
+
+  @@index([city, isActive])
+}
+
+model PharmacyDispensingLog {
+  id              String          @id @default(cuid())
+  prescriptionId  String
+  pharmacyId      String
+  pharmacy        PartnerPharmacy @relation(fields: [pharmacyId], references: [id])
+  dispensedAt     DateTime        @default(now())
+  dispensedBy     String?         // pharmacist name
+  itemsDispensed  Json            // which items were dispensed (partial is possible)
+  notes           String?
+}
+
+model DrugRateSchedule {
+  id              String    @id @default(cuid())
+  drugId          String    // FormularyDrug.id
+  pharmacyId      String?   // null = all partner pharmacies
+  partnerRate     Decimal   @db.Decimal(10, 2) // DFC wholesale cost — NEVER shown to members
+  dfcRate         Decimal   @db.Decimal(10, 2) // DFC floor price to members
+  dfcMargin       Decimal   @db.Decimal(5, 2)  // percentage
+  unit            String    // "per tablet" | "per vial" | "per tube"
+  currency        String    @default("NGN")
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+
+  @@index([drugId])
+}
+
+// ============================================
+// PHASE 2 — SPL SPECIALTY ACTIVATION & HMO CONTRACTS
+// ============================================
+
+model SPLSpecialtyActivation {
+  id                    String    @id @default(cuid())
+  specialty             String    @unique
+  tier                  Int       // 1 | 2 | 3
+  status                String    @default("INACTIVE") // INACTIVE | AT_RISK | ACTIVE | SUSPENDED
+
+  // Minimum thresholds
+  minAnchorCity         Int       // Lagos + Abuja minimum
+  minSecondaryCity      Int       // PH, Ibadan, Kano minimum
+
+  // Current counts (updated by background job)
+  currentAnchorCount    Int       @default(0)
+  currentSecondaryCount Int       @default(0)
+
+  activatedAt           DateTime?
+  activatedBy           String?
+  notes                 String?
+  updatedAt             DateTime  @updatedAt
+}
+
+model HMOPartner {
+  id              String        @id @default(cuid())
+  name            String        @unique // "Axa Mansard Health"
+  shortCode       String        @unique // "AXA"
+  logoUrl         String?
+  livesUnderMgmt  Int           // current enrolled lives
+  contactName     String?
+  contactEmail    String?
+  contactPhone    String?
+  equityClass     String?       // "C" if equity partner
+  equityPercent   Decimal?      @db.Decimal(5, 2)
+  equityPaidNgn   Decimal?      @db.Decimal(14, 2)
+  isActive        Boolean       @default(true)
+  contracts       HMOContract[]
+  cases           SPLCase[]     @relation("HMOCases")
+  createdAt       DateTime      @default(now())
+}
+
+model HMOContract {
+  id                      String      @id @default(cuid())
+  hmoId                   String
+  hmo                     HMOPartner  @relation(fields: [hmoId], references: [id])
+  contractRef             String      @unique // SPL-HMO-[year]-[seq]
+  status                  String      @default("DRAFT")
+  // DRAFT | ACTIVE | SUSPENDED | EXPIRED | TERMINATED
+  signedAt                DateTime?
+  effectiveFrom           DateTime
+  effectiveTo             DateTime
+  livesCommitted          Int
+  signupFeePerLife        Decimal     @db.Decimal(8, 2)
+  signupFeeTotal          Decimal     @db.Decimal(14, 2)
+  signupFeeStatus         String      @default("UNPAID")
+
+  // Volume commitments by specialty
+  volumeCommitments       Json        // { "Cardiology": { quarterly: 50, annual: 200, tariff: 65000 }, ... }
+
+  // Tariff tiers (volume discount structure)
+  tariffTiers             Json        // { below50pct: +5%, 50to74: 0%, 75to89: -5%, 90to100: -10%, above100: -12% }
+
+  // DFC platform fee
+  dfcPlatformFeePercent   Decimal     @db.Decimal(5, 2) @default(15)
+
+  documentUrl             String?     // signed contract PDF
+  notes                   String?
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+
+  @@index([hmoId, status])
+}
+
+// ============================================
+// PHASE 2 — INVESTIGATION CODES (LOINC)
+// ============================================
+
+model InvestigationCode {
+  id                String    @id @default(cuid())
+  loincCode         String    @unique
+  name              String    // "Full Blood Count"
+  commonName        String?   // "FBC" — how Nigerian physicians commonly say it
+  category          String    // HAEMATOLOGY | BIOCHEMISTRY | MICROBIOLOGY | SEROLOGY | ENDOCRINOLOGY | URINALYSIS | IMAGING
+  sampleType        String    // BLOOD | URINE | STOOL | SWAB | TISSUE | OTHER
+  fastingRequired   Boolean   @default(false)
+  nigeriaWeighting  Int       @default(0) // 1-100, higher = more common in Nigeria
+
+  @@index([category])
+  @@index([nigeriaWeighting])
+}
+
+// ── Security Models ──────────────────────────────────────────────────
+
+model AuditLog {
+  id              String    @id @default(cuid())
+  userId          String?
+  action          String    // AUTH_LOGIN | AUTH_LOGOUT | USER_CREATE | USER_UPDATE | USER_DELETE | PERMISSION_CHANGE | PAYMENT_INIT | PAYMENT_VERIFY | DATA_EXPORT | CONSENT_CHANGE | ADMIN_ACTION | EMR_ACCESS | SETTINGS_UPDATE
+  resource        String?   // user | appointment | payment | emr | settings | member | secondOpinion
+  resourceId      String?
+  details         Json?     // Structured metadata (changed fields, old/new values, etc.)
+  ipAddress       String?
+  userAgent       String?
+  severity        String    @default("INFO") // INFO | WARN | CRITICAL
+  createdAt       DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([resource, resourceId])
+  @@index([severity, createdAt])
+}
+
+model RefreshToken {
+  id          String    @id @default(cuid())
+  userId      String
+  token       String    @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  userAgent   String?
+  ipAddress   String?
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
 }

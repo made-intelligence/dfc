@@ -94,10 +94,10 @@ export function LoginForm() {
   return (
     <Card
       ref={formRef}
-      className={`w-full max-w-md mx-auto animate-fade-up ${formVisible ? "visible" : ""}`}
+      className={`w-full max-w-md mx-auto bg-white/[0.95] backdrop-blur-xl border-white/60 shadow-2xl rounded-2xl animate-fade-up ${formVisible ? "visible" : ""}`}
     >
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">
+        <CardTitle className="text-2xl font-bold text-center text-[#0D1F3C]">
           Sign In
         </CardTitle>
         <CardDescription className="text-center">
