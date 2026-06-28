@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     const reference = `SO-${soCase.reference}-${Date.now()}`;
-    const callbackUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/second-opinion/callback`;
+    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/second-opinion/callback`;
 
     const res = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',

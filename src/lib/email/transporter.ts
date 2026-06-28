@@ -47,7 +47,7 @@ async function getEmailConfigFromDB() {
         secure: port === 465, // Use SSL only for port 465
         auth: {
           user: emailSettings.smtpUser || defaultEmailConfig.auth.user,
-          pass: emailSettings.smtpPassword || process.env.SMTP_PASSWORD || defaultEmailConfig.auth.pass,
+          pass: emailSettings.smtpPassword || process.env.SMTP_PASS || defaultEmailConfig.auth.pass,
         },
         tls: {
           rejectUnauthorized: false
