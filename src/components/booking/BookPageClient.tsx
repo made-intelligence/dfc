@@ -16,7 +16,6 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ArrowRight,
-  Shield,
   Clock,
   Briefcase,
   Video,
@@ -226,32 +225,12 @@ function BookPageContent() {
           {/* Layered gradient background */}
           <div className="absolute inset-0 bg-gradient-to-br from-[#0D1F3C] via-[#0A3454] to-[#0A6E75]" />
 
-          {/* Animated floating orbs */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute w-[500px] h-[500px] rounded-full bg-[#0A6E75]/20 blur-[100px] -top-40 -right-20 animate-pulse" />
-            <div className="absolute w-[400px] h-[400px] rounded-full bg-white/[0.04] blur-[80px] bottom-0 left-[10%]" />
-            <div className="absolute w-[300px] h-[300px] rounded-full bg-[#0A6E75]/10 blur-[60px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-          </div>
-
-          {/* Cross pattern */}
-          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
-
           <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Trust chip */}
-            <div className="flex items-center justify-center gap-2 mb-6">
-              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2">
-                <Shield className="w-4 h-4 text-emerald-400" />
-                <span className="text-sm font-medium text-white/90">
-                  All specialists are verified DFC members
-                </span>
-              </div>
-            </div>
-
             <div className="text-center mb-10">
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] font-bold mb-4 leading-[1.1] tracking-tight">
                 Consult with World-Trained
                 <br className="hidden sm:block" />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-teal-200">
+                <span className="text-emerald-300">
                   {" "}Nigerian Physicians
                 </span>
               </h1>

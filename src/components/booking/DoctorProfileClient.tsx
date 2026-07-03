@@ -126,10 +126,8 @@ export default function DoctorProfileClient({
       <main className="min-h-screen bg-[#F8F9FB]">
         {/* ─── Hero Section ──────────────────────────────────────── */}
         <div className="relative pt-20">
-          {/* Background gradient + pattern */}
-          <div className="absolute inset-0 h-[420px] bg-gradient-to-br from-[#0D1F3C] via-[#0A3454] to-[#0A6E75]">
-            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
-          </div>
+          {/* Background gradient */}
+          <div className="absolute inset-0 h-[420px] bg-gradient-to-br from-[#0D1F3C] via-[#0A3454] to-[#0A6E75]" />
 
           <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-8">
             {/* Breadcrumb */}
@@ -155,14 +153,6 @@ export default function DoctorProfileClient({
                   />
                   {/* Gradient overlay on mobile */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent lg:hidden" />
-
-                  {/* Availability badge */}
-                  {doctor.isAvailable && (
-                    <div className="absolute top-4 left-4 inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm text-green-700 text-sm font-semibold px-3.5 py-1.5 rounded-full shadow-sm">
-                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                      Available
-                    </div>
-                  )}
                 </div>
 
                 {/* Info section */}

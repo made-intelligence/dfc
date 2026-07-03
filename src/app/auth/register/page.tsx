@@ -9,16 +9,7 @@ import { Loader2 } from "lucide-react";
 function RegisterPageContent() {
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-      {/* Gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#0D1F3C] via-[#0A3454] to-[#0A6E75]" />
-
-      {/* Floating orbs */}
-      <div className="absolute top-20 right-10 w-72 h-72 bg-[#0A6E75]/20 rounded-full blur-3xl" />
-      <div className="absolute bottom-20 left-10 w-96 h-96 bg-[#0D1F3C]/30 rounded-full blur-3xl" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/5 rounded-full blur-3xl" />
-
-      {/* Cross pattern overlay */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
       <div className="relative z-10 w-full max-w-md">
         <div className="flex justify-center mb-6">

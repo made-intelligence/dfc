@@ -146,6 +146,9 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} Doctors Foundation for Care. All
             rights reserved.
           </p>
+          <p className="text-gray-400 text-xs mt-2">
+            Registered with the Corporate Affairs Commission. RC/RN: 7723649.
+          </p>
         </div>
       </div>
     </footer>

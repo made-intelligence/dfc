@@ -8,14 +8,6 @@ export default function JoinDFCSection() {
     <section className="grid grid-cols-1 md:grid-cols-2">
       {/* Left panel — Membership */}
       <div className="relative bg-[#0D1F3C] text-white px-6 sm:px-12 py-16 sm:py-20 flex flex-col justify-center overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-            backgroundSize: "24px 24px",
-          }}
-        />
         <div className="relative z-10 max-w-md mx-auto md:mx-0">
           <span className="text-xs font-semibold tracking-wider text-white/40 uppercase mb-3 block">
             For physicians
@@ -40,14 +32,6 @@ export default function JoinDFCSection() {
 
       {/* Right panel — Second Opinion */}
       <div className="relative bg-[#0A4A50] text-white px-6 sm:px-12 py-16 sm:py-20 flex flex-col justify-center overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-            backgroundSize: "24px 24px",
-          }}
-        />
         <div className="relative z-10 max-w-md mx-auto md:mx-0">
           <span className="text-xs font-semibold tracking-wider text-white/40 uppercase mb-3 block">
             For patients

@@ -206,17 +206,6 @@ export default function SpecialistProfilePage() {
               "linear-gradient(135deg, #0D1F3C 0%, #122847 40%, #0A4A50 100%)",
           }}
         >
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div
-              className="absolute w-[400px] h-[400px] rounded-full bg-white/[0.02] blur-3xl"
-              style={{ top: "-15%", right: "5%" }}
-            />
-            <div
-              className="absolute w-[200px] h-[200px] rounded-full bg-[#0A4A50]/20 blur-2xl"
-              style={{ bottom: "-10%", left: "15%" }}
-            />
-          </div>
-
           <div className="relative z-10 max-w-4xl mx-auto px-6 sm:px-8 pt-28 pb-12 lg:pt-32 lg:pb-16">
             <Link
               href="/specialists"

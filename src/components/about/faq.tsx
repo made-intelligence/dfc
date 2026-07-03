@@ -16,13 +16,6 @@ const FAQ = () => {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#0D1F3C] via-[#0A3454] to-[#0A6E75]" />
 
-        {/* Floating orbs */}
-        <div className="absolute top-10 right-20 w-72 h-72 bg-[#0A6E75]/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 left-10 w-60 h-60 bg-white/5 rounded-full blur-3xl" />
-
-        {/* Pattern */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-
         <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 pt-32 md:pt-40 pb-16">
           <p className="text-sm font-semibold text-emerald-300 uppercase tracking-wider mb-3">Support</p>
           <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight">

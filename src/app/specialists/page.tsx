@@ -136,18 +136,6 @@ export default function SpecialistsPage() {
               "linear-gradient(135deg, #0D1F3C 0%, #122847 40%, #0A4A50 100%)",
           }}
         >
-          {/* Decorative orbs */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div
-              className="absolute w-[400px] h-[400px] rounded-full bg-white/[0.03] blur-3xl"
-              style={{ top: "-10%", right: "-5%" }}
-            />
-            <div
-              className="absolute w-[300px] h-[300px] rounded-full bg-[#0A4A50]/20 blur-3xl"
-              style={{ bottom: "-15%", left: "10%" }}
-            />
-          </div>
-
           <div className="relative z-10 max-w-6xl mx-auto px-6 sm:px-8 pt-32 pb-16 lg:pt-36 lg:pb-20">
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-sm text-white/80 mb-6">

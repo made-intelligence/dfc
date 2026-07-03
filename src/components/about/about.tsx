@@ -119,25 +119,12 @@ export default function About() {
       {/* ─── Hero ──────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#0D1F3C] via-[#0A3454] to-[#0A6E75]" />
-        {/* Floating orbs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-[#0A6E75]/20 blur-[120px] -top-48 -right-32" />
-          <div className="absolute w-[400px] h-[400px] rounded-full bg-white/[0.03] blur-[80px] bottom-0 left-[5%]" />
-          <div className="absolute w-[300px] h-[300px] rounded-full bg-[#0A6E75]/10 blur-[60px] top-1/3 left-1/2 -translate-x-1/2" />
-        </div>
-        {/* Pattern */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
 
         <div className="relative z-10 max-w-4xl mx-auto px-6 sm:px-8 pt-32 pb-20 lg:pt-40 lg:pb-28 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-6">
-            <Shield className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm font-medium text-white/90">CAC RN: 7723649</span>
-          </div>
-
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-[1.1] tracking-tight">
             Turning Brain Drain
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-teal-200">
+            <span className="text-emerald-300">
               Into Brain Gain
             </span>
           </h1>
@@ -164,9 +151,6 @@ export default function About() {
 
       {/* ─── Who We Are — Glass cards ──────────────────────── */}
       <section className="relative py-20 sm:py-24 bg-[#F8F9FB]">
-        {/* Subtle background accent */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-[#0A6E75]/[0.03] blur-[100px] pointer-events-none" />
-
         <div className="relative max-w-5xl mx-auto px-6 sm:px-8">
           <div className="text-center mb-14">
             <p className="text-sm font-semibold text-[#0A6E75] uppercase tracking-wider mb-3">Who we are</p>
@@ -213,16 +197,10 @@ export default function About() {
 
       {/* ─── Mission & Vision — Glass morphism cards ────────── */}
       <section className="relative py-20 sm:py-24 bg-gradient-to-b from-[#F8F9FB] to-white overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute w-[400px] h-[400px] rounded-full bg-[#0A6E75]/[0.04] blur-[100px] top-1/2 left-0 -translate-y-1/2" />
-          <div className="absolute w-[300px] h-[300px] rounded-full bg-rose-500/[0.03] blur-[80px] top-20 right-0" />
-        </div>
-
         <div className="relative max-w-5xl mx-auto px-6 sm:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
             {/* Mission */}
             <div className="relative bg-gradient-to-br from-[#0D1F3C] to-[#0A3454] rounded-3xl p-8 overflow-hidden">
-              <div className="absolute top-0 right-0 w-[200px] h-[200px] rounded-full bg-[#0A6E75]/30 blur-[60px]" />
               <div className="relative">
                 <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center mb-5">
                   <Target className="w-6 h-6 text-emerald-400" />
@@ -238,7 +216,6 @@ export default function About() {
             </div>
             {/* Vision */}
             <div className="relative bg-gradient-to-br from-[#0A6E75] to-[#0A3454] rounded-3xl p-8 overflow-hidden">
-              <div className="absolute bottom-0 left-0 w-[200px] h-[200px] rounded-full bg-emerald-400/20 blur-[60px]" />
               <div className="relative">
                 <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center mb-5">
                   <Lightbulb className="w-6 h-6 text-emerald-300" />
@@ -292,10 +269,6 @@ export default function About() {
 
       {/* ─── For Diaspora Doctors ───────────────────────────── */}
       <section className="relative py-20 sm:py-24 bg-[#F8F9FB] overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute w-[500px] h-[500px] rounded-full bg-[#0A6E75]/[0.04] blur-[100px] -bottom-32 right-0" />
-        </div>
-
         <div className="relative max-w-5xl mx-auto px-6 sm:px-8">
           <div className="text-center mb-12">
             <p className="text-sm font-semibold text-[#0A6E75] uppercase tracking-wider mb-3">For diaspora doctors</p>

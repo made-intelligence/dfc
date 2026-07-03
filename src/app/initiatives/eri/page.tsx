@@ -97,15 +97,6 @@ export default function ERIPage() {
       <main className="flex-1">
         {/* Hero */}
         <section className="relative bg-[#0D1F3C] overflow-hidden">
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-              backgroundSize: "32px 32px",
-            }}
-          />
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-red-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
           <div className="relative z-10 max-w-4xl mx-auto px-6 sm:px-8 pt-32 pb-16 lg:pt-36 lg:pb-20 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 mb-6">
               <Siren className="w-4 h-4 text-red-400" />

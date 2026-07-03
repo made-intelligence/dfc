@@ -397,7 +397,6 @@ export default function ConsultationRoom() {
                         <h3 className="text-2xl font-semibold mb-2">{otherPartyName}</h3>
                         <p className="text-blue-400">{otherPartyRole}</p>
                         <p className="text-green-500 text-sm mt-4 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                             Connected (Encrypted)
                         </p>
                         

@@ -94,19 +94,6 @@ export default function ERISection() {
 
   return (
     <section className="relative py-20 sm:py-24 bg-[#0D1F3C] overflow-hidden">
-      {/* Subtle pattern */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-          backgroundSize: "32px 32px",
-        }}
-      />
-
-      {/* Accent glow */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-red-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="max-w-3xl mx-auto text-center mb-16">

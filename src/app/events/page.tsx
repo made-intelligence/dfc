@@ -71,14 +71,6 @@ export default function EventsPage() {
             background: "linear-gradient(135deg, #0D1F3C 0%, #0A4A50 100%)",
           }}
         >
-          <div
-            className="absolute inset-0 opacity-[0.04]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-              backgroundSize: "32px 32px",
-            }}
-          />
           <div className="relative z-10 max-w-4xl mx-auto px-6 sm:px-8 pt-32 pb-16 lg:pt-40 lg:pb-24 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white/80 text-sm font-medium mb-6">
               <Calendar className="w-4 h-4" />

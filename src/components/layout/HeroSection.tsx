@@ -122,31 +122,6 @@ export default function HeroSection() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Animated gradient mesh */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(ellipse 80% 60% at 20% 80%, #0A4A50 0%, transparent 70%)" }} />
-        <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(ellipse 60% 50% at 80% 20%, #1a5c63 0%, transparent 60%)" }} />
-        <div className="absolute inset-0 opacity-15" style={{ background: "radial-gradient(ellipse 40% 40% at 60% 70%, #0e6b5e 0%, transparent 50%)" }} />
-      </div>
-
-      {/* Floating bokeh orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute w-[300px] h-[300px] rounded-full bg-white/[0.03] blur-3xl animate-[float1_20s_ease-in-out_infinite]" style={{ top: "10%", left: "-5%" }} />
-        <div className="absolute w-[200px] h-[200px] rounded-full bg-[#0A4A50]/20 blur-2xl animate-[float2_15s_ease-in-out_infinite]" style={{ top: "60%", right: "5%" }} />
-        <div className="absolute w-[250px] h-[250px] rounded-full bg-white/[0.02] blur-3xl animate-[float3_18s_ease-in-out_infinite]" style={{ bottom: "5%", left: "30%" }} />
-        <div className="absolute w-[150px] h-[150px] rounded-full bg-[#0A4A50]/15 blur-2xl animate-[float1_22s_ease-in-out_infinite_reverse]" style={{ top: "25%", right: "25%" }} />
-        <div className="absolute w-[100px] h-[100px] rounded-full bg-white/[0.04] blur-xl animate-[float2_12s_ease-in-out_infinite]" style={{ top: "40%", left: "15%" }} />
-      </div>
-
-      {/* Subtle dot grid texture */}
-      <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "40px 40px" }} />
-
-      {/* Abstract light streaks */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute w-[600px] h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent rotate-[25deg] animate-[shimmer_8s_ease-in-out_infinite]" style={{ top: "30%", left: "-10%" }} />
-        <div className="absolute w-[400px] h-[1px] bg-gradient-to-r from-transparent via-white/[0.06] to-transparent rotate-[15deg] animate-[shimmer_12s_ease-in-out_infinite_2s]" style={{ top: "65%", right: "-5%" }} />
-      </div>
-
       <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 pt-28 pb-16 lg:pt-32 lg:pb-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 items-center min-h-[440px]">
 
@@ -216,16 +191,6 @@ export default function HeroSection() {
                     <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-[#0D1F3C]/40 to-transparent" />
                   </div>
                 ))}
-
-                {/* Glass overlay card on image — floating stat */}
-                <div className="absolute bottom-5 left-5 right-5 z-10 flex items-center gap-3 px-4 py-3 rounded-xl bg-white/15 backdrop-blur-xl border border-white/20">
-                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
-                  <span className="text-sm text-white font-medium">
-                    {current === 0 && "Specialists available now"}
-                    {current === 1 && "Open to new members"}
-                    {current === 2 && "Accepting partnerships"}
-                  </span>
-                </div>
               </div>
             </div>
           </div>
@@ -272,24 +237,6 @@ export default function HeroSection() {
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes float1 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(30px, -40px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.95); }
-        }
-        @keyframes float2 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          50% { transform: translate(-40px, -30px) scale(1.15); }
-        }
-        @keyframes float3 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          25% { transform: translate(20px, -50px) scale(1.05); }
-          75% { transform: translate(-30px, 30px) scale(0.9); }
-        }
-        @keyframes shimmer {
-          0%, 100% { opacity: 0; transform: translateX(-100%) rotate(25deg); }
-          50% { opacity: 1; transform: translateX(100%) rotate(25deg); }
         }
       `}</style>
     </section>

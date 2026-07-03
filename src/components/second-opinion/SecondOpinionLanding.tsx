@@ -189,24 +189,13 @@ export function SecondOpinionLanding() {
       {/* ─── HERO ─────────────────────────────────────────── */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#0D1F3C] via-[#0A3454] to-[#0A6E75]" />
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute w-[600px] h-[600px] rounded-full bg-[#0A6E75]/20 blur-[120px] -top-40 -right-32" />
-          <div className="absolute w-[400px] h-[400px] rounded-full bg-white/[0.03] blur-[80px] bottom-0 left-[5%]" />
-          <div className="absolute w-[300px] h-[300px] rounded-full bg-rose-500/[0.05] blur-[60px] top-1/3 left-1/3" />
-        </div>
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
 
         <div className="relative z-10 max-w-5xl mx-auto px-6 sm:px-8 lg:px-12 pt-32 pb-20 lg:pt-40 lg:pb-28">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-6">
-              <Shield className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm font-medium text-white/90">Independent review by verified specialists</span>
-            </div>
-
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-white leading-[1.1] tracking-tight">
               Before you decide,
               <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-teal-200">
+              <span className="text-emerald-300">
                 get a second pair of eyes.
               </span>
             </h1>
@@ -522,11 +511,6 @@ export function SecondOpinionLanding() {
       {/* ─── FINAL CTA ────────────────────────────────────── */}
       <section className="relative py-20 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#0D1F3C] via-[#0A3454] to-[#0A6E75]" />
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute w-[500px] h-[500px] rounded-full bg-[#0A6E75]/20 blur-[100px] -top-32 -right-20" />
-          <div className="absolute w-[300px] h-[300px] rounded-full bg-white/[0.03] blur-[60px] bottom-0 left-[10%]" />
-        </div>
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")" }} />
         <div className="relative max-w-3xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight">
             Your Health Decisions Deserve Certainty

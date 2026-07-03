@@ -159,13 +159,6 @@ export default function SPLLandingPage() {
         className="relative overflow-hidden"
         style={{ backgroundColor: "#1B4332" }}
       >
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 20% 50%, rgba(212, 168, 67, 0.4) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(212, 168, 67, 0.2) 0%, transparent 50%)",
-          }}
-        />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-36">
           <div className="max-w-3xl">
             <p

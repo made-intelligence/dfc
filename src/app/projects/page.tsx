@@ -102,14 +102,6 @@ export default function ProjectsPage() {
       <main className="flex-1">
         {/* Hero */}
         <section className="relative bg-[#0D1F3C] overflow-hidden">
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-              backgroundSize: "32px 32px",
-            }}
-          />
           <div className="relative z-10 max-w-4xl mx-auto px-6 sm:px-8 pt-32 pb-16 lg:pt-36 lg:pb-20 text-center">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight">
               Programmes & Initiatives
