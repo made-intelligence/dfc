@@ -117,6 +117,10 @@ model User {
   provider                          String?                 @default("local")
   providerId                        String?
 
+  // Account-claim invite (admin-created members set their own password via a claim link)
+  claimToken                        String?                 @unique
+  claimTokenExpiresAt               DateTime?
+
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
 
