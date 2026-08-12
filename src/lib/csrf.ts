@@ -63,6 +63,8 @@ export function validateCsrf(request: NextRequest): NextResponse | null {
     pathname === "/api/auth/register" ||
     pathname === "/api/auth/join" ||
     pathname === "/api/auth/legacy-claim" ||
+    pathname === "/api/auth/claim-account" ||
+    pathname === "/api/auth/claim" ||
     pathname.startsWith("/api/auth/google/")
   ) {
     return null;

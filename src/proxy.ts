@@ -29,6 +29,7 @@ const CSRF_SKIP_EXACT = [
   "/api/auth/join",
   "/api/auth/legacy-claim",
   "/api/auth/claim-account",
+  "/api/auth/claim",
   "/api/auth/csrf",
   "/api/auth/refresh",
   "/api/payment/initialize",
