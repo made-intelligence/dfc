@@ -1,3 +1,15 @@
+// Escape characters that could break out of the <script> tag when embedding
+// JSON-LD. JSON.stringify does not escape <, >, & or the JS line separators
+// (U+2028 / U+2029), so a user-controlled field containing "</script>" would
+// otherwise inject HTML. Encode each such character as a \uXXXX escape, which
+// is still valid inside a JSON string.
+function safeJsonLd(data: unknown): string {
+  return JSON.stringify(data).replace(
+    /[<>&\u2028\u2029]/g,
+    (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"),
+  );
+}
+
 export function OrganizationJsonLd() {
   const jsonLd = {
     "@context": "https://schema.org",
@@ -35,7 +47,7 @@ export function OrganizationJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
     />
   );
 }
@@ -57,7 +69,7 @@ export function FAQJsonLd({ faqs }: { faqs: { question: string; answer: string }
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
     />
   );
 }
@@ -77,7 +89,7 @@ export function BreadcrumbJsonLd({ items }: { items: { name: string; url: string
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
     />
   );
 }
@@ -107,7 +119,7 @@ export function MedicalWebPageJsonLd({
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
     />
   );
 }
@@ -143,7 +155,7 @@ export function DoctorJsonLd({
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
     />
   );
 }

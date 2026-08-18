@@ -46,11 +46,19 @@ export async function PUT(req: NextRequest) {
   if (isAuthError(auth)) return auth;
 
   const body = await req.json();
-  const { id, ...data } = body;
+  const { id } = body;
 
   if (!id) {
     return NextResponse.json({ error: "Profile ID is required." }, { status: 400 });
   }
+
+  // Whitelist updatable columns to prevent mass-assignment of arbitrary fields.
+  const allowed = [
+    "name", "title", "group", "role", "bio", "imageUrl",
+    "linkedinUrl", "institution", "location", "order", "isActive",
+  ];
+  const data: Record<string, unknown> = {};
+  for (const k of allowed) if (k in body) data[k] = body[k];
 
   const profile = await prisma.leadershipProfile.update({
     where: { id },

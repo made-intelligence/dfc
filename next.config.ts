@@ -51,9 +51,12 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ['react-dom/server'],
   async headers() {
+    // Same-origin app requests don't rely on this header; it only governs
+    // cross-origin browser access. Pin it to the canonical production origin
+    // (never "*" alongside Allow-Credentials, which browsers reject anyway).
     const allowedOrigins = process.env.NODE_ENV === "production"
-      ? "https://dfcare.org"
-      : "*";
+      ? (process.env.NEXT_PUBLIC_APP_URL || "https://www.dfcare.org")
+      : "http://localhost:3000";
 
     return [
       {

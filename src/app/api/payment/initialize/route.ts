@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { paymentRateLimit } from "@/lib/rate-limit";
@@ -52,10 +53,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Authoritative pricing: for appointment bookings the fee is taken from the
+    // doctor's profile server-side. Never trust the client-supplied amount.
+    // (If a doctor has no fee configured we fall back to the requested amount,
+    // and verify-time enforcement below only applies when a fee is set.)
+    let chargeAmount = amount;
+    if (metadata?.doctorId) {
+      const doctorProfile = await prisma.doctorProfile.findUnique({
+        where: { userId: metadata.doctorId },
+        select: { consultationFee: true },
+      });
+      const fee = doctorProfile ? Number(doctorProfile.consultationFee) : 0;
+      if (fee > 0) chargeAmount = fee;
+    }
+
     // Build Paystack payload — include split if subaccount provided
     const paystackPayload: Record<string, unknown> = {
       email,
-      amount: amount * 100, // Paystack expects amount in kobo
+      amount: chargeAmount * 100, // Paystack expects amount in kobo
       callback_url: callbackUrl,
       metadata: {
         ...metadata,

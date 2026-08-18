@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { handleApiResult } from "@/lib/diagnostics/ingestion";
 import { logger } from "@/lib/logger";
+import { secureEquals } from "@/lib/secure-compare";
 
 /**
  * POST /api/webhooks/diagnostics
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     const partner = partners.find((p) => {
       if (!p.apiKeyEnvVar) return false;
       const expectedKey = process.env[p.apiKeyEnvVar];
-      return expectedKey && expectedKey === apiKey;
+      return secureEquals(expectedKey, apiKey);
     });
 
     if (!partner) {

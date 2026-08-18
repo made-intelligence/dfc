@@ -9,6 +9,7 @@ import { logger } from '@/lib/logger';
 import crypto from 'crypto';
 
 const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'dfc_webhook_verify_secret';
+const APP_SECRET = process.env.WHATSAPP_APP_SECRET || '';
 
 function timingSafeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -33,7 +34,26 @@ export async function GET(request: NextRequest) {
 // Incoming messages + status updates (POST)
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Verify Meta's payload signature (HMAC-SHA256 of the raw body with the app
+    // secret) before processing anything. Without this, anyone could forge
+    // inbound messages -> spoofed tickets, billable AI calls, and outbound sends.
+    const raw = await request.text();
+    if (APP_SECRET) {
+      const signature = request.headers.get('x-hub-signature-256') || '';
+      const expected =
+        'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(raw).digest('hex');
+      if (!signature || !timingSafeEqual(signature, expected)) {
+        logger.error('WhatsAppWebhook', 'Invalid or missing x-hub-signature-256');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
+      }
+    } else {
+      logger.error(
+        'WhatsAppWebhook',
+        'WHATSAPP_APP_SECRET is not set — inbound payload signature is NOT being verified. Set it to enable enforcement.',
+      );
+    }
+
+    const body = JSON.parse(raw);
     const entries: WhatsAppWebhookEntry[] = body.entry || [];
 
     for (const entry of entries) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runRetentionCleanup } from "@/lib/data-retention";
 import { logger } from "@/lib/logger";
+import { secureEquals } from "@/lib/secure-compare";
 
 /**
  * Data retention cleanup cron endpoint.
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     const authHeader = request.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
 
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || !secureEquals(authHeader, `Bearer ${cronSecret}`)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

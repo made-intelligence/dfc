@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { checkRecordAccess } from '@/lib/emr/access';
 import { interpretAbnormalLab } from '@/lib/ai/cdss';
 
 export async function POST(request: NextRequest) {
@@ -20,6 +21,12 @@ export async function POST(request: NextRequest) {
 
     if (!labResultId || !patientId) {
       return NextResponse.json({ error: 'labResultId and patientId are required' }, { status: 400 });
+    }
+
+    // Enforce treatment relationship before reading this patient's lab data.
+    const access = await checkRecordAccess(payload.userId, payload.role, patientId, 'VIEWED', 'CDSS:LabInterpretation');
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason || 'Forbidden' }, { status: 403 });
     }
 
     // Fetch lab result

@@ -70,6 +70,24 @@ export async function POST(request: NextRequest) {
     const { metadata, amount, currency } = verifyData.data;
     const { doctorId, patientId, date, time, reason, isGuest, guestName, guestEmail, guestPhone, consultationMode, clinicLocation } = metadata;
 
+    // Price-integrity check: the amount actually paid must match the doctor's
+    // configured consultation fee (in kobo). This blocks amount-tampering where
+    // a client initializes a near-zero charge for a full-price consultation.
+    if (doctorId) {
+      const doctorProfile = await prisma.doctorProfile.findUnique({
+        where: { userId: doctorId },
+        select: { consultationFee: true },
+      });
+      const expectedKobo = doctorProfile ? Math.round(Number(doctorProfile.consultationFee) * 100) : 0;
+      if (expectedKobo > 0 && (amount !== expectedKobo || (currency && currency !== "NGN"))) {
+        logger.error("PaymentVerify", "Amount/currency mismatch", { reference, amount, expectedKobo, currency });
+        return NextResponse.json(
+          { error: "Payment amount does not match the consultation fee." },
+          { status: 400 }
+        );
+      }
+    }
+
     // IDOR protection for authenticated users
     if (authenticatedUserId && patientId && patientId !== authenticatedUserId) {
       logger.error('PaymentVerify', 'User mismatch', {

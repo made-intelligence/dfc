@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { checkRecordAccess } from '@/lib/emr/access';
 import { checkDrugInteractions } from '@/lib/ai/cdss';
 
 export async function POST(request: NextRequest) {
@@ -20,6 +21,13 @@ export async function POST(request: NextRequest) {
 
     if (!newDrug || !patientId) {
       return NextResponse.json({ error: 'newDrug and patientId are required' }, { status: 400 });
+    }
+
+    // Enforce that the caller has a treatment relationship with this patient
+    // before reading any of their clinical data (prevents cross-patient IDOR).
+    const access = await checkRecordAccess(payload.userId, payload.role, patientId, 'VIEWED', 'CDSS:DrugInteractions');
+    if (!access.allowed) {
+      return NextResponse.json({ error: access.reason || 'Forbidden' }, { status: 403 });
     }
 
     // Fetch active medications

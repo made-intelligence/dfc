@@ -128,6 +128,33 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Payment verification failed' }, { status: 400 });
       }
 
+      // Integrity: the transaction must be for the full dues amount in NGN and
+      // must belong to the caller (metadata.userId was set at init time). This
+      // blocks crediting good standing from an unrelated / underpaid reference.
+      if (
+        verifyData.data.amount !== ANNUAL_DUES_KOBO ||
+        (verifyData.data.currency && verifyData.data.currency !== 'NGN')
+      ) {
+        logger.error('MemberDues', 'Dues amount/currency mismatch', {
+          reference,
+          amount: verifyData.data.amount,
+          expected: ANNUAL_DUES_KOBO,
+          currency: verifyData.data.currency,
+        });
+        return NextResponse.json(
+          { error: 'Payment amount does not match the annual dues.' },
+          { status: 400 }
+        );
+      }
+      const paidBy = verifyData.data.metadata?.userId;
+      if (paidBy && paidBy !== payload.userId) {
+        logger.error('MemberDues', 'Dues payer mismatch', { reference, paidBy, caller: payload.userId });
+        return NextResponse.json(
+          { error: 'This payment does not belong to your account.' },
+          { status: 403 }
+        );
+      }
+
       const now = new Date();
       const expiresAt = new Date(now);
       expiresAt.setFullYear(expiresAt.getFullYear() + 1);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
+import { secureEquals } from "@/lib/secure-compare";
 import { runRetentionCleanup } from "@/lib/data-retention";
 import { runMonthlySettlement } from "@/lib/jobs/monthly-settlement";
 import { runQuarterlyVolumeTracking } from "@/lib/jobs/hmo-volume-tracking";
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
   try {
     // Auth via shared secret (not cookie auth — cron jobs are server-to-server)
     const cronSecret = request.headers.get("x-cron-secret");
-    if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
+    if (!process.env.CRON_SECRET || !secureEquals(cronSecret, process.env.CRON_SECRET)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

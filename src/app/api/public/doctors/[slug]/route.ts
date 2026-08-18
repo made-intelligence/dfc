@@ -115,8 +115,7 @@ export async function GET(
       id: doctor.user.id,
       slug: doctor.slug,
       name: doctor.user.name,
-      email: doctor.user.email,
-      // phone removed from public API — contact via booking system
+      // email + phone removed from public API — contact via booking system
       profileImage: doctor.user.profileImage,
       specialty: doctor.specialty?.name || "General",
       specialtyDescription: doctor.specialty?.description,

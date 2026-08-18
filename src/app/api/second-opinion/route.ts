@@ -152,7 +152,8 @@ export async function GET(request: NextRequest) {
         paidAt: true,
         assignedAt: true,
         reportDeliveredAt: true,
-        patientName: true,
+        // patientName intentionally omitted — this endpoint is unauthenticated
+        // (tracking by reference), so it must not leak patient identity.
       },
     });
     if (!soCase) {

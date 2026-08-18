@@ -12,9 +12,6 @@ const defaultEmailConfig = {
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
   },
-  tls: {
-    rejectUnauthorized: false
-  }
 };
 
 // Cache for email configuration
@@ -49,9 +46,6 @@ async function getEmailConfigFromDB() {
           user: emailSettings.smtpUser || defaultEmailConfig.auth.user,
           pass: emailSettings.smtpPassword || process.env.SMTP_PASS || defaultEmailConfig.auth.pass,
         },
-        tls: {
-          rejectUnauthorized: false
-        }
       };
       
       lastFetchTime = now;

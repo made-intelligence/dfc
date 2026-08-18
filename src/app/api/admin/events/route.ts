@@ -50,14 +50,23 @@ export async function PUT(req: NextRequest) {
   if (isAuthError(auth)) return auth;
 
   const body = await req.json();
-  const { id, ...data } = body;
+  const { id } = body;
 
   if (!id) {
     return NextResponse.json({ error: "Event ID is required." }, { status: 400 });
   }
 
-  if (data.date) data.date = new Date(data.date);
-  if (data.endDate) data.endDate = new Date(data.endDate);
+  // Whitelist updatable columns to prevent mass-assignment of arbitrary fields.
+  const allowed = [
+    "title", "description", "type", "date", "endDate", "time", "location",
+    "city", "isVirtual", "virtualLink", "imageUrl", "registrationUrl",
+    "isPublished", "isFeatured",
+  ];
+  const data: Record<string, unknown> = {};
+  for (const k of allowed) if (k in body) data[k] = body[k];
+
+  if (data.date) data.date = new Date(data.date as string);
+  if (data.endDate) data.endDate = new Date(data.endDate as string);
 
   const event = await prisma.dFCEvent.update({
     where: { id },
