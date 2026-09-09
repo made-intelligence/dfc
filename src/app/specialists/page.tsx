@@ -82,6 +82,7 @@ const CITIES = [
 export default function SpecialistsPage() {
   const [specialists, setSpecialists] = useState<Specialist[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [specialty, setSpecialty] = useState("All specialties");
   const [institution, setInstitution] = useState("All institutions");
   const [city, setCity] = useState("All cities");
@@ -90,33 +91,36 @@ export default function SpecialistsPage() {
 
   const fetchSpecialists = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const params = new URLSearchParams();
       if (specialty !== "All specialties") params.set("specialty", specialty);
       if (institution !== "All institutions")
         params.set("institution", institution);
       if (city !== "All cities") params.set("city", city);
-      if (statusTab === "verified") params.set("status", "ACTIVE");
 
       const res = await fetch(`/api/public/specialists?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSpecialists(data.specialists ?? data ?? []);
-      }
+      if (!res.ok) throw new Error("Failed to fetch specialists");
+      const data = await res.json();
+      setSpecialists(data.specialists ?? data ?? []);
     } catch {
-      console.error("Failed to fetch specialists");
+      // Never leave the previous query's results on screen — they would read
+      // as matches for filters that were never actually applied.
+      setSpecialists([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
-  }, [specialty, institution, city, statusTab]);
+  }, [specialty, institution, city]);
 
   useEffect(() => {
     fetchSpecialists();
   }, [fetchSpecialists]);
 
-  const verifiedCount = specialists.filter(
-    (s) => s.status === "ACTIVE"
-  ).length;
+  const verifiedSpecialists = specialists.filter((s) => s.status === "ACTIVE");
+  const verifiedCount = verifiedSpecialists.length;
+  const visibleSpecialists =
+    statusTab === "verified" ? verifiedSpecialists : specialists;
   const activeFilters = [specialty, institution, city].filter(
     (f) => !f.startsWith("All")
   ).length;
@@ -371,18 +375,43 @@ export default function SpecialistsPage() {
             </div>
           )}
 
-          {/* Empty state */}
-          {!loading && specialists.length === 0 && (
+          {/* Load failure — distinct from "nobody is listed" */}
+          {!loading && loadError && (
             <div className="rounded-xl border border-gray-200 bg-white py-20 text-center">
               <div className="mx-auto w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 <Stethoscope className="w-6 h-6 text-gray-400" />
               </div>
               <p className="text-base font-medium text-gray-900 mb-1">
-                No specialists found
+                We could not load the directory
               </p>
               <p className="text-sm text-gray-500 max-w-sm mx-auto">
-                Try adjusting your filters or check back later. New specialists
-                are verified and added regularly.
+                Something went wrong fetching specialists. This does not mean
+                none are listed.
+              </p>
+              <button
+                onClick={fetchSpecialists}
+                className="mt-4 text-sm font-medium text-[#0A4A50] hover:underline"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!loading && !loadError && visibleSpecialists.length === 0 && (
+            <div className="rounded-xl border border-gray-200 bg-white py-20 text-center">
+              <div className="mx-auto w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <Stethoscope className="w-6 h-6 text-gray-400" />
+              </div>
+              <p className="text-base font-medium text-gray-900 mb-1">
+                {statusTab === "verified" && specialists.length > 0
+                  ? "No verified specialists yet"
+                  : "No specialists found"}
+              </p>
+              <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                {statusTab === "verified" && specialists.length > 0
+                  ? "None of the specialists matching these filters have completed verification yet."
+                  : "Try adjusting your filters or check back later. New specialists are verified and added regularly."}
               </p>
               {activeFilters > 0 && (
                 <button
@@ -400,9 +429,9 @@ export default function SpecialistsPage() {
           )}
 
           {/* Specialist cards */}
-          {!loading && specialists.length > 0 && (
+          {!loading && !loadError && visibleSpecialists.length > 0 && (
             <div className="grid gap-4 md:grid-cols-2">
-              {specialists.map((spec) => (
+              {visibleSpecialists.map((spec) => (
                 <Link
                   key={spec.id}
                   href={`/specialists/${spec.slug}`}

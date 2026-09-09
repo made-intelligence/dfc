@@ -51,3 +51,15 @@ export const SPECIALTIES = [
 ] as const;
 
 export type Specialty = (typeof SPECIALTIES)[number];
+
+/**
+ * Normalise a specialty name for comparison.
+ * Handles case, punctuation, spacing and British/American spellings
+ * ("Paediatrics" vs "Pediatrics", "Haematology" vs "Hematology").
+ */
+export function normalizeSpecialtyName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/ae|oe/g, "e")
+    .replace(/[^a-z0-9]/g, "");
+}

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 import { useScrollAnimation } from "@/lib/useScrollAnimation";
 import { useCountUp } from "@/lib/useCountUp";
+import { usePlatformStats } from "@/lib/usePlatformStats";
 import { SPECIALTIES } from "@/lib/specialties";
 
 const locations = [
@@ -23,9 +24,22 @@ export default function SearchBar() {
   const router = useRouter();
   const { ref: statsRef, isVisible: statsVisible } = useScrollAnimation();
 
-  const doctorsCount = useCountUp({ end: 400, isVisible: statsVisible, duration: 2500 });
-  const hospitalsCount = useCountUp({ end: 15, isVisible: statsVisible, duration: 2000 });
-  const specialtiesCount = useCountUp({ end: 22, isVisible: statsVisible, duration: 1800 });
+  // Live counts. These were hardcoded (400 / 15 / 22) and kept displaying
+  // figures the directory could not back up.
+  const stats = usePlatformStats();
+  const membersCount = useCountUp({ end: stats?.members ?? 0, isVisible: statsVisible && !!stats, duration: 2500 });
+  const hospitalsCount = useCountUp({ end: stats?.hospitals ?? 0, isVisible: statsVisible && !!stats, duration: 2000 });
+  const specialtiesCount = useCountUp({ end: stats?.specialties ?? 0, isVisible: statsVisible && !!stats, duration: 1800 });
+
+  // Only surface a figure we actually have. A tile reading "0 Partner
+  // Hospitals" is worse than no tile at all.
+  const statTiles = stats
+    ? [
+        { value: membersCount, label: "Diaspora Physicians", show: stats.members > 0 },
+        { value: hospitalsCount, label: "Partner Hospitals", show: stats.hospitals > 0 },
+        { value: specialtiesCount, label: "Specialties", show: stats.specialties > 0 },
+      ].filter((t) => t.show)
+    : [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,28 +110,28 @@ export default function SearchBar() {
         </form>
       </div>
 
-      {/* Stats strip */}
+      {/* Stats strip — hidden entirely until the real figures load */}
       <div ref={statsRef} className="max-w-[860px] mx-auto px-4 sm:px-6 mt-8 mb-4">
-        <div className="grid grid-cols-3 divide-x divide-gray-200">
-          <div className="text-center py-4">
-            <p className="text-2xl sm:text-3xl font-bold text-[#0D1F3C]">
-              {doctorsCount}+
-            </p>
-            <p className="text-sm text-gray-500 mt-0.5">Diaspora Physicians</p>
+        {statTiles.length > 0 && (
+          <div
+            className={`grid divide-x divide-gray-200 ${
+              statTiles.length === 1
+                ? "grid-cols-1"
+                : statTiles.length === 2
+                  ? "grid-cols-2"
+                  : "grid-cols-3"
+            }`}
+          >
+            {statTiles.map((tile) => (
+              <div key={tile.label} className="text-center py-4">
+                <p className="text-2xl sm:text-3xl font-bold text-[#0D1F3C]">
+                  {tile.value}
+                </p>
+                <p className="text-sm text-gray-500 mt-0.5">{tile.label}</p>
+              </div>
+            ))}
           </div>
-          <div className="text-center py-4">
-            <p className="text-2xl sm:text-3xl font-bold text-[#0D1F3C]">
-              {hospitalsCount}+
-            </p>
-            <p className="text-sm text-gray-500 mt-0.5">Partner Hospitals</p>
-          </div>
-          <div className="text-center py-4">
-            <p className="text-2xl sm:text-3xl font-bold text-[#0D1F3C]">
-              {specialtiesCount}
-            </p>
-            <p className="text-sm text-gray-500 mt-0.5">Specialties</p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

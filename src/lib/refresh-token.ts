@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
+import { SECURE_ATTR } from "@/lib/cookie-flags";
 
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
 
@@ -98,14 +99,14 @@ export async function revokeRefreshToken(token: string): Promise<void> {
  */
 export function createRefreshCookie(token: string): string {
   const maxAge = REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60;
-  return `refresh_token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAge}; Path=/api/auth/refresh`;
+  return `refresh_token=${token}; HttpOnly; ${SECURE_ATTR}SameSite=Strict; Max-Age=${maxAge}; Path=/api/auth/refresh`;
 }
 
 /**
  * Create a cookie that clears the refresh token.
  */
 export function clearRefreshCookie(): string {
-  return `refresh_token=; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Path=/api/auth/refresh`;
+  return `refresh_token=; HttpOnly; ${SECURE_ATTR}SameSite=Strict; Max-Age=0; Path=/api/auth/refresh`;
 }
 
 /**

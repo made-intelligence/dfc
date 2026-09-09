@@ -9,6 +9,7 @@ import {
 } from "@/lib/refresh-token";
 import { authRateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { SECURE_ATTR } from "@/lib/cookie-flags";
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     // Set both cookies
     response.headers.append(
       "Set-Cookie",
-      `token=${accessToken}; HttpOnly; Secure; SameSite=Strict; Max-Age=7200; Path=/`
+      `token=${accessToken}; HttpOnly; ${SECURE_ATTR}SameSite=Strict; Max-Age=7200; Path=/`
     );
     response.headers.append("Set-Cookie", createRefreshCookie(newRefresh.token));
 

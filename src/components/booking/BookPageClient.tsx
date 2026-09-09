@@ -25,7 +25,8 @@ import Footer from "@/components/layout/Footer";
 import Image from "next/image";
 import Link from "next/link";
 import { Loading } from "@/components/ui/loading";
-import { SPECIALTIES } from "@/lib/specialties";
+import { SPECIALTIES, normalizeSpecialtyName } from "@/lib/specialties";
+import { usePlatformStats } from "@/lib/usePlatformStats";
 
 interface Specialty {
   id: string;
@@ -108,6 +109,7 @@ function BookPageContent() {
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState<string | null>(null);
   const [selectedSpecialtyName, setSelectedSpecialtyName] = useState("");
   const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
 
   const [minExperience, setMinExperience] = useState("0");
   const [feeRange, setFeeRange] = useState("");
@@ -115,9 +117,11 @@ function BookPageContent() {
   const [sortBy, setSortBy] = useState("newest");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  const platformStats = usePlatformStats();
   const [specialties, setSpecialties] = useState<Specialty[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalDoctors, setTotalDoctors] = useState(0);
@@ -129,8 +133,10 @@ function BookPageContent() {
     const urlQ = searchParams.get("q") || searchParams.get("search");
     if (urlSpecialty) { const d = decodeURIComponent(urlSpecialty); setDraftSpecialty(d); setSelectedSpecialtyName(d); }
     if (urlCountry) { const d = decodeURIComponent(urlCountry); setDraftCountry(d); setSelectedCountry(d); }
+    // A city is a real filter, not free text: routing it through `search`
+    // matched it against names and bios instead of the city column.
+    if (urlCity) setSelectedCity(decodeURIComponent(urlCity));
     if (urlQ) { const d = decodeURIComponent(urlQ); setDraftSearch(d); setSearch(d); }
-    else if (urlCity) { const d = decodeURIComponent(urlCity); setDraftSearch(d); setSearch(d); }
   }, [searchParams]);
 
   useEffect(() => {
@@ -141,7 +147,8 @@ function BookPageContent() {
         setSpecialties(specs);
         const urlSpecialty = searchParams.get("specialty");
         if (urlSpecialty) {
-          const match = specs.find((s: Specialty) => s.name.toLowerCase() === decodeURIComponent(urlSpecialty).toLowerCase());
+          const target = normalizeSpecialtyName(decodeURIComponent(urlSpecialty));
+          const match = specs.find((s: Specialty) => normalizeSpecialtyName(s.name) === target);
           if (match) setSelectedSpecialtyId(match.id);
         }
       })
@@ -151,10 +158,16 @@ function BookPageContent() {
   const fetchDoctors = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const params = new URLSearchParams();
       if (search.trim()) params.append("search", search.trim());
+      // Always pass the specialty through. Falling back to the name matters
+      // when the chosen specialty has no doctors at all and therefore has no
+      // id — dropping it here silently returned the entire directory.
       if (selectedSpecialtyId) params.append("specialtyId", selectedSpecialtyId);
+      else if (selectedSpecialtyName) params.append("specialty", selectedSpecialtyName);
       if (selectedCountry) params.append("country", selectedCountry);
+      if (selectedCity) params.append("city", selectedCity);
       if (minExperience !== "0") params.append("minExperience", minExperience);
       if (minRating !== "0") params.append("minRating", minRating);
       if (sortBy !== "newest") params.append("sort", sortBy);
@@ -164,12 +177,20 @@ function BookPageContent() {
       params.append("page", page.toString());
       params.append("limit", "12");
       const response = await fetch(`/api/public/doctors?${params}`);
+      if (!response.ok) throw new Error("Failed to load specialists");
       const data = await response.json();
       setDoctors(data.doctors || []);
       setTotalPages(data.pagination?.pages || 1);
       setTotalDoctors(data.pagination?.total || 0);
-    } catch { setDoctors([]); } finally { setLoading(false); }
-  }, [search, selectedSpecialtyId, selectedCountry, minExperience, feeRange, minRating, sortBy, page]);
+    } catch {
+      // A failed request is not the same as an empty directory — don't tell
+      // the visitor there are no specialists when we simply couldn't ask.
+      setDoctors([]);
+      setTotalPages(1);
+      setTotalDoctors(0);
+      setLoadError(true);
+    } finally { setLoading(false); }
+  }, [search, selectedSpecialtyId, selectedSpecialtyName, selectedCountry, selectedCity, minExperience, feeRange, minRating, sortBy, page]);
 
   useEffect(() => { fetchDoctors(); }, [fetchDoctors]);
 
@@ -178,18 +199,20 @@ function BookPageContent() {
     if (search.trim()) params.set("q", search.trim());
     if (selectedSpecialtyName) params.set("specialty", selectedSpecialtyName);
     if (selectedCountry) params.set("country", selectedCountry);
+    if (selectedCity) params.set("city", selectedCity);
     if (minExperience !== "0") params.set("exp", minExperience);
     if (feeRange) params.set("fee", feeRange);
     if (minRating !== "0") params.set("rating", minRating);
     if (sortBy !== "newest") params.set("sort", sortBy);
     const newUrl = params.toString() ? `?${params}` : "/book";
     router.replace(newUrl, { scroll: false });
-  }, [search, selectedSpecialtyName, selectedCountry, minExperience, feeRange, minRating, sortBy, router]);
+  }, [search, selectedSpecialtyName, selectedCountry, selectedCity, minExperience, feeRange, minRating, sortBy, router]);
 
   const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (draftSpecialty) {
-      const match = specialties.find((s) => s.name.toLowerCase() === draftSpecialty.toLowerCase());
+      const target = normalizeSpecialtyName(draftSpecialty);
+      const match = specialties.find((s) => normalizeSpecialtyName(s.name) === target);
       setSelectedSpecialtyId(match?.id || null);
       setSelectedSpecialtyName(draftSpecialty);
     } else { setSelectedSpecialtyId(null); setSelectedSpecialtyName(""); }
@@ -206,14 +229,14 @@ function BookPageContent() {
 
   const clearFilters = () => {
     setSearch(""); setDraftSearch(""); setSelectedSpecialtyId(null); setSelectedSpecialtyName("");
-    setDraftSpecialty(""); setSelectedCountry(""); setDraftCountry("");
+    setDraftSpecialty(""); setSelectedCountry(""); setDraftCountry(""); setSelectedCity("");
     setMinExperience("0"); setFeeRange(""); setMinRating("0"); setSortBy("newest"); setPage(1);
   };
 
-  const hasFilters = search || selectedSpecialtyId || selectedCountry;
+  const hasFilters = search || selectedSpecialtyName || selectedCountry || selectedCity;
   const hasDetailedFilters = minExperience !== "0" || feeRange || minRating !== "0";
   const activeFilterCount =
-    (search ? 1 : 0) + (selectedSpecialtyId ? 1 : 0) + (selectedCountry ? 1 : 0) +
+    (search ? 1 : 0) + (selectedSpecialtyName ? 1 : 0) + (selectedCountry ? 1 : 0) + (selectedCity ? 1 : 0) +
     (minExperience !== "0" ? 1 : 0) + (feeRange ? 1 : 0) + (minRating !== "0" ? 1 : 0);
 
   return (
@@ -299,14 +322,23 @@ function BookPageContent() {
 
             {/* Quick stats */}
             <div className="flex items-center justify-center gap-6 sm:gap-8 mt-6 text-sm text-white/40">
-              <div className="flex items-center gap-1.5">
-                <Stethoscope className="w-3.5 h-3.5" />
-                <span>{specialties.length} specialties</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Globe className="w-3.5 h-3.5" />
-                <span>7 countries</span>
-              </div>
+              {/* Live counts. "7 countries" used to be hardcoded here. */}
+              {specialties.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <Stethoscope className="w-3.5 h-3.5" />
+                  <span>
+                    {specialties.length} specialt{specialties.length === 1 ? "y" : "ies"}
+                  </span>
+                </div>
+              )}
+              {!!platformStats?.countries && (
+                <div className="flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5" />
+                  <span>
+                    {platformStats.countries} countr{platformStats.countries === 1 ? "y" : "ies"}
+                  </span>
+                </div>
+              )}
               <div className="hidden sm:flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5" />
                 <span>Same-week appointments</span>
@@ -425,10 +457,10 @@ function BookPageContent() {
               <h2 className="text-xl sm:text-2xl font-bold text-[#0D1F3C]">
                 {selectedSpecialtyName ? `${selectedSpecialtyName} Specialists` : "Available Specialists"}
               </h2>
-              {!loading && (
+              {!loading && !loadError && (
                 <p className="text-base text-gray-500 mt-1">
                   {totalDoctors} specialist{totalDoctors !== 1 ? "s" : ""} found
-                  {selectedCountry ? ` in ${selectedCountry}` : ""}
+                  {selectedCity ? ` in ${selectedCity}` : selectedCountry ? ` in ${selectedCountry}` : ""}
                 </p>
               )}
             </div>
@@ -443,37 +475,43 @@ function BookPageContent() {
               {search && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0D1F3C]/5 text-[#0D1F3C] rounded-full text-sm font-medium">
                   <Search className="w-3 h-3" />&ldquo;{search}&rdquo;
-                  <button onClick={() => { setSearch(""); setDraftSearch(""); }}><X className="w-3 h-3 ml-0.5" /></button>
+                  <button onClick={() => { setSearch(""); setDraftSearch(""); setPage(1); }}><X className="w-3 h-3 ml-0.5" /></button>
                 </span>
               )}
               {selectedSpecialtyName && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border bg-[#0D1F3C]/5 text-[#0D1F3C] border-[#0D1F3C]/10">
                   <Stethoscope className="w-3 h-3" />{selectedSpecialtyName}
-                  <button onClick={() => { setSelectedSpecialtyId(null); setSelectedSpecialtyName(""); setDraftSpecialty(""); }}><X className="w-3 h-3 ml-0.5" /></button>
+                  <button onClick={() => { setSelectedSpecialtyId(null); setSelectedSpecialtyName(""); setDraftSpecialty(""); setPage(1); }}><X className="w-3 h-3 ml-0.5" /></button>
                 </span>
               )}
               {selectedCountry && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0D1F3C]/5 text-[#0D1F3C] rounded-full text-sm font-medium">
                   <Globe className="w-3 h-3" />{selectedCountry}
-                  <button onClick={() => { setSelectedCountry(""); setDraftCountry(""); }}><X className="w-3 h-3 ml-0.5" /></button>
+                  <button onClick={() => { setSelectedCountry(""); setDraftCountry(""); setPage(1); }}><X className="w-3 h-3 ml-0.5" /></button>
+                </span>
+              )}
+              {selectedCity && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0D1F3C]/5 text-[#0D1F3C] rounded-full text-sm font-medium">
+                  <MapPin className="w-3 h-3" />{selectedCity}
+                  <button onClick={() => { setSelectedCity(""); setPage(1); }}><X className="w-3 h-3 ml-0.5" /></button>
                 </span>
               )}
               {minExperience !== "0" && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
                   {minExperience}+ years
-                  <button onClick={() => setMinExperience("0")}><X className="w-3 h-3 ml-0.5" /></button>
+                  <button onClick={() => { setMinExperience("0"); setPage(1); }}><X className="w-3 h-3 ml-0.5" /></button>
                 </span>
               )}
               {feeRange && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
                   {FEE_OPTIONS.find((f) => f.value === feeRange)?.label}
-                  <button onClick={() => setFeeRange("")}><X className="w-3 h-3 ml-0.5" /></button>
+                  <button onClick={() => { setFeeRange(""); setPage(1); }}><X className="w-3 h-3 ml-0.5" /></button>
                 </span>
               )}
               {minRating !== "0" && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
                   <Star className="w-3 h-3 fill-amber-400 text-amber-400" />{minRating}+
-                  <button onClick={() => setMinRating("0")}><X className="w-3 h-3 ml-0.5" /></button>
+                  <button onClick={() => { setMinRating("0"); setPage(1); }}><X className="w-3 h-3 ml-0.5" /></button>
                 </span>
               )}
             </div>
@@ -494,16 +532,36 @@ function BookPageContent() {
                 </div>
               ))}
             </div>
+          ) : loadError ? (
+            <div className="text-center py-20">
+              <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <Stethoscope className="w-9 h-9 text-gray-300" />
+              </div>
+              <h3 className="text-xl font-bold text-[#0D1F3C] mb-2">We couldn&rsquo;t load the directory</h3>
+              <p className="text-base text-gray-500 max-w-md mx-auto mb-6">
+                Something went wrong while fetching specialists. This is not a
+                reflection of who is available. Please try again.
+              </p>
+              <button onClick={() => fetchDoctors()} className="px-6 py-3 bg-[#0D1F3C] text-white font-semibold rounded-xl hover:bg-[#162d52] transition-colors">
+                Try again
+              </button>
+            </div>
           ) : doctors.length === 0 ? (
             <div className="text-center py-20">
               <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
                 <Stethoscope className="w-9 h-9 text-gray-300" />
               </div>
-              <h3 className="text-xl font-bold text-[#0D1F3C] mb-2">No specialists found</h3>
+              <h3 className="text-xl font-bold text-[#0D1F3C] mb-2">
+                {selectedSpecialtyName
+                  ? `No ${selectedSpecialtyName} specialists available`
+                  : "No specialists found"}
+              </h3>
               <p className="text-base text-gray-500 max-w-md mx-auto mb-6">
-                {hasFilters || hasDetailedFilters
-                  ? "Try adjusting your search or filters to find more specialists."
-                  : "No specialists are currently available. Please check back soon."}
+                {selectedSpecialtyName
+                  ? `No ${selectedSpecialtyName} specialist is taking bookings right now. Try another specialty, or request a second opinion and we will route your case.`
+                  : hasFilters || hasDetailedFilters
+                    ? "Try adjusting your search or filters to find more specialists."
+                    : "No specialists are currently available. Please check back soon."}
               </p>
               {(hasFilters || hasDetailedFilters) && (
                 <button onClick={clearFilters} className="px-6 py-3 bg-[#0D1F3C] text-white font-semibold rounded-xl hover:bg-[#162d52] transition-colors">

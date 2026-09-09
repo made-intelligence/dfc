@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       { success: true, specialists },
-      { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600' } },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' } },
     );
   } catch (error) {
     logger.error('PublicSpecialists', error);

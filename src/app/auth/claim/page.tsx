@@ -19,6 +19,9 @@ function ClaimContent() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
 
   useEffect(() => {
     if (!token) {
@@ -48,6 +51,28 @@ function ClaimContent() {
       active = false;
     };
   }, [token]);
+
+  async function handleResend(e: React.FormEvent) {
+    e.preventDefault();
+    setResending(true);
+    setResendMessage("");
+    try {
+      const res = await fetch("/api/auth/resend-claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resendEmail }),
+      });
+      const data = await res.json();
+      setResendMessage(
+        data.message ||
+          "If that address belongs to an account awaiting activation, a new link is on its way.",
+      );
+    } catch {
+      setResendMessage("Something went wrong. Please try again in a moment.");
+    } finally {
+      setResending(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -107,6 +132,50 @@ function ClaimContent() {
               <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
               <h1 className="mt-4 text-xl font-bold text-[#0D1F3C]">Link not valid</h1>
               <p className="mt-2 text-gray-600">{error}</p>
+
+              {/* Activation links expire after 30 days. Let members re-issue
+                  one themselves instead of writing to the secretariat. */}
+              {resendMessage ? (
+                <p className="mt-6 rounded-lg bg-emerald-50 border border-emerald-100 p-4 text-sm text-emerald-800 text-left">
+                  {resendMessage}
+                </p>
+              ) : (
+                <form onSubmit={handleResend} className="mt-6 text-left">
+                  <label
+                    htmlFor="resendEmail"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Send me a new link
+                  </label>
+                  <p className="text-sm text-gray-500 mb-2">
+                    Enter the email address your invitation was sent to.
+                  </p>
+                  <input
+                    id="resendEmail"
+                    type="email"
+                    required
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full rounded-lg border border-gray-200 px-4 py-3 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0A6E75]/30 focus:border-[#0A6E75]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={resending}
+                    className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#0A6E75] px-6 py-3 text-base font-semibold text-white hover:bg-[#085c62] disabled:opacity-60 transition-colors"
+                  >
+                    {resending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Sending…
+                      </>
+                    ) : (
+                      "Email me a new link"
+                    )}
+                  </button>
+                </form>
+              )}
+
               <Link
                 href="/auth/login"
                 className="mt-6 inline-block text-[#0A6E75] font-medium hover:underline"

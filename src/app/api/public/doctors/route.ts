@@ -3,11 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { parsePagination } from "@/lib/pagination";
+import { normalizeSpecialtyName } from "@/lib/specialties";
+
+// Upper bound on rows scanned when rating has to be filtered/sorted in memory.
+const RATING_SCAN_LIMIT = 500;
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const specialtyId = searchParams.get("specialtyId") || "";
+    const specialtyName = searchParams.get("specialty") || "";
     const institution = searchParams.get("institution") || "";
     const city = searchParams.get("city") || "";
     const country = searchParams.get("country") || "";
@@ -37,9 +42,21 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Specialty filter
+    // Specialty filter — by id, or by name when the caller only has a label.
+    // Matching by name must never fall through to "no filter", otherwise a
+    // search for a specialty nobody practises returns the whole directory.
     if (specialtyId) {
       where.specialtyId = specialtyId;
+    } else if (specialtyName) {
+      const target = normalizeSpecialtyName(specialtyName);
+      const allSpecialties = await prisma.specialty.findMany({
+        select: { id: true, name: true },
+      });
+      const matchedIds = allSpecialties
+        .filter((s) => normalizeSpecialtyName(s.name) === target)
+        .map((s) => s.id);
+      // An empty list is intentional: unknown specialty => zero results.
+      where.specialtyId = { in: matchedIds };
     }
 
     // Institution filter
@@ -76,34 +93,43 @@ export async function GET(request: NextRequest) {
     if (sortBy === "fee_low") orderBy = { consultationFee: "asc" };
     if (sortBy === "fee_high") orderBy = { consultationFee: "desc" };
 
-    const [doctors, totalDoctors] = await Promise.all([
+    const include = {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          profileImage: true,
+        },
+      },
+      specialty: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      ratings: {
+        select: { rating: true },
+      },
+      schedules: {
+        where: { scheduleType: 'AVAILABLE' as const },
+        select: { consultationMode: true, location: true },
+      },
+    };
+
+    // Rating is computed from related rows, not a DB column, so filtering or
+    // sorting by it has to happen after the query. Doing that on a single page
+    // would make `total` disagree with what is actually rendered (the page can
+    // end up empty while the header still claims N results), so in that case we
+    // load the matching set and paginate in memory instead.
+    const ratingInMemory = minRating > 0 || sortBy === "rating";
+
+    const [doctors, dbTotal] = await Promise.all([
       prisma.doctorProfile.findMany({
         where,
-        skip,
-        take: limit,
+        skip: ratingInMemory ? 0 : skip,
+        take: ratingInMemory ? RATING_SCAN_LIMIT : limit,
         orderBy,
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              profileImage: true,
-            },
-          },
-          specialty: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          ratings: {
-            select: { rating: true },
-          },
-          schedules: {
-            where: { scheduleType: 'AVAILABLE' },
-            select: { consultationMode: true, location: true },
-          },
-        },
+        include,
       }),
       prisma.doctorProfile.count({ where }),
     ]);
@@ -149,14 +175,19 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Post-query rating filter (rating is computed, not a DB column)
-    if (minRating > 0) {
-      doctorsWithStats = doctorsWithStats.filter((d) => d.rating >= minRating);
-    }
+    let totalDoctors = dbTotal;
 
-    // Sort by rating (post-query)
-    if (sortBy === "rating") {
-      doctorsWithStats.sort((a, b) => b.rating - a.rating);
+    if (ratingInMemory) {
+      if (minRating > 0) {
+        doctorsWithStats = doctorsWithStats.filter((d) => d.rating >= minRating);
+      }
+      if (sortBy === "rating") {
+        doctorsWithStats.sort((a, b) => b.rating - a.rating);
+      }
+      // Count what the caller can actually reach, so an empty page and a
+      // "0 found" header always agree.
+      totalDoctors = doctorsWithStats.length;
+      doctorsWithStats = doctorsWithStats.slice(skip, skip + limit);
     }
 
     return NextResponse.json(
@@ -166,10 +197,10 @@ export async function GET(request: NextRequest) {
           page,
           limit,
           total: totalDoctors,
-          pages: Math.ceil(totalDoctors / limit),
+          pages: Math.max(1, Math.ceil(totalDoctors / limit)),
         },
       },
-      { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600' } },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' } },
     );
   } catch (error) {
     logger.error('PublicDoctors', error);

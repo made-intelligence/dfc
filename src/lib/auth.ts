@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify, JWTPayload as JoseJWTPayload } from "jose";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
+import { SECURE_ATTR } from "@/lib/cookie-flags";
 
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
   throw new Error("JWT_SECRET environment variable is required in production");
@@ -108,11 +109,11 @@ export function getTokenFromCookies(
 }
 
 export function createAuthCookie(token: string): string {
-  return `token=${token}; HttpOnly; Secure; SameSite=Strict; Max-Age=7200; Path=/`;
+  return `token=${token}; HttpOnly; ${SECURE_ATTR}SameSite=Strict; Max-Age=7200; Path=/`;
 }
 
 export function createLogoutCookie(): string {
-  return `token=; HttpOnly; Secure; SameSite=Strict; Max-Age=0; Path=/`;
+  return `token=; HttpOnly; ${SECURE_ATTR}SameSite=Strict; Max-Age=0; Path=/`;
 }
 
 // Validation utilities

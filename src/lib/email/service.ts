@@ -1,5 +1,6 @@
 import 'server-only';
 import { getTransporter } from './transporter';
+import { isZeptoConfigured, sendViaZepto, ZEPTO_FROM } from './zepto';
 import { prisma } from '@/lib/prisma';
 import React from 'react';
 
@@ -16,21 +17,26 @@ export async function sendEmail({ to, subject, templateName, component, metadata
     const { renderToStaticMarkup } = await import('react-dom/server');
     const html = renderToStaticMarkup(component);
 
-    // Get email configuration from database
-    const settings = await prisma.systemSettings.findFirst();
-    const emailSettings = settings?.email as any;
-    const fromEmail = emailSettings?.fromEmail || process.env.SMTP_FROM || '"DFC Medical Support" <noreply@dfcmedical.com>';
+    // Prefer ZeptoMail: it is the transport that actually delivers. The SMTP
+    // settings are only used when no ZeptoMail key is configured.
+    const useZepto = isZeptoConfigured();
+    let fromEmail = ZEPTO_FROM;
 
-    // Get transporter with database configuration
-    const transporter = await getTransporter();
+    if (useZepto) {
+      await sendViaZepto({ to, subject, html });
+    } else {
+      const settings = await prisma.systemSettings.findFirst();
+      const emailSettings = settings?.email as any;
+      fromEmail = emailSettings?.fromEmail || process.env.SMTP_FROM || '"DFC Medical Support" <noreply@dfcmedical.com>';
 
-    // Send email
-    await transporter.sendMail({
-      from: fromEmail,
-      to,
-      subject,
-      html,
-    });
+      const transporter = await getTransporter();
+      await transporter.sendMail({
+        from: fromEmail,
+        to,
+        subject,
+        html,
+      });
+    }
 
     // Log success
     await prisma.emailLog.create({
@@ -39,7 +45,7 @@ export async function sendEmail({ to, subject, templateName, component, metadata
         subject,
         template: templateName,
         status: 'SENT',
-        metadata: metadata || {},
+        metadata: { ...(metadata || {}), transport: useZepto ? 'zeptomail' : 'smtp', from: fromEmail },
       },
     });
 
