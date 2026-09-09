@@ -1,5 +1,11 @@
 # Google OAuth Setup Guide
 
+> **Status: not currently wired up.** The "Continue with Google" buttons and the
+> `/api/auth/google` routes were removed because no OAuth credentials were ever
+> issued for dfcare.org. Sign-in and sign-up are email + password only. This guide
+> stays here as the recipe for re-enabling it; the deleted route handlers are in
+> git history.
+
 This guide will help you set up Google OAuth authentication for the DFC Medical application.
 
 ## Prerequisites

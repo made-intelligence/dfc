@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
+/**
+ * Edge gate for the portal routes, plus CSRF checks for state-changing API calls.
+ *
+ * Protected areas (/admin and friends) were previously guarded only
+ * client-side (ProtectedRoute), which lets the page shell render before
+ * redirecting. Verifying the JWT here blocks the request before any page is
+ * served.
+ *
+ * This intentionally does NOT import from src/lib/auth.ts: that module pulls in
+ * bcryptjs, which is not edge-runtime compatible. We re-verify the same HS256
+ * token here with jose (edge-safe) using the same JWT_SECRET.
+ */
+
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "dev-only-secret-do-not-use-in-production",
 );
@@ -30,6 +43,7 @@ const CSRF_SKIP_EXACT = [
   "/api/auth/legacy-claim",
   "/api/auth/claim-account",
   "/api/auth/claim",
+  "/api/auth/resend-claim",
   "/api/auth/csrf",
   "/api/auth/refresh",
   "/api/payment/initialize",
@@ -52,7 +66,6 @@ function validateCsrfInProxy(request: NextRequest): NextResponse | null {
   // Skip exempt routes
   if (CSRF_SKIP_PREFIXES.some((p) => pathname.startsWith(p))) return null;
   if (CSRF_SKIP_EXACT.includes(pathname)) return null;
-  if (pathname.startsWith("/api/auth/google/")) return null;
 
   const cookieToken = request.cookies.get("csrf_token")?.value;
   const headerToken = request.headers.get("x-csrf-token");

@@ -63,12 +63,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is OAuth user (no password)
+    // Accounts created by the secretariat (or as payment guests) have no
+    // password until the member activates them via the claim link.
     if (!user.password) {
       return NextResponse.json(
         {
-          error:
-            'This account uses Google sign-in. Please use "Continue with Google" button.',
+          error: user.claimToken
+            ? "This account has not been activated yet. Use the activation link we emailed you, or contact the secretariat to have it resent."
+            : "No password is set on this account. Use \"Forgot Password?\" to set one.",
         },
         { status: 401 },
       );

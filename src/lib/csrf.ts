@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { SECURE_ATTR } from "@/lib/cookie-flags";
 
 const CSRF_COOKIE_NAME = "csrf_token";
 const CSRF_HEADER_NAME = "x-csrf-token";
@@ -16,7 +17,7 @@ export function generateCsrfToken(): string {
  * Create a CSRF cookie string (non-httpOnly so JS can read it for the header).
  */
 export function createCsrfCookie(token: string): string {
-  return `${CSRF_COOKIE_NAME}=${token}; Secure; SameSite=Strict; Max-Age=7200; Path=/`;
+  return `${CSRF_COOKIE_NAME}=${token}; ${SECURE_ATTR}SameSite=Strict; Max-Age=7200; Path=/`;
 }
 
 /**
@@ -65,7 +66,7 @@ export function validateCsrf(request: NextRequest): NextResponse | null {
     pathname === "/api/auth/legacy-claim" ||
     pathname === "/api/auth/claim-account" ||
     pathname === "/api/auth/claim" ||
-    pathname.startsWith("/api/auth/google/")
+    pathname === "/api/auth/resend-claim"
   ) {
     return null;
   }
