@@ -17,9 +17,13 @@ export async function sendEmail({ to, subject, templateName, component, metadata
     const { renderToStaticMarkup } = await import('react-dom/server');
     const html = renderToStaticMarkup(component);
 
-    // Prefer ZeptoMail: it is the transport that actually delivers. The SMTP
-    // settings are only used when no ZeptoMail key is configured.
-    const useZepto = isZeptoConfigured();
+    // MAIL_TRANSPORT picks the transport explicitly ("smtp" | "zeptomail").
+    // Left unset, ZeptoMail wins when a key is present, since it is the path
+    // known to deliver; SMTP is the fallback.
+    const preference = (process.env.MAIL_TRANSPORT || "").toLowerCase();
+    const useZepto =
+      preference === "zeptomail" ||
+      (preference !== "smtp" && isZeptoConfigured());
     let fromEmail = ZEPTO_FROM;
 
     if (useZepto) {
