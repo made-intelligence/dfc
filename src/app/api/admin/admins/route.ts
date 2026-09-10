@@ -7,6 +7,7 @@ import { logger } from "@/lib/logger";
 import { parsePagination } from "@/lib/pagination";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { auditAdmin } from "@/lib/audit";
+import { appUrl } from "@/lib/app-url";
 import { sendEmail } from "@/lib/email/service";
 import ClaimInvite from "@/emails/ClaimInvite";
 import React from "react";
@@ -98,10 +99,7 @@ export async function POST(request: NextRequest) {
     // from the claim page.
     let inviteSent = false;
     try {
-      const baseUrl =
-        process.env.CLAIM_BASE_URL ||
-        process.env.NEXT_PUBLIC_APP_URL ||
-        "https://www.dfcare.org";
+      const baseUrl = process.env.CLAIM_BASE_URL || appUrl();
 
       const result = await sendEmail({
         to: newAdmin.email,

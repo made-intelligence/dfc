@@ -1,4 +1,5 @@
 import { Metadata, ResolvingMetadata } from "next";
+import { appUrl } from "@/lib/app-url";
 import DoctorProfileClient from "@/components/booking/DoctorProfileClient";
 import { DoctorJsonLd } from "@/components/seo/JsonLd";
 
@@ -8,7 +9,7 @@ interface Props {
 }
 
 async function getDoctor(slug: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl = appUrl();
   try {
     const res = await fetch(`${baseUrl}/api/public/doctors/${slug}`, {
       cache: "no-store",
@@ -58,7 +59,7 @@ export async function generateMetadata(
 export default async function DoctorProfilePage({ params }: Props) {
   const { slug } = await params;
   const doctor = await getDoctor(slug);
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://dfcare.org";
+  const baseUrl = appUrl();
 
   return (
     <>

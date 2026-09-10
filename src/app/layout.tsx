@@ -5,11 +5,12 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/components/ui/toast";
 import CsrfBootstrap from "@/components/auth/CsrfBootstrap";
 import { OrganizationJsonLd } from "@/components/seo/JsonLd";
+import { appUrl } from "@/lib/app-url";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://dfcare.org"),
+  metadataBase: new URL(appUrl()),
   title: {
     default: "DFC | Doctors Foundation For Care — Nigerian Diaspora Medical Experts",
     template: "%s | DFC — Doctors Foundation For Care",

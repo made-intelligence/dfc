@@ -5,6 +5,7 @@ import { sendEmail } from "@/lib/email/service";
 import ClaimInvite from "@/emails/ClaimInvite";
 import React from "react";
 import { logger } from "@/lib/logger";
+import { appUrl } from "@/lib/app-url";
 import {
   generateClaimToken,
   claimTokenExpiry,
@@ -57,10 +58,7 @@ export async function POST(request: NextRequest) {
         data: { claimToken: token, claimTokenExpiresAt: claimTokenExpiry() },
       });
 
-      const baseUrl =
-        process.env.CLAIM_BASE_URL ||
-        process.env.NEXT_PUBLIC_APP_URL ||
-        "https://www.dfcare.org";
+      const baseUrl = process.env.CLAIM_BASE_URL || appUrl();
 
       await sendEmail({
         to: user.email,

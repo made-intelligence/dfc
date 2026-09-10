@@ -5,8 +5,7 @@ import { sendClaimLink, normalisePhone } from '@/lib/whatsapp/service';
 import { UserRole } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { logger } from '@/lib/logger';
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+import { appUrl } from '@/lib/app-url';
 
 export async function GET(request: NextRequest) {
   try {
@@ -106,7 +105,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
       }
 
-      const claimUrl = `${APP_URL}/auth/claim?token=${member.claimToken}`;
+      const claimUrl = `${appUrl()}/auth/claim?token=${member.claimToken}`;
       const result = await sendClaimLink(member.phone, member.name || 'DFC Member', claimUrl);
 
       await prisma.legacyMember.update({

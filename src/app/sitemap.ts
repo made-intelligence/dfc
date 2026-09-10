@@ -1,8 +1,9 @@
 import { MetadataRoute } from "next";
+import { appUrl } from "@/lib/app-url";
 import { prisma } from "@/lib/prisma";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://dfcare.org";
+  const baseUrl = appUrl();
 
   // Static routes with SEO priority
   const staticRoutes = [

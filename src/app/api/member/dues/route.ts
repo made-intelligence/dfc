@@ -4,8 +4,7 @@ import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 
 const ANNUAL_DUES_KOBO = 15000000; // ₦150,000 in kobo
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
+import { appUrl } from "@/lib/app-url";
 export async function GET(request: NextRequest) {
   try {
     const token = getTokenFromCookies(request.headers.get('cookie'));
@@ -79,7 +78,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           email: payload.email,
           amount: ANNUAL_DUES_KOBO,
-          callback_url: `${APP_URL}/member/dues?payment=callback`,
+          callback_url: `${appUrl()}/member/dues?payment=callback`,
           metadata: {
             type: 'ANNUAL_DUES',
             userId: payload.userId,

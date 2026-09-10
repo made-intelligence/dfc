@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { appUrl } from '@/lib/app-url';
 
 // Initialize Paystack payment for a second opinion case
 export async function POST(request: NextRequest) {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     const reference = `SO-${soCase.reference}-${Date.now()}`;
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/second-opinion/callback`;
+    const callbackUrl = `${appUrl()}/second-opinion/callback`;
 
     const res = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
