@@ -219,7 +219,9 @@ export async function POST(request: NextRequest) {
         templateName: 'Welcome',
         component: React.createElement(Welcome, {
           name: result.name,
-          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard`
+          // Self-signups are PATIENT role, and LoginForm sends them to /appointments.
+          // There is no /dashboard route, so the old link 404'd for every new member.
+          actionUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/appointments`
         }),
         metadata: { userId: result.id }
       });

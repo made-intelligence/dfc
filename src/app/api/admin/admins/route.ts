@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
-import bcrypt from "bcryptjs";
 import { getDefaultPermissionsByRole } from "@/lib/permissions";
 import { requireAdminAuth, isAuthError } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { parsePagination } from "@/lib/pagination";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 import { auditAdmin } from "@/lib/audit";
+import { sendEmail } from "@/lib/email/service";
+import ClaimInvite from "@/emails/ClaimInvite";
+import React from "react";
+import {
+  generateClaimToken,
+  claimTokenExpiry,
+  buildClaimUrl,
+  CLAIM_TOKEN_TTL_DAYS,
+} from "@/lib/claim-token";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,10 +44,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate a secure random password
-    const crypto = await import("crypto");
-    const randomPassword = crypto.randomBytes(16).toString("base64url");
-    const defaultPassword = await bcrypt.hash(randomPassword, 12);
+    // Issue a claim link rather than a password. This used to hash a random
+    // password and return it as `temporaryPassword`, which the admin UI never
+    // read and no email ever carried, so anyone added here was left with an
+    // account they could not sign in to.
+    const claimToken = generateClaimToken();
     
     // Get default permissions based on role if none provided
     let defaultPermissionIds = permissionIds;
@@ -53,7 +62,9 @@ export async function POST(request: NextRequest) {
         name,
         email,
         phone,
-        password: defaultPassword,
+        password: null,
+        claimToken,
+        claimTokenExpiresAt: claimTokenExpiry(),
         role: role as UserRole,
         adminProfile: {
           create: {
@@ -83,8 +94,35 @@ export async function POST(request: NextRequest) {
       email: newAdmin.email,
     }, request);
 
+    // Non-fatal: the account exists either way, and the invite can be re-sent
+    // from the claim page.
+    let inviteSent = false;
+    try {
+      const baseUrl =
+        process.env.CLAIM_BASE_URL ||
+        process.env.NEXT_PUBLIC_APP_URL ||
+        "https://www.dfcare.org";
+
+      const result = await sendEmail({
+        to: newAdmin.email,
+        subject: "Activate your DFC account",
+        templateName: "ClaimInvite",
+        component: React.createElement(ClaimInvite, {
+          name: newAdmin.name || "DFC Team",
+          claimLink: buildClaimUrl(baseUrl, claimToken),
+          expiryDays: CLAIM_TOKEN_TTL_DAYS,
+        }),
+        metadata: { reason: "admin-created", userId: newAdmin.id, role: newAdmin.role },
+      });
+      inviteSent = result.success;
+    } catch (emailError) {
+      logger.error("AdminAdminsClaimInvite", emailError);
+    }
+
     return NextResponse.json({
-      message: "Admin created successfully",
+      message: inviteSent
+        ? "Admin created. An activation link has been emailed to them."
+        : "Admin created, but the activation email could not be sent. Ask them to request a new link from the sign-in page.",
       admin: {
         id: newAdmin.id,
         name: newAdmin.name,
@@ -92,7 +130,7 @@ export async function POST(request: NextRequest) {
         role: newAdmin.role,
         permissions: newAdmin.adminProfile?.permissions.map(ap => ap.permission) || [],
       },
-      temporaryPassword: randomPassword,
+      inviteSent,
     });
   } catch (error) {
     logger.error('AdminAdmins', error);
