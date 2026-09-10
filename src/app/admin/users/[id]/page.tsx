@@ -45,6 +45,12 @@ export default function MemberDetailPage() {
   const [member, setMember] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  // Doctors write in to say the specialty on their record is wrong. They can
+  // correct it themselves once they log in, but the ones who email instead had
+  // nobody who could: this page could approve them and nothing else.
+  const [editingSpecialty, setEditingSpecialty] = useState(false);
+  const [specialtyDraft, setSpecialtyDraft] = useState("");
+  const [subSpecialtyDraft, setSubSpecialtyDraft] = useState("");
 
   useEffect(() => {
     if (params.id) {
@@ -178,10 +184,78 @@ export default function MemberDetailPage() {
           {/* Professional details */}
           {dp && (
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle>Professional Profile</CardTitle>
+                {!editingSpecialty && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSpecialtyDraft(dp.specialty?.name || "");
+                      setSubSpecialtyDraft(dp.subSpecialty || "");
+                      setEditingSpecialty(true);
+                    }}
+                    className="text-xs font-semibold text-[#0F2744] underline"
+                  >
+                    Correct specialty
+                  </button>
+                )}
               </CardHeader>
               <CardContent>
+                {editingSpecialty && (
+                  <div className="mb-4 rounded-lg border bg-gray-50 p-4">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">
+                          Specialty
+                        </label>
+                        <input
+                          value={specialtyDraft}
+                          onChange={(e) => setSpecialtyDraft(e.target.value)}
+                          className="w-full rounded-md border px-3 py-2 text-sm"
+                          placeholder="For example General Practice / Family Medicine"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">
+                          Sub-specialty
+                        </label>
+                        <input
+                          value={subSpecialtyDraft}
+                          onChange={(e) => setSubSpecialtyDraft(e.target.value)}
+                          className="w-full rounded-md border px-3 py-2 text-sm"
+                          placeholder="Optional"
+                        />
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500">
+                      Change this only on the member&apos;s own say so. It is their professional record,
+                      and they can also correct it themselves from their profile.
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        disabled={updating || !specialtyDraft.trim()}
+                        onClick={async () => {
+                          await updateMember({
+                            specialty: specialtyDraft.trim(),
+                            subSpecialty: subSpecialtyDraft.trim(),
+                          });
+                          setEditingSpecialty(false);
+                        }}
+                        className="rounded-md bg-[#0F2744] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40"
+                      >
+                        {updating ? "Saving" : "Save correction"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingSpecialty(false)}
+                        className="rounded-md border px-4 py-2 text-xs font-semibold text-gray-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-500">Specialty</span>

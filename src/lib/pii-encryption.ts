@@ -59,6 +59,41 @@ export function decryptPiiFields(
   return result;
 }
 
+/** Every field name that is encrypted at rest, on any model. */
+const ALL_PII_FIELDS = new Set(Object.values(PII_FIELDS).flat());
+
+/**
+ * Decrypt PII anywhere in a query result, however deeply it is nested.
+ *
+ * The per-model helpers above only see the model actually being queried, so a
+ * findFirst on DFCMember that includes { user: { phone } } came back with
+ * ciphertext and rendered it to the admin as "fda54cf...:683196e...:...".
+ * Any parent model that is not itself in PII_FIELDS had the same problem, and
+ * more than twenty routes nest one.
+ *
+ * Keyed on the field name and guarded by isEncrypted, so a value that is
+ * already plaintext, or a field that merely shares a name on some unrelated
+ * model, is left exactly as it is. Class instances are not walked: Date and
+ * Decimal have no PII inside them and copying them would change their type.
+ */
+export function decryptDeep(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(decryptDeep);
+  if (value === null || typeof value !== "object") return value;
+
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) return value;
+
+  const out: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof item === "string" && ALL_PII_FIELDS.has(key) && isEncrypted(item)) {
+      out[key] = decrypt(item);
+    } else {
+      out[key] = decryptDeep(item);
+    }
+  }
+  return out;
+}
+
 /**
  * Recursively decrypt PII in nested include results.
  * Handles the common pattern of { user: { phone: "encrypted" }, patientProfile: { address: "encrypted" } }

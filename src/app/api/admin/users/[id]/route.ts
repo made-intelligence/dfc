@@ -205,6 +205,43 @@ export async function PATCH(
       data,
     });
 
+    // Specialty and sub-specialty live on the doctor profile, not the
+    // membership. A member can already correct these themselves, but a doctor
+    // who has written in rather than logged in had no way through: the only
+    // actions here were approve and mark good standing, so the secretariat
+    // could read a wrong specialty and not change it. Matches the member
+    // route's behaviour, including the case-insensitive lookup that stops
+    // "Family Medicine" and "family medicine" becoming two specialties.
+    if (body.specialty !== undefined || body.subSpecialty !== undefined) {
+      const doctorProfile = await prisma.doctorProfile.findUnique({
+        where: { userId: member.userId },
+        select: { specialtyId: true },
+      });
+
+      if (doctorProfile) {
+        let specialtyId = doctorProfile.specialtyId;
+        if (body.specialty) {
+          let specialtyRecord = await prisma.specialty.findFirst({
+            where: { name: { equals: body.specialty, mode: "insensitive" } },
+          });
+          if (!specialtyRecord) {
+            specialtyRecord = await prisma.specialty.create({
+              data: { name: body.specialty },
+            });
+          }
+          specialtyId = specialtyRecord.id;
+        }
+
+        await prisma.doctorProfile.update({
+          where: { userId: member.userId },
+          data: {
+            ...(body.subSpecialty !== undefined && { subSpecialty: body.subSpecialty }),
+            ...(specialtyId && { specialtyId }),
+          },
+        });
+      }
+    }
+
     // Audit member status change
     auditAdmin.memberStatusChange(payload.userId, member.id, {
       changes: body,
