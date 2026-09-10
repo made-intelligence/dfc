@@ -1,0 +1,1026 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+@page { size: A4; margin: 20mm 18mm; }
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 11pt; line-height: 1.5; color: #1a1a1a; max-width: 100%;
+}
+h1 { font-size: 21pt; color: #0b3d2e; border-bottom: 3px solid #0b3d2e; padding-bottom: 8px; margin-top: 0; }
+h2 { font-size: 15pt; color: #0b3d2e; margin-top: 26px; border-bottom: 1px solid #d4d4d4; padding-bottom: 4px; }
+h3 { font-size: 12.5pt; color: #155041; margin-top: 18px; }
+p, li { font-size: 11pt; }
+strong { color: #111; }
+em { color: #333; }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 9.5pt; }
+th, td { border: 1px solid #c8c8c8; padding: 6px 9px; text-align: left; vertical-align: top; }
+th { background: #0b3d2e; color: #fff; font-weight: 600; }
+tr:nth-child(even) td { background: #f4f7f5; }
+blockquote {
+  border-left: 4px solid #c79a3a; background: #fbf6ea; margin: 14px 0;
+  padding: 10px 16px; color: #4a3c18; border-radius: 3px;
+}
+code { background: #eef2ef; padding: 1px 5px; border-radius: 3px; font-size: 9pt; }
+hr { border: none; border-top: 1px solid #ddd; margin: 22px 0; }
+a { color: #155041; text-decoration: none; }
+.dfc-logo { height: 58px; margin: 0 0 18px 0; display: block; }
+</style></head>
+<body><img class="dfc-logo" src="dfc-logo.png" alt="Doctors Foundation for Care"/><h1>DFC ERI - Costing Model &amp; Evidence Base</h1>
+<p><strong>Draft v0.1 - Finance pillar working model</strong>
+Companion to <a href="00-DFC-ERI-Proposal-v0.1.md">00 - Strategic Proposal</a></p>
+<blockquote>
+<h2>⚠️ Read this before quoting any number</h2>
+<p>A deep evidence search (27 sources fetched, 104 claims extracted, 25 adversarially verified, 19 confirmed) found that <strong>Nigeria has no reliable, current published unit-cost dataset for EMS</strong> - and several specific figures circulating online were <em>refuted</em> under 3-vote verification (see <a href="#evidence-base">Evidence Base</a>). Therefore <strong>every unit cost below is a transparent bottom-up planning assumption</strong>, marked <strong><code>[ASSUMPTION - VALIDATE]</code></strong>, anchored where possible to a verified data point or an international benchmark. These are <em>starting line items for the Finance pillar to challenge with real quotes</em>, not quoted prices. Do not submit these numbers to government as firm without validation.</p>
+<p><strong>FX assumption:</strong> ₦1,550 = US$1 (mid-2026). <code>[ASSUMPTION - VALIDATE]</code></p>
+</blockquote>
+<hr />
+<h2>1. Unit-cost assumptions (the inputs)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Line item</th>
+<th>Planning unit cost</th>
+<th>Basis / anchor</th>
+<th>Confidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>U1</td>
+<td><strong>BLS ambulance</strong> - locally converted van (HiAce/Transit class), fully equipped</td>
+<td><strong>₦45 m</strong> capex <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>No verified NG price; international BLS equipped ≈ $25-40k, uplifted for NG import/conversion + 2025 devaluation</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U2</td>
+<td><strong>ALS ambulance</strong> - purpose-built, advanced equipment</td>
+<td><strong>₦110 m</strong> capex <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>International ALS ≈ $50-80k equipped, uplifted</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U3</td>
+<td><strong>Ambulance operating cost</strong> - crew + fuel + maintenance + comms</td>
+<td><strong>₦2.2 m / month</strong> (₦26.4 m/yr) <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>Benchmark: GVK Dial 108 ≈ $1.5-2.5k/ambulance/month</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U4</td>
+<td><strong>EMT training</strong> - per trainee, 3-6 month course</td>
+<td><strong>₦450 k</strong> <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>NG paramedic/EMT course blogs (unverified); accreditation route TBC</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U5</td>
+<td><strong>Paramedic up-skill</strong> - per trainee</td>
+<td><strong>₦1.5 m</strong> <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>Higher-tier course estimate</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U6</td>
+<td><strong>Community first responder</strong> - training + bleeding-control kit, per head</td>
+<td><strong>₦40 k</strong> <code>[ASSUMPTION - VALIDATE]</code></td>
+<td><strong>Anchored</strong> to ERA Edo pilot ≈ <strong>$147 (~₦228k) per responder <em>deployed with ambulance linkage</em></strong> - we separate training (~₦40k) from deployment/equipment</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>U7</td>
+<td><strong>Dispatch seat - setup</strong> (workstation, CAD terminal, telephony, headset)</td>
+<td><strong>₦3 m / seat</strong> <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>Engineering estimate</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U8</td>
+<td><strong>Dispatch seat - opex</strong> (operator salary + telephony + facility share)</td>
+<td><strong>₦7 m / seat / yr</strong> <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>Engineering estimate</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U9</td>
+<td><strong>Operator training</strong> - per operator</td>
+<td><strong>₦300 k</strong> <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>Engineering estimate</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U10</td>
+<td><strong>CAD / dispatch software</strong></td>
+<td>Lean config <strong>₦40-80 m</strong> one-time + <strong>₦6-14 m/yr</strong> support <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>Off-the-shelf SaaS $15-50/seat/mo <em>or</em> DFC builds lean on existing stack (cheaper)</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>U11</td>
+<td><strong>Hospital trauma-bay upgrade</strong> - per hospital (monitors, defib, airway, suction, trauma trolley, FAST ultrasound, supplies)</td>
+<td><strong>₦30 m</strong> <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>Engineering estimate; ₦15m basic → ₦100m full</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U12</td>
+<td><strong>Highway stabilisation post</strong> (Corridor tier only)</td>
+<td><strong>₦40 m</strong> capex + <strong>₦18 m/yr</strong> opex <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>Engineering estimate</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U13</td>
+<td><strong>Trauma fund - average per funded case</strong> (first-48hr stabilisation)</td>
+<td><strong>₦250 k</strong> <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>UCH Ibadan ₦42,946 (2015) <em>refuted as firm anchor</em> but directional lower-bound; uplifted for severity mix + inflation + devaluation. Range ₦150k-₦600k</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U14</td>
+<td><strong>Operator onboarding &amp; credentialing</strong> - per aggregated vehicle (inspection, certification, platform onboarding)</td>
+<td><strong>₦400 k</strong> <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>Engineering estimate; one-time</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U15</td>
+<td><strong>Equipment top-up grant</strong> - per aggregated vehicle, partial subsidy to meet BLS standard</td>
+<td><strong>₦2 m</strong> <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>Engineering estimate; far cheaper than buying a vehicle (U1)</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>U16</td>
+<td><strong>Availability retainer</strong> - per priority on-call vehicle / month</td>
+<td><strong>₦250 k</strong> <code>[ASSUMPTION - VALIDATE]</code></td>
+<td>Engineering estimate; keeps a subset guaranteed-available</td>
+<td>Low</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cross-cutting loadings</strong> applied to every tier: PMO / M&amp;E / governance <strong>+15%</strong> of direct cost; <strong>+10%</strong> contingency; awareness campaign + community survey as a separate line.</p>
+<blockquote>
+<p><strong>Per-dispatch payments are not DFC capex.</strong> In the asset-light model (§2A) the payment for each actual trip flows from the funding stack (trauma fund / BHCPF EMT Gateway / insurer) <em>through</em> DFC's clearinghouse to the operator. It is a pass-through, not a DFC balance-sheet cost. We model only a modest Year-1 <strong>bridge/float</strong> where reimbursement lags.</p>
+</blockquote>
+<hr />
+<h2>2. Tier build-up (capex + Year-1 opex, <strong>excluding</strong> trauma fund)</h2>
+<h3>2.1 LEAN - 1 LGA each in Lagos + FCT (2 sites)</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Qty</th>
+<th>Unit</th>
+<th>Capex</th>
+<th>Yr-1 opex</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BLS ambulances</td>
+<td>4</td>
+<td>U1/U3</td>
+<td>₦180.0 m</td>
+<td>₦105.6 m</td>
+</tr>
+<tr>
+<td>EMTs trained</td>
+<td>40</td>
+<td>U4</td>
+<td>₦18.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Paramedics</td>
+<td>8</td>
+<td>U5</td>
+<td>₦12.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Community responders</td>
+<td>300</td>
+<td>U6</td>
+<td>₦12.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Dispatch / coordination cell</td>
+<td>4 seats</td>
+<td>U7/U8/U9</td>
+<td>₦13.2 m</td>
+<td>₦28.0 m</td>
+</tr>
+<tr>
+<td>CAD software (lean)</td>
+<td>1</td>
+<td>U10</td>
+<td>₦40.0 m</td>
+<td>₦6.0 m</td>
+</tr>
+<tr>
+<td>Hospital trauma bays</td>
+<td>4</td>
+<td>U11</td>
+<td>₦120.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td><strong>Subtotals</strong></td>
+<td></td>
+<td></td>
+<td><strong>₦395.2 m</strong></td>
+<td><strong>₦139.6 m</strong></td>
+</tr>
+<tr>
+<td>Direct total (Yr-1)</td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>₦534.8 m</strong></td>
+</tr>
+<tr>
+<td>PMO / M&amp;E / governance (+15%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦80.2 m</td>
+</tr>
+<tr>
+<td>Awareness + community survey</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦25.0 m</td>
+</tr>
+<tr>
+<td>Contingency (+10%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦64.0 m</td>
+</tr>
+<tr>
+<td><strong>LEAN TOTAL (Yr-1)</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>≈ ₦704 m (~US$454 k)</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>2.2 STANDARD - 2-3 LGAs per city (~5 LGAs)</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Qty</th>
+<th>Unit</th>
+<th>Capex</th>
+<th>Yr-1 opex</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ambulances (10 BLS + 2 ALS)</td>
+<td>12</td>
+<td>U1/U2/U3</td>
+<td>₦670.0 m</td>
+<td>₦316.8 m</td>
+</tr>
+<tr>
+<td>EMTs trained</td>
+<td>120</td>
+<td>U4</td>
+<td>₦54.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Paramedics</td>
+<td>24</td>
+<td>U5</td>
+<td>₦36.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Community responders</td>
+<td>1,000</td>
+<td>U6</td>
+<td>₦40.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Dispatch centre</td>
+<td>8 seats</td>
+<td>U7/U8/U9</td>
+<td>₦26.4 m</td>
+<td>₦56.0 m</td>
+</tr>
+<tr>
+<td>CAD software</td>
+<td>1</td>
+<td>U10</td>
+<td>₦60.0 m</td>
+<td>₦10.0 m</td>
+</tr>
+<tr>
+<td>Hospital trauma bays</td>
+<td>10</td>
+<td>U11</td>
+<td>₦300.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td><strong>Subtotals</strong></td>
+<td></td>
+<td></td>
+<td><strong>₦1,186.4 m</strong></td>
+<td><strong>₦382.8 m</strong></td>
+</tr>
+<tr>
+<td>Direct total (Yr-1)</td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>₦1,569.2 m</strong></td>
+</tr>
+<tr>
+<td>PMO / M&amp;E / governance (+15%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦235.4 m</td>
+</tr>
+<tr>
+<td>Awareness + community survey</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦50.0 m</td>
+</tr>
+<tr>
+<td>Contingency (+10%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦185.0 m</td>
+</tr>
+<tr>
+<td><strong>STANDARD TOTAL (Yr-1)</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>≈ ₦2.04 bn (~US$1.32 m)</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>2.3 CORRIDOR - cities + East-West road</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Qty</th>
+<th>Unit</th>
+<th>Capex</th>
+<th>Yr-1 opex</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ambulances (18 BLS + 6 ALS)</td>
+<td>24</td>
+<td>U1/U2/U3</td>
+<td>₦1,470.0 m</td>
+<td>₦633.6 m</td>
+</tr>
+<tr>
+<td>EMTs trained</td>
+<td>250</td>
+<td>U4</td>
+<td>₦112.5 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Paramedics</td>
+<td>50</td>
+<td>U5</td>
+<td>₦75.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Community responders</td>
+<td>2,500</td>
+<td>U6</td>
+<td>₦100.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Dispatch centre</td>
+<td>12 seats</td>
+<td>U7/U8/U9</td>
+<td>₦39.6 m</td>
+<td>₦84.0 m</td>
+</tr>
+<tr>
+<td>CAD software</td>
+<td>1</td>
+<td>U10</td>
+<td>₦80.0 m</td>
+<td>₦14.0 m</td>
+</tr>
+<tr>
+<td>Hospital trauma bays</td>
+<td>18</td>
+<td>U11</td>
+<td>₦540.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Highway stabilisation posts</td>
+<td>4</td>
+<td>U12</td>
+<td>₦160.0 m</td>
+<td>₦72.0 m</td>
+</tr>
+<tr>
+<td><strong>Subtotals</strong></td>
+<td></td>
+<td></td>
+<td><strong>₦2,577.1 m</strong></td>
+<td><strong>₦803.6 m</strong></td>
+</tr>
+<tr>
+<td>Direct total (Yr-1)</td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>₦3,380.7 m</strong></td>
+</tr>
+<tr>
+<td>PMO / M&amp;E / governance (+15%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦507.0 m</td>
+</tr>
+<tr>
+<td>Awareness + community survey</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦90.0 m</td>
+</tr>
+<tr>
+<td>Contingency (+10%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦398.0 m</td>
+</tr>
+<tr>
+<td><strong>CORRIDOR TOTAL (Yr-1)</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>≈ ₦4.38 bn (~US$2.82 m)</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>2A. Asset-light aggregation variant (recommended for the ambulance line)</h2>
+<p>Section 2 assumes DFC <strong>buys</strong> the ambulance fleet. The strategy (Proposal §4) is the opposite: DFC <strong>aggregates existing private capacity</strong>. This variant replaces the ambulance <em>capex</em> (U1/U2) and the operator-borne <em>opex</em> (U3) with a much smaller onboarding + equipment-top-up + retainer cost (U14/U15/U16), because the operators already own and run the vehicles and recover their per-trip cost through the funding stack. Everything else (training, dispatch, CAD, hospital bays, loadings) is unchanged.</p>
+<p><strong>The logic:</strong> instead of ₦45 m to buy and ₦26.4 m/yr to run each ambulance, DFC pays ~₦400 k to credential an existing one, optionally ~₦2 m to bring it to standard, and ~₦250 k/month to retain a priority subset on-call. The per-trip cost is reimbursed, not capitalised.</p>
+<h3>2A.1 LEAN - asset-light</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Qty</th>
+<th>Unit</th>
+<th>Capex</th>
+<th>Yr-1 opex</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Aggregated vehicles - onboarding</td>
+<td>25</td>
+<td>U14</td>
+<td>₦10.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Equipment top-up grants</td>
+<td>25</td>
+<td>U15</td>
+<td>₦50.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Availability retainer (priority subset)</td>
+<td>10 veh</td>
+<td>U16</td>
+<td>-</td>
+<td>₦30.0 m</td>
+</tr>
+<tr>
+<td>Year-1 reimbursement bridge/float</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>₦20.0 m</td>
+</tr>
+<tr>
+<td>EMTs / paramedics / responders</td>
+<td>40/8/300</td>
+<td>U4/U5/U6</td>
+<td>₦42.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Dispatch / coordination cell</td>
+<td>4 seats</td>
+<td>U7/U8/U9</td>
+<td>₦13.2 m</td>
+<td>₦28.0 m</td>
+</tr>
+<tr>
+<td>CAD software (lean)</td>
+<td>1</td>
+<td>U10</td>
+<td>₦40.0 m</td>
+<td>₦6.0 m</td>
+</tr>
+<tr>
+<td>Hospital trauma bays</td>
+<td>4</td>
+<td>U11</td>
+<td>₦120.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td><strong>Subtotals</strong></td>
+<td></td>
+<td></td>
+<td><strong>₦275.2 m</strong></td>
+<td><strong>₦84.0 m</strong></td>
+</tr>
+<tr>
+<td>Direct total (Yr-1)</td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>₦359.2 m</strong></td>
+</tr>
+<tr>
+<td>PMO / M&amp;E / governance (+15%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦53.9 m</td>
+</tr>
+<tr>
+<td>Awareness + community survey</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦25.0 m</td>
+</tr>
+<tr>
+<td>Contingency (+10%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦35.9 m</td>
+</tr>
+<tr>
+<td><strong>LEAN TOTAL - asset-light (Yr-1)</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>≈ ₦474 m (~US$306 k)</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>2A.2 STANDARD - asset-light</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Qty</th>
+<th>Unit</th>
+<th>Capex</th>
+<th>Yr-1 opex</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Aggregated vehicles - onboarding</td>
+<td>60</td>
+<td>U14</td>
+<td>₦24.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Equipment top-up grants</td>
+<td>60</td>
+<td>U15</td>
+<td>₦120.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Availability retainer</td>
+<td>25 veh</td>
+<td>U16</td>
+<td>-</td>
+<td>₦75.0 m</td>
+</tr>
+<tr>
+<td>Year-1 reimbursement bridge/float</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>₦40.0 m</td>
+</tr>
+<tr>
+<td>EMTs / paramedics / responders</td>
+<td>120/24/1,000</td>
+<td>U4/U5/U6</td>
+<td>₦130.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Dispatch centre</td>
+<td>8 seats</td>
+<td>U7/U8/U9</td>
+<td>₦26.4 m</td>
+<td>₦56.0 m</td>
+</tr>
+<tr>
+<td>CAD software</td>
+<td>1</td>
+<td>U10</td>
+<td>₦60.0 m</td>
+<td>₦10.0 m</td>
+</tr>
+<tr>
+<td>Hospital trauma bays</td>
+<td>10</td>
+<td>U11</td>
+<td>₦300.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td><strong>Subtotals</strong></td>
+<td></td>
+<td></td>
+<td><strong>₦660.4 m</strong></td>
+<td><strong>₦181.0 m</strong></td>
+</tr>
+<tr>
+<td>Direct total (Yr-1)</td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>₦841.4 m</strong></td>
+</tr>
+<tr>
+<td>PMO / M&amp;E / governance (+15%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦126.2 m</td>
+</tr>
+<tr>
+<td>Awareness + community survey</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦50.0 m</td>
+</tr>
+<tr>
+<td>Contingency (+10%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦84.1 m</td>
+</tr>
+<tr>
+<td><strong>STANDARD TOTAL - asset-light (Yr-1)</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>≈ ₦1.10 bn (~US$711 k)</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>2A.3 CORRIDOR - asset-light (hybrid)</h3>
+<p>The remote East-West highway stretches have little idle private capacity to aggregate, so this tier stays <strong>hybrid</strong>: aggregate in the cities, but buy a small dedicated highway ALS fleet + posts.</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Qty</th>
+<th>Unit</th>
+<th>Capex</th>
+<th>Yr-1 opex</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>City vehicles - onboarding</td>
+<td>90</td>
+<td>U14</td>
+<td>₦36.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Equipment top-up grants</td>
+<td>90</td>
+<td>U15</td>
+<td>₦180.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Dedicated highway ALS (owned)</td>
+<td>6</td>
+<td>U2/U3</td>
+<td>₦660.0 m</td>
+<td>₦158.4 m</td>
+</tr>
+<tr>
+<td>Highway stabilisation posts</td>
+<td>4</td>
+<td>U12</td>
+<td>₦160.0 m</td>
+<td>₦72.0 m</td>
+</tr>
+<tr>
+<td>City availability retainer</td>
+<td>40 veh</td>
+<td>U16</td>
+<td>-</td>
+<td>₦120.0 m</td>
+</tr>
+<tr>
+<td>Year-1 reimbursement bridge/float</td>
+<td>-</td>
+<td>-</td>
+<td>-</td>
+<td>₦60.0 m</td>
+</tr>
+<tr>
+<td>EMTs / paramedics / responders</td>
+<td>250/50/2,500</td>
+<td>U4/U5/U6</td>
+<td>₦287.5 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td>Dispatch centre</td>
+<td>12 seats</td>
+<td>U7/U8/U9</td>
+<td>₦39.6 m</td>
+<td>₦84.0 m</td>
+</tr>
+<tr>
+<td>CAD software</td>
+<td>1</td>
+<td>U10</td>
+<td>₦80.0 m</td>
+<td>₦14.0 m</td>
+</tr>
+<tr>
+<td>Hospital trauma bays</td>
+<td>18</td>
+<td>U11</td>
+<td>₦540.0 m</td>
+<td>-</td>
+</tr>
+<tr>
+<td><strong>Subtotals</strong></td>
+<td></td>
+<td></td>
+<td><strong>₦2,022.6 m</strong></td>
+<td><strong>₦508.4 m</strong></td>
+</tr>
+<tr>
+<td>Direct total (Yr-1)</td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>₦2,531.0 m</strong></td>
+</tr>
+<tr>
+<td>PMO / M&amp;E / governance (+15%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦379.7 m</td>
+</tr>
+<tr>
+<td>Awareness + community survey</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦90.0 m</td>
+</tr>
+<tr>
+<td>Contingency (+10%)</td>
+<td></td>
+<td></td>
+<td></td>
+<td>₦253.1 m</td>
+</tr>
+<tr>
+<td><strong>CORRIDOR TOTAL - asset-light (Yr-1)</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>≈ ₦3.25 bn (~US$2.10 m)</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>2A.4 Owned-fleet vs asset-light - the headline comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Owned fleet (§2)</th>
+<th>Asset-light aggregation (§2A)</th>
+<th>Year-1 saving</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lean</strong></td>
+<td>₦0.70 bn</td>
+<td><strong>₦0.47 bn</strong></td>
+<td>~33%</td>
+</tr>
+<tr>
+<td><strong>Standard</strong></td>
+<td>₦2.04 bn</td>
+<td><strong>₦1.10 bn</strong></td>
+<td>~46%</td>
+</tr>
+<tr>
+<td><strong>Corridor</strong> (hybrid)</td>
+<td>₦4.38 bn</td>
+<td><strong>₦3.25 bn</strong></td>
+<td>~26%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why asset-light is the recommended basis:</strong> it is cheaper, it matches the actual strategy (Proposal §4), it raises utilisation of vehicles that already exist, and it makes operators paying participants in a sustainable system rather than capital DFC has to raise and depreciate. The owned-fleet figures (§2) are retained only as the upper bound / fallback if aggregation onboarding proves slower than planned.</p>
+<hr />
+<h2>3. Trauma fund (Tier 2 add-on) - sized separately</h2>
+<p>Per the strategy, the fund is <strong>not</strong> in the core ask; it is the recurring liability that statutory funding (BHCPF EMT Gateway / NHIA) is meant to assume. Annual sizing = funded RTA-trauma cases × U13 (₦250k/case).</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Modelled funded cases/yr <code>[ASSUMPTION - VALIDATE vs local FRSC + hospital data]</code></th>
+<th>Annual trauma-fund cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lean</td>
+<td>~1,500</td>
+<td><strong>≈ ₦375 m / yr</strong></td>
+</tr>
+<tr>
+<td>Standard</td>
+<td>~4,000</td>
+<td><strong>≈ ₦1.0 bn / yr</strong></td>
+</tr>
+<tr>
+<td>Corridor</td>
+<td>~8,000 (high highway-trauma volume)</td>
+<td><strong>≈ ₦2.0 bn / yr</strong></td>
+</tr>
+</tbody>
+</table>
+<p>National context for sizing: FRSC recorded <strong>5,421 road deaths in 2024</strong> (verified); injured volumes are several multiples of deaths. Pilot case volumes must be validated against <strong>LGA-level FRSC crash data + pilot-hospital trauma registers</strong> before the fund is committed.</p>
+<hr />
+<h2>4. Year-2+ recurring cost (sustainability view)</h2>
+<p>Capex is largely Year-1. Steady-state annual run cost ≈ <strong>opex + loadings</strong> (no re-purchase of ambulances/equipment, modest replacement reserve):</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Approx. annual recurring (ex-trauma-fund)</th>
+<th>+ Trauma fund</th>
+<th>Steady-state total/yr</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lean</td>
+<td>≈ ₦200 m</td>
+<td>₦375 m</td>
+<td><strong>≈ ₦575 m/yr</strong></td>
+</tr>
+<tr>
+<td>Standard</td>
+<td>≈ ₦520 m</td>
+<td>₦1.0 bn</td>
+<td><strong>≈ ₦1.52 bn/yr</strong></td>
+</tr>
+<tr>
+<td>Corridor</td>
+<td>≈ ₦1.05 bn</td>
+<td>₦2.0 bn</td>
+<td><strong>≈ ₦3.05 bn/yr</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>This is the number the funding stack must cover in perpetuity</strong> - and why grants (which fund the Year-1 build) cannot be the sustainability answer. The statutory + insurance + micro-levy layers carry the recurring cost. See proposal <a href="00-DFC-ERI-Proposal-v0.1.md#3-how-we-raise-the-funding--a-stacked-capital-structure">§3</a>.</p>
+<hr />
+<h2>5. International benchmarks (for credibility, not as NG prices)</h2>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>What it tells us</th>
+<th>Source quality</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>India - GVK EMRI "Dial 108"</strong></td>
+<td>The reference PPP: government largely funds operating cost, private operator runs the system; ~1 ambulance per ~100k population as a coverage target; per-trip subsidy economics that scale down with volume. Validates the <em>DFC-operates / government-funds-per-case</em> structure.</td>
+<td>Secondary (Wikipedia + study)</td>
+</tr>
+<tr>
+<td><strong>ERA (Emergency Response Africa), Edo, Nigeria</strong></td>
+<td>A <strong>Nigerian</strong> community-first-responder + ambulance pilot; ~167 CBFRs trained; cost anchor ≈ <strong>$147/responder-episode</strong>. Closest real local data point we have.</td>
+<td>Primary (funder report)</td>
+</tr>
+<tr>
+<td><strong>Sub-Saharan Africa GDP loss</strong></td>
+<td>SSA countries lose <strong>≥0.8% of GDP</strong> to road traffic injuries - the macro case for investment.</td>
+<td>Verified</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Refuted / do NOT cite as firm</strong> (failed 3-vote verification): UCH Ibadan "₦42,946 per RTI victim"; "8% vs 40%" prehospital-vs-no-care mortality; a sub-Saharan "INT$ per injury" range; the "33% transport / 30.5% financial barrier" split; and a specific 3-gateway/NEMTC description of BHCPF. Use only as directional context with the caveat attached.</p>
+</blockquote>
+<hr />
+<h2>6. Cost-effectiveness framing (what the pilot must <em>prove</em>, not claim)</h2>
+<p>We deliberately do <strong>not</strong> assert a mortality-reduction figure - the headline stat circulating online failed verification. Instead, the pilot's core evidence output is its own cost-per-life-saved, measured by independent M&amp;E against the FRSC baseline. The illustrative arithmetic - Lean tier at ≈₦700m Year-1 against thousands of preventable trauma deaths nationally - is favourable enough that the pilot only has to demonstrate a <em>modest</em> golden-hour effect to be among the most cost-effective health interventions available. That measured number becomes the single most powerful asset for the scale-up funding case.</p>
+<hr />
+<h2>Evidence Base</h2>
+<p><strong>Verified anchors used (survived 3-vote adversarial verification):</strong>
+- BHCPF established under <strong>National Health Act 2014 §11</strong>, funded by an earmark of <strong>≥1% of the Consolidated Revenue Fund</strong>.
+- <strong>EMT Gateway Fund</strong> operates as a window of the BHCPF and funds NEMSAS free-48-hour emergency care.
+- <strong>NEMSAS</strong> mandate guarantees emergency medical treatment; reports <strong>5,255 beneficiaries in 6 months</strong>; expanded to 30 states.
+- <strong>Free 48-hour emergency treatment policy</strong> launched (government).
+- <strong>BHCPF can accept international donor contributions</strong> - relevant to blending grant + statutory funding.
+- All Nigerian <strong>telecom operators mandated to route 112</strong> - relevant to the comms layer + MTN partnership.
+- <strong>FRSC: 5,421 road deaths in 2024.</strong>
+- <strong>86% of road-crash victims faced catastrophic health expenditure</strong> (Nigerian study).
+- <strong>SSA loses ≥0.8% of GDP</strong> to road traffic injuries.
+- ERA community-responder pilot: ~167 CBFRs; ≈$147 cost anchor.
+- "Few high-quality EMS cost-effectiveness studies exist" for this context - itself the reason this model is bottom-up.</p>
+<p><strong>Key sources</strong> (full list of 27 in the research transcript):
+- NEMSAS - https://nemsas.com/
+- NHIA / BHCPF - https://www.nhia.gov.ng/basic-health-care-provision-fund/
+- World Bank, BHCPF tariff &amp; payment options - https://documents.worldbank.org/en/publication/documents-reports/documentdetail/465201615805182969/
+- Guardian - NEMSAS EMT Gateway beneficiaries - https://guardian.ng/news/5255-nigerians-benefited-from-emt-gateway-fund-in-6-months-nemsas/
+- Gazette NGR - NEMSAS expands to 30 states - https://gazettengr.com/nemsas-expands-emergency-medical-coverage-to-30-states/
+- TV360 - free 48-hour policy - https://www.tv360nigeria.com/nigeria-government-launches-free-48-hour-emergency-treatment-policy/
+- Punch / FRSC - 5,421 road deaths 2024 - https://punchng.com/road-crashes-claimed-5421-lives-in-2024-frsc/
+- NCC - Emergency Communications Centres (112) - https://ncc.gov.ng/the-ncc/stakeholders/projects/74-emergency-communications-centres-ecc
+- ERA community first-responder pilot - https://fundinnovation.dev/en/projects/improving-emergency-response-with-a-network-of-trained-community-based-first-responders-in-nigeria
+- GVK EMRI (Dial 108) - https://en.wikipedia.org/wiki/GVK_EMRI
+- PSHAN Vivo Health - https://businessday.ng/health/article/pshan-launches-vivo-health-app-to-fix-health-emergency-response-gaps-in-nigeria/
+- JEMS - improving care response in Nigeria - https://www.jems.com/ems-operations/ground-ambulance-operations/improving-care-response-in-nigeria/</p>
+<p><strong>Caveats (verbatim from the research synthesis):</strong> <em>No Nigeria 2024-26 unit costs; comparables unconfirmed; FRSC incidence (injured, by LGA) missing.</em> The Finance pillar must source real quotes for U1-U12 and local crash/trauma volumes for the trauma-fund sizing before submission.</p>
+<hr />
+<h2>Evidence Base - Ambulance Aggregation (Section 4 of the Proposal)</h2>
+<p>A second adversarially-verified research pass (111 agents; 24 claims confirmed 3-0, 1 magnitude claim refuted) produced these anchors for the aggregation model:</p>
+<p><strong>Flare / Rescue.co (Kenya):</strong>
+- Owns no ambulances; aggregates existing private providers via formal SLAs; provides dispatch tech, GPS, triage training, hospital-referral dashboards; assesses operators for service/personnel/equipment quality.
+- <strong>800+ public and private providers</strong> aggregated by 2025; <strong>47,000+ responses across all 47 counties</strong>; <strong>2,000 health facilities</strong> linked.
+- Subscription <strong>~KES 4,000 (~€33)/subscriber/yr</strong>; insurance risk-pooling integration as a reimbursement channel.
+- Source: <a href="https://www.rsm.nl/discovery/2023/magazine-41-global-supply-chains/ambulance-service-platforms/">RSM</a>, <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12418930/">PMC PMC12418930</a>, <a href="https://academic.oup.com/oodh/article/doi/10.1093/oodh/oqaf019/8239685">Oxford OODH</a>.</p>
+<p><strong>India 108 / GVK EMRI:</strong>
+- Single-operator PPP: <strong>9,655 ambulances, 66,472+ employees, 17 states + 1 UT, ~1.02 bn covered</strong>.
+- Governed by <strong>one MOU per state</strong>; values e.g. Rajasthan ₹50 cr/yr (capex+opex), AP ₹114 cr/yr opex, Gujarat ₹252 cr/5 yrs.
+- <strong>Government funds ~95% of opex</strong> (100% capital in Gujarat/Rajasthan); operator contribution falls 25%→5% by year 2; free + toll-free to patients.
+- Source: <a href="https://www.emri.in/108-emergency/">EMRI</a>, <a href="https://nhsrcindia.org/">NHSRC India</a>.</p>
+<p><strong>ERA (Edo State, Nigeria):</strong>
+- Govt EMS partnership (Edo govt, UBTH, Edo State Health Insurance Scheme); pilot from <strong>5 Mar 2024, 15 months</strong>.
+- <strong>170 CBFRs across 3 LGAs</strong> (Oredo, Egor, Ikpoba-Okha); <strong>4 ambulances</strong> at PHCs; 10-min access goal; 24/7 Command Center; dispatch linked to <strong>112 + 739</strong>; three apps.
+- Source: <a href="https://emergencyresponseafrica.com/edo-ems/">ERA Edo EMS</a>, <a href="https://emergencyresponseafrica.com/about-us/">ERA About</a>.</p>
+<p><strong>Credentialing standard:</strong>
+- <strong>CAAS Ground Vehicle Standard</strong> - minimum vehicle requirements + certify-then-mark compliance symbol; non-compliant excluded. Source: <a href="https://www.caas.org/wp-content/uploads/2016/09/CAAS_Standards_v3_0.pdf">CAAS</a>.</p>
+<p><strong>Structural / financing facts:</strong>
+- Decentralised systems with no coordination cap coverage at <strong>~71.5%</strong> regardless of profitability. Source: <a href="https://link.springer.com/chapter/10.1007/978-3-031-60867-4_11">Springer</a>.
+- <strong>~95% of Africa lacks a centralised EMS system.</strong> Source: RSM (above).
+- <strong>BHCPF: ~5% via EMT Gateway to NEMSAS reimburses accredited private AND public ambulance providers</strong> - the statutory rail for the aggregation model. <em>(Confirm 5%/NEMTC governance detail at source with NEMSAS.)</em></p>
+<p><strong>Refuted (do not cite as fact):</strong> the specific "Nairobi 162 min → under 15 min" response-time magnitude (one framing confirmed, a near-duplicate refuted 1-2) - present only as operator-reported.</p></body></html>
