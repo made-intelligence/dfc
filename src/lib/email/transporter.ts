@@ -1,7 +1,5 @@
 import nodemailer from 'nodemailer';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { getEmailConfig } from './config';
 
 // Default fallback configuration
 const defaultEmailConfig = {
@@ -14,40 +12,54 @@ const defaultEmailConfig = {
   },
 };
 
+interface SmtpTransportConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+  auth: { user: string; pass: string };
+}
+
 // Cache for email configuration
-let cachedEmailConfig: any = null;
+let cachedEmailConfig: SmtpTransportConfig | null = null;
 let lastFetchTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Fetches email configuration from the database
- * Uses caching to avoid frequent database queries
+ * Fetches email configuration from the database.
+ *
+ * Reads through getEmailConfig() rather than querying SystemSettings directly:
+ * the admin settings screen stores smtpPassword encrypted, and this used to
+ * read the raw column and hand the ciphertext to Gmail as the password. A
+ * stored password is only used when it survives decryption and is non-empty,
+ * so a blank or unusable entry falls back to SMTP_PASS instead of silently
+ * failing every send.
  */
 async function getEmailConfigFromDB() {
   const now = Date.now();
-  
+
   // Return cached config if still valid
   if (cachedEmailConfig && (now - lastFetchTime) < CACHE_DURATION) {
     return cachedEmailConfig;
   }
 
   try {
-    const settings = await prisma.systemSettings.findFirst();
-    
-    if (settings && settings.email) {
-      const emailSettings = settings.email as any;
-      
-      const port = emailSettings.smtpPort || defaultEmailConfig.port;
+    const settings = await getEmailConfig();
+
+    if (settings) {
+      const port = settings.smtpPort || defaultEmailConfig.port;
+      const pass =
+        (settings.smtpPassword || '').trim() || defaultEmailConfig.auth.pass;
+
       cachedEmailConfig = {
-        host: emailSettings.smtpHost || defaultEmailConfig.host,
-        port: port,
+        host: settings.smtpHost || defaultEmailConfig.host,
+        port,
         secure: port === 465, // Use SSL only for port 465
         auth: {
-          user: emailSettings.smtpUser || defaultEmailConfig.auth.user,
-          pass: emailSettings.smtpPassword || process.env.SMTP_PASS || defaultEmailConfig.auth.pass,
+          user: settings.smtpUser || defaultEmailConfig.auth.user,
+          pass,
         },
       };
-      
+
       lastFetchTime = now;
       return cachedEmailConfig;
     }
