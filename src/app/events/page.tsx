@@ -1,56 +1,55 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import Topbar from "@/components/layout/Topbar";
 import Footer from "@/components/layout/Footer";
 import { Calendar, MapPin, Clock, Bell } from "lucide-react";
 
-const upcomingEvents = [
-  {
-    id: 1,
-    title: "DFC Annual General Meeting 2026",
-    date: "Saturday, 20 June 2026",
-    time: "6:00 PM WAT",
-    location: "Virtual (Zoom)",
-    isVirtual: true,
-    description:
-      "Annual assembly of DFC members featuring elections, progress reports across all pillars, and strategic planning for the year ahead.",
-  },
-  {
-    id: 2,
-    title: "Second Opinion Service Launch Webinar",
-    date: "Thursday, 16 April 2026",
-    time: "7:00 PM WAT",
-    location: "Virtual (Zoom)",
-    isVirtual: true,
-    description:
-      "Join us for the official launch of the DFC Second Opinion Service — connecting patients in Nigeria with diaspora specialists for expert medical consultations.",
-  },
-  {
-    id: 3,
-    title: "Specialist Network Symposium",
-    date: "Friday, 14 August 2026",
-    time: "10:00 AM WAT",
-    location: "Lagos, Nigeria",
-    isVirtual: false,
-    description:
-      "A two-day symposium bringing together diaspora physicians and local specialists for knowledge exchange, case discussions, and collaborative practice.",
-  },
-  {
-    id: 4,
-    title: "Medical Ethics Workshop",
-    date: "Saturday, 10 October 2026",
-    time: "3:00 PM WAT",
-    location: "Virtual (Zoom)",
-    isVirtual: true,
-    description:
-      "An interactive workshop exploring ethical considerations in cross-border telemedicine, patient data privacy, and diaspora healthcare delivery.",
-  },
-];
+interface DFCEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  date: string;
+  endDate: string | null;
+  time: string | null;
+  location: string | null;
+  city: string | null;
+  isVirtual: boolean;
+  registrationUrl: string | null;
+}
+
+function formatEventDate(dateStr: string, endStr: string | null) {
+  const opts: Intl.DateTimeFormatOptions = {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  };
+  const start = new Date(dateStr).toLocaleDateString("en-GB", opts);
+  if (!endStr) return start;
+  const end = new Date(endStr);
+  if (end.toDateString() === new Date(dateStr).toDateString()) return start;
+  return `${start} \u2013 ${end.toLocaleDateString("en-GB", opts)}`;
+}
+
+function eventVenue(event: DFCEvent) {
+  if (event.isVirtual) return "Virtual";
+  return event.city || event.location || "Venue to be confirmed";
+}
 
 export default function EventsPage() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState<DFCEvent[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/public/events")
+      .then((res) => res.json())
+      .then((data) => setUpcomingEvents(data.events ?? []))
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, []);
 
   function handleSubscribe(e: FormEvent) {
     e.preventDefault();
@@ -100,17 +99,28 @@ export default function EventsPage() {
               </p>
             </div>
 
+            {loaded && upcomingEvents.length === 0 && (
+              <div className="text-center py-12">
+                <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">
+                  No events are scheduled at the moment. Subscribe below and
+                  we&apos;ll let you know as soon as the next one is announced.
+                </p>
+              </div>
+            )}
+
             <div className="grid gap-6 sm:grid-cols-2">
               {upcomingEvents.map((event) => (
                 <div
                   key={event.id}
                   className="relative bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 hover:shadow-lg transition-shadow"
                 >
-                  {/* Coming Soon Badge */}
-                  <span className="absolute top-5 right-5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
-                    <Clock className="w-3 h-3" />
-                    Coming Soon
-                  </span>
+                  {!event.registrationUrl && (
+                    <span className="absolute top-5 right-5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
+                      <Clock className="w-3 h-3" />
+                      Coming Soon
+                    </span>
+                  )}
 
                   <h3 className="text-lg font-semibold text-[#0D1F3C] pr-24 mb-4 leading-snug">
                     {event.title}
@@ -123,25 +133,36 @@ export default function EventsPage() {
                   <div className="space-y-2.5 text-sm text-gray-600">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-[#0A4A50] shrink-0" />
-                      <span>{event.date}</span>
+                      <span>{formatEventDate(event.date, event.endDate)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4 text-[#0A4A50] shrink-0" />
-                      <span>{event.time}</span>
+                      <span>{event.time || "Time to be confirmed"}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="w-4 h-4 text-[#0A4A50] shrink-0" />
-                      <span>{event.location}</span>
+                      <span>{eventVenue(event)}</span>
                     </div>
                   </div>
 
                   <div className="mt-6 pt-5 border-t border-gray-100">
-                    <button
-                      disabled
-                      className="w-full py-2.5 rounded-lg bg-gray-100 text-gray-400 text-sm font-medium cursor-not-allowed"
-                    >
-                      Registration Opens Soon
-                    </button>
+                    {event.registrationUrl ? (
+                      <a
+                        href={event.registrationUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full py-2.5 rounded-lg bg-[#0D1F3C] text-white text-sm font-medium text-center hover:bg-[#0A4A50] transition-colors"
+                      >
+                        Register
+                      </a>
+                    ) : (
+                      <button
+                        disabled
+                        className="w-full py-2.5 rounded-lg bg-gray-100 text-gray-400 text-sm font-medium cursor-not-allowed"
+                      >
+                        Registration Opens Soon
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

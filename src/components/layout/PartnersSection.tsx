@@ -13,8 +13,8 @@ const partners = [
     fullName: "Association of Nigerian Physicians in the Americas",
   },
   {
-    name: "NAFDAC",
-    fullName: "National Agency for Food and Drug Administration and Control",
+    name: "HFN",
+    fullName: "Healthcare Federation of Nigeria",
   },
   {
     name: "NMA",

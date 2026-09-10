@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Calendar,
   MapPin,
   Video,
   ArrowRight,
@@ -88,71 +87,20 @@ function formatDate(dateStr: string) {
   };
 }
 
-// Fallback events shown before admin adds real ones
-const FALLBACK_EVENTS: DFCEvent[] = [
-  {
-    id: "f1",
-    title: "ERI Technical Working Group Meeting",
-    description:
-      "Monthly coordination meeting for all six ERI pillars. Progress updates, blockers, and next steps.",
-    type: "WEBINAR",
-    date: new Date(Date.now() + 7 * 86400000).toISOString(),
-    endDate: null,
-    time: "7:00 PM WAT",
-    location: null,
-    city: null,
-    isVirtual: true,
-    imageUrl: null,
-    registrationUrl: null,
-    isFeatured: true,
-  },
-  {
-    id: "f2",
-    title: "DFC Health Outreach, Lagos",
-    description:
-      "Free specialist consultations and health screenings at a partner hospital in Lagos.",
-    type: "OUTREACH",
-    date: new Date(Date.now() + 21 * 86400000).toISOString(),
-    endDate: new Date(Date.now() + 23 * 86400000).toISOString(),
-    time: "9:00 AM WAT",
-    location: "Partner Hospital",
-    city: "Lagos",
-    isVirtual: false,
-    imageUrl: null,
-    registrationUrl: null,
-    isFeatured: false,
-  },
-  {
-    id: "f3",
-    title: "DFC Annual General Meeting 2026",
-    description:
-      "Annual assembly of DFC members. Elections, reports, and strategic planning for the year ahead.",
-    type: "AGM",
-    date: new Date(Date.now() + 60 * 86400000).toISOString(),
-    endDate: null,
-    time: "6:00 PM WAT",
-    location: null,
-    city: null,
-    isVirtual: true,
-    imageUrl: null,
-    registrationUrl: null,
-    isFeatured: true,
-  },
-];
-
 export default function EventsSection() {
-  const [events, setEvents] = useState<DFCEvent[]>(FALLBACK_EVENTS);
+  const [events, setEvents] = useState<DFCEvent[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/public/events")
       .then((res) => res.json())
-      .then((data) => {
-        if (data.events?.length > 0) {
-          setEvents(data.events);
-        }
-      })
-      .catch(() => {});
+      .then((data) => setEvents(data.events ?? []))
+      .catch(() => {})
+      .finally(() => setLoaded(true));
   }, []);
+
+  // Nothing is shown until the secretariat publishes real events.
+  if (!loaded || events.length === 0) return null;
 
   return (
     <section className="py-16 sm:py-20 bg-gray-50">
@@ -255,13 +203,6 @@ export default function EventsSection() {
           })}
         </div>
 
-        {/* Empty state if no events */}
-        {events.length === 0 && (
-          <div className="text-center py-16">
-            <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-400">No upcoming events scheduled.</p>
-          </div>
-        )}
       </div>
     </section>
   );
