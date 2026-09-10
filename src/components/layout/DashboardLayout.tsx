@@ -25,6 +25,9 @@ import {
   Building2,
   FolderOpen,
   MessageSquare,
+  Award,
+  Stethoscope,
+  CalendarDays,
 } from "lucide-react";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 
@@ -88,6 +91,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       items.push({ name: "Dashboard", href: "/admin", icon: Home });
       
       items.push({ name: "Members", href: "/admin/users", icon: Users });
+      items.push({ name: "Doctors", href: "/admin/doctors", icon: Stethoscope });
       items.push({ name: "Credentials", href: "/admin/credentials", icon: ShieldCheck });
       items.push({ name: "Secretariat", href: "/admin/secretariat", icon: Inbox });
       items.push({ name: "Second Opinion", href: "/admin/second-opinion", icon: FileText });
@@ -95,7 +99,9 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       items.push({ name: "Clinical Governance", href: "/admin/clinical", icon: Shield });
       items.push({ name: "EXCO", href: "/admin/exco", icon: Shield });
       items.push({ name: "Committees", href: "/admin/committees", icon: Users });
+      items.push({ name: "Leadership", href: "/admin/leadership", icon: Award });
       items.push({ name: "Initiatives", href: "/admin/initiatives", icon: FileText });
+      items.push({ name: "Events", href: "/admin/events", icon: CalendarDays });
       items.push({ name: "Appointments", href: "/admin/appointments", icon: Calendar });
       items.push({ name: "Beta Feedback", href: "/admin/beta-feedback", icon: MessageSquare });
 
