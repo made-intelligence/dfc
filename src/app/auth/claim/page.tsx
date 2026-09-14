@@ -4,8 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Loader2, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
-import { getDashboardUrl } from "@/lib/dashboard-url";
+import { Loader2, CheckCircle2, AlertCircle, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { getDashboardUrl, getDashboardLabel } from "@/lib/dashboard-url";
 
 function ClaimContent() {
   const searchParams = useSearchParams();
@@ -20,6 +20,7 @@ function ClaimContent() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [destination, setDestination] = useState<{ href: string; label: string } | null>(null);
   const [resendEmail, setResendEmail] = useState("");
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
@@ -94,8 +95,9 @@ function ClaimContent() {
         setStatus("done");
         // The claim response signs the member in and carries their role, so
         // send them to the portal they actually have access to.
-        const destination = getDashboardUrl(data.user?.role);
-        setTimeout(() => router.push(destination), 1600);
+        const href = getDashboardUrl(data.user?.role);
+        setDestination({ href, label: getDashboardLabel(data.user?.role) });
+        setTimeout(() => router.push(href), 2500);
       } else {
         setError(data.error || "Could not activate your account. Please try again.");
         setStatus("ready");
@@ -191,9 +193,35 @@ function ClaimContent() {
 
           {status === "done" && (
             <div className="text-center py-6">
-              <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
-              <h1 className="mt-4 text-xl font-bold text-[#0D1F3C]">Account activated</h1>
-              <p className="mt-2 text-gray-600">Signing you in…</p>
+              <div className="mx-auto w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center">
+                <CheckCircle2 className="w-9 h-9 text-emerald-500" />
+              </div>
+              <h1 className="mt-5 text-2xl font-bold text-[#0D1F3C]">
+                You&rsquo;re all set
+              </h1>
+              <p className="mt-2 text-gray-600 leading-relaxed">
+                {member?.name ? `Welcome to DFC, ${member.name.split(" ")[0]}. ` : "Welcome to DFC. "}
+                Your account is active and you are signed in.
+              </p>
+              <p className="mt-4 text-sm text-gray-500">
+                Sign in from now on with{" "}
+                <span className="font-medium text-gray-700">{member?.email}</span>{" "}
+                and the password you just set.
+              </p>
+
+              {/* An explicit way through, so nobody is stranded if the
+                  automatic redirect does not fire. */}
+              <button
+                onClick={() => router.push(destination?.href ?? "/")}
+                className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#0A6E75] px-6 py-3 text-base font-semibold text-white hover:bg-[#085c62] transition-colors"
+              >
+                Go to my {destination?.label ?? "dashboard"}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <p className="mt-3 text-xs text-gray-400 flex items-center justify-center gap-1.5">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Taking you there automatically…
+              </p>
             </div>
           )}
 

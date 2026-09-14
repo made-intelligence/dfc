@@ -25,3 +25,22 @@ export function getDashboardUrl(role?: UserRole | string | null): string {
       return "/";
   }
 }
+
+/** Human-readable name for the area getDashboardUrl sends a role to. */
+export function getDashboardLabel(role?: UserRole | string | null): string {
+  switch (role) {
+    case UserRole.SUPERADMIN:
+    case UserRole.SECRETARIAT:
+      return "admin dashboard";
+    case UserRole.DFC_MEMBER:
+      return "member portal";
+    case UserRole.HOSPITAL_ADMIN:
+      return "hospital portal";
+    case UserRole.SPL_ADMIN:
+      return "SPL portal";
+    case UserRole.PATIENT:
+      return "appointments";
+    default:
+      return "homepage";
+  }
+}
