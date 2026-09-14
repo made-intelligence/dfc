@@ -28,8 +28,22 @@ import {
   Award,
   Stethoscope,
   CalendarDays,
+  Landmark,
+  Gavel,
+  Lightbulb,
+  UserCog,
+  KeyRound,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { NotificationsDropdown } from "./NotificationsDropdown";
+
+type NavItem = {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  /** Sidebar group heading; items sharing one are rendered together. */
+  section?: string;
+};
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -84,56 +98,61 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
     router.push("/");
   };
 
-  const getNavigationItems = () => {
-    const items = [];
-    
+  const getNavigationItems = (): NavItem[] => {
+    const items: NavItem[] = [];
+
     if (user.role === UserRole.SECRETARIAT || user.role === UserRole.SUPERADMIN) {
-      items.push({ name: "Dashboard", href: "/admin", icon: Home });
-      
-      items.push({ name: "Members", href: "/admin/users", icon: Users });
-      items.push({ name: "Doctors", href: "/admin/doctors", icon: Stethoscope });
-      items.push({ name: "Credentials", href: "/admin/credentials", icon: ShieldCheck });
-      items.push({ name: "Secretariat", href: "/admin/secretariat", icon: Inbox });
-      items.push({ name: "Second Opinion", href: "/admin/second-opinion", icon: FileText });
-      items.push({ name: "SPL Partners", href: "/admin/spl", icon: Building2 });
-      items.push({ name: "Clinical Governance", href: "/admin/clinical", icon: Shield });
-      items.push({ name: "EXCO", href: "/admin/exco", icon: Shield });
-      items.push({ name: "Committees", href: "/admin/committees", icon: Users });
-      items.push({ name: "Leadership", href: "/admin/leadership", icon: Award });
-      items.push({ name: "Initiatives", href: "/admin/initiatives", icon: FileText });
-      items.push({ name: "Events", href: "/admin/events", icon: CalendarDays });
-      items.push({ name: "Appointments", href: "/admin/appointments", icon: Calendar });
-      items.push({ name: "Beta Feedback", href: "/admin/beta-feedback", icon: MessageSquare });
+      // Grouped into sections: a flat list of nineteen links made items like
+      // Events effectively unfindable. Each icon is distinct so the rail stays
+      // scannable when collapsed to icons on narrow screens.
+      items.push({ section: "Overview", name: "Dashboard", href: "/admin", icon: Home });
 
-      if (hasPermission('manage_admins')) {
-        items.push({ name: "Manage Admins", href: "/admin/admins", icon: Shield });
-      }
+      items.push({ section: "Membership", name: "Members", href: "/admin/users", icon: Users });
+      items.push({ section: "Membership", name: "Doctors", href: "/admin/doctors", icon: Stethoscope });
+      items.push({ section: "Membership", name: "Credentials", href: "/admin/credentials", icon: ShieldCheck });
 
-      if (hasPermission('manage_permissions')) {
-        items.push({ name: "Permissions", href: "/admin/permissions", icon: Shield });
-      }
-      
+      items.push({ section: "Governance", name: "EXCO", href: "/admin/exco", icon: Landmark });
+      items.push({ section: "Governance", name: "Committees", href: "/admin/committees", icon: Gavel });
+      items.push({ section: "Governance", name: "Leadership", href: "/admin/leadership", icon: Award });
+      items.push({ section: "Governance", name: "Initiatives", href: "/admin/initiatives", icon: Lightbulb });
+
+      items.push({ section: "Clinical", name: "Second Opinion", href: "/admin/second-opinion", icon: FileText });
+      items.push({ section: "Clinical", name: "Clinical Governance", href: "/admin/clinical", icon: Shield });
+      items.push({ section: "Clinical", name: "Appointments", href: "/admin/appointments", icon: Calendar });
+
+      items.push({ section: "Outreach", name: "Events", href: "/admin/events", icon: CalendarDays });
+      items.push({ section: "Outreach", name: "SPL Partners", href: "/admin/spl", icon: Building2 });
+      items.push({ section: "Outreach", name: "Secretariat", href: "/admin/secretariat", icon: Inbox });
+
       if (hasPermission('view_analytics')) {
-        items.push({ name: "Analytics", href: "/admin/analytics", icon: Activity });
+        items.push({ section: "System", name: "Analytics", href: "/admin/analytics", icon: Activity });
       }
-      
+      if (hasPermission('manage_admins')) {
+        items.push({ section: "System", name: "Manage Admins", href: "/admin/admins", icon: UserCog });
+      }
+      if (hasPermission('manage_permissions')) {
+        items.push({ section: "System", name: "Permissions", href: "/admin/permissions", icon: KeyRound });
+      }
       if (hasPermission('system_settings')) {
-        items.push({ name: "Settings", href: "/admin/settings", icon: Settings });
+        items.push({ section: "System", name: "Settings", href: "/admin/settings", icon: Settings });
       }
+      items.push({ section: "System", name: "Beta Feedback", href: "/admin/beta-feedback", icon: MessageSquare });
     } else if (user.role === UserRole.DFC_MEMBER) {
       items.push(
-        { name: "Dashboard", href: "/doctor", icon: Home },
-        { name: "My Cases", href: "/member/cases", icon: FileText },
-        { name: "Analytics", href: "/doctor/analytics", icon: Activity },
-        { name: "Schedule", href: "/doctor/schedule", icon: Clock },
-        { name: "Appointments", href: "/doctor/appointments", icon: Calendar },
-        { name: "Patient Records", href: "/doctor/emr", icon: FolderOpen },
-        { name: "Patients", href: "/doctor/patients", icon: Users },
-        { name: "Subscription", href: "/doctor/subscription", icon: CreditCard },
-        { name: "Profile", href: "/doctor/profile", icon: User }
+        { section: "Overview", name: "Dashboard", href: "/doctor", icon: Home },
+        { section: "Overview", name: "Analytics", href: "/doctor/analytics", icon: Activity },
+
+        { section: "Clinical", name: "My Cases", href: "/member/cases", icon: FileText },
+        { section: "Clinical", name: "Patient Records", href: "/doctor/emr", icon: FolderOpen },
+        { section: "Clinical", name: "Patients", href: "/doctor/patients", icon: Users },
+        { section: "Clinical", name: "Appointments", href: "/doctor/appointments", icon: Calendar },
+        { section: "Clinical", name: "Schedule", href: "/doctor/schedule", icon: Clock },
+
+        { section: "Account", name: "Subscription", href: "/doctor/subscription", icon: CreditCard },
+        { section: "Account", name: "Profile", href: "/doctor/profile", icon: User },
       );
     }
-    
+
     return items;
   };
 
@@ -179,24 +198,36 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
 
         <nav className="mt-6 px-3 flex-1 overflow-y-auto">
           <div className="space-y-1">
-            {navigationItems.map((item) => {
+            {navigationItems.map((item, index) => {
               const isActive = pathname === item.href ||
                 (item.href !== "/admin" && pathname.startsWith(item.href + "/"));
+              const startsSection =
+                !!item.section && item.section !== navigationItems[index - 1]?.section;
               return (
-                <Button
-                  key={item.name}
-                  variant="ghost"
-                  className={`w-full justify-start text-white hover:bg-blue-500 ${
-                    isActive ? "bg-blue-500 text-white" : ""
-                  }`}
-                  onClick={() => {
-                    router.push(item.href);
-                    setSidebarOpen(false);
-                  }}
-                >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
-                </Button>
+                <div key={item.href}>
+                  {startsSection && (
+                    <p
+                      className={`px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-blue-200/70 ${
+                        index === 0 ? "pt-1" : "pt-4"
+                      }`}
+                    >
+                      {item.section}
+                    </p>
+                  )}
+                  <Button
+                    variant="ghost"
+                    className={`w-full justify-start text-white hover:bg-blue-500 ${
+                      isActive ? "bg-blue-500 text-white" : ""
+                    }`}
+                    onClick={() => {
+                      router.push(item.href);
+                      setSidebarOpen(false);
+                    }}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.name}
+                  </Button>
+                </div>
               );
             })}
           </div>
