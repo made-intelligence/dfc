@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Loader2, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { getDashboardUrl } from "@/lib/dashboard-url";
 
 function ClaimContent() {
   const searchParams = useSearchParams();
@@ -91,7 +92,10 @@ function ClaimContent() {
       const data = await res.json();
       if (res.ok) {
         setStatus("done");
-        setTimeout(() => router.push("/dashboard"), 1600);
+        // The claim response signs the member in and carries their role, so
+        // send them to the portal they actually have access to.
+        const destination = getDashboardUrl(data.user?.role);
+        setTimeout(() => router.push(destination), 1600);
       } else {
         setError(data.error || "Could not activate your account. Please try again.");
         setStatus("ready");

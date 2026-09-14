@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { UserRole } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +17,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useScrollAnimation } from "@/lib/useScrollAnimation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
+import { getDashboardUrl } from "@/lib/dashboard-url";
 
 export function LoginForm() {
   const { ref: formRef, isVisible: formVisible } = useScrollAnimation();
@@ -67,24 +67,7 @@ export function LoginForm() {
     setLoading(false);
   };
 
-  const getDashboardUrl = (userRole?: UserRole) => {
-    if (!userRole) return "/";
 
-    switch (userRole) {
-      case UserRole.SUPERADMIN:
-        return "/admin";
-      case UserRole.SECRETARIAT:
-        return "/admin";
-      case UserRole.DFC_MEMBER:
-        return "/member";
-      case UserRole.HOSPITAL_ADMIN:
-        return "/hospital";
-      case UserRole.PATIENT:
-        return "/appointments";
-      default:
-        return "/";
-    }
-  };
 
   return (
     <Card

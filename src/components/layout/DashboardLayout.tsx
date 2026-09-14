@@ -172,11 +172,12 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       <div
         className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-primary shadow-lg transform transition-transform duration-300 ease-in-out
+        flex flex-col
         lg:fixed lg:translate-x-0
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}
       >
-        <div className="flex items-center justify-between bg-white h-16 px-6 border-b border-blue-500">
+        <div className="flex items-center justify-between bg-white h-16 px-6 border-b border-blue-500 shrink-0">
           <div className="flex items-center">
             <Image
               src="/logo.png"
@@ -196,7 +197,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
           </Button>
         </div>
 
-        <nav className="mt-6 px-3 flex-1 overflow-y-auto">
+        <nav className="mt-6 px-3 pb-4 flex-1 min-h-0 overflow-y-auto">
           <div className="space-y-1">
             {navigationItems.map((item, index) => {
               const isActive = pathname === item.href ||
@@ -233,7 +234,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
           </div>
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-blue-500">
+        <div className="shrink-0 p-4 border-t border-blue-500">
           <div className="flex items-center mb-4">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
