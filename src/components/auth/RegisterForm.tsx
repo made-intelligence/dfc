@@ -26,6 +26,8 @@ export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // Honeypot: hidden from people, but scripts fill every field they find.
+  const [honeypot, setHoneypot] = useState("");
   
   const { register } = useAuth(); // Assuming useAuth has register, otherwise we call API directly
   const router = useRouter();
@@ -51,6 +53,7 @@ export function RegisterForm() {
           email,
           password,
           role: "PATIENT", // Default to patient for self-signup
+          website: honeypot, // hidden field; scripts fill it, people do not
         }),
       });
 
@@ -93,6 +96,24 @@ export function RegisterForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Honeypot. Hidden from people and from screen readers, but a
+              scripted submitter fills every input it finds. */}
+          <input
+            type="text"
+            name="website"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
+            style={{
+              position: "absolute",
+              left: "-9999px",
+              width: 1,
+              height: 1,
+              opacity: 0,
+           }}
+          />
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <Input

@@ -18,6 +18,7 @@ import { sendEmail } from "@/lib/email/service";
 import Welcome from "@/emails/Welcome";
 import React from "react";
 import { logger } from "@/lib/logger";
+import { screenSignup, normalizeEmailForDedupe } from "@/lib/signup-guard";
 import { appUrl } from "@/lib/app-url";
 
 interface RegisterRequest {
@@ -32,6 +33,8 @@ interface RegisterRequest {
   experience?: number; // For doctors
   dateOfBirth?: string; // For patients
   gender?: string; // For patients
+  /** Hidden form field; only scripts fill it in. */
+  website?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -99,9 +102,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+    // Screen out automated signups before creating anything or sending mail.
+    // Each registration triggers a Welcome email to an attacker-chosen
+    // address, so an unguarded form is a relay for the sending domain.
+    const rejection = screenSignup({ email, name, honeypot: body.website });
+    if (rejection) {
+      logger.warn?.("Register", `blocked signup (${rejection.reason}): ${email}`);
+      return NextResponse.json({ error: rejection.message }, { status: 400 });
+    }
+
+    // Gmail ignores dots and "+" tags, so one inbox can mint unlimited
+    // distinct-looking addresses. Compare and store the canonical form.
+    const canonicalEmail = normalizeEmailForDedupe(email);
+
+    const existingUser = await prisma.user.findFirst({
+      where: { OR: [{ email: email.toLowerCase() }, { email: canonicalEmail }] },
     });
 
     if (existingUser) {
@@ -133,7 +148,7 @@ export async function POST(request: NextRequest) {
       // Create user
       const user = await tx.user.create({
         data: {
-          email: email.toLowerCase(),
+          email: canonicalEmail,
           password: hashedPassword,
           name,
           phone,
