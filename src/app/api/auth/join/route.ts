@@ -64,7 +64,13 @@ export async function POST(request: NextRequest) {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return NextResponse.json(
-        { error: 'An account with this email already exists' },
+        {
+          // There is no way to apply from inside an existing account, so do
+          // not send people looking for one; point at the two routes that
+          // actually work.
+          error:
+            'An account already exists for this email. If it is yours, sign in instead (use "Forgot Password?" if needed). If you registered as a patient and need DFC membership, email secretariat@dfcare.org and we will upgrade it.',
+        },
         { status: 409 }
       );
     }

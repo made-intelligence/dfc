@@ -185,7 +185,12 @@ export function JoinDFCForm() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.message ?? 'Something went wrong. Please try again.');
+        // The API reports failures as `error`; reading only `message` meant
+        // every rejection (validation, duplicate email, server fault) was
+        // flattened into the same unactionable sentence.
+        throw new Error(
+          data?.error ?? data?.message ?? 'Something went wrong. Please try again.',
+        );
       }
       setStep(4);
     } catch (err: unknown) {
