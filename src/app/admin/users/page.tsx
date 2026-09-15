@@ -74,10 +74,19 @@ export default function MembersPage() {
     categoryBreakdown: {} as Record<string, number>,
   });
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 25;
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter]);
 
   useEffect(() => {
     fetchMembers();
-  }, [searchTerm, statusFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, statusFilter, page]);
 
   const fetchMembers = async () => {
     try {
@@ -85,12 +94,18 @@ export default function MembersPage() {
       const params = new URLSearchParams();
       if (searchTerm) params.append("search", searchTerm);
       if (statusFilter) params.append("status", statusFilter);
+      params.append("page", String(page));
+      params.append("limit", String(PAGE_SIZE));
 
       const response = await fetch(`/api/admin/users?${params}`);
       const data = await response.json();
 
       setMembers(data.users || []);
       setStats(data.stats || stats);
+      // The API has always returned these; the page just ignored them, so
+      // only the first 20 members were ever reachable.
+      setTotalPages(data.pagination?.pages || 1);
+      setTotalCount(data.pagination?.total ?? (data.users?.length || 0));
     } catch (error) {
       console.error("Failed to fetch members:", error);
     } finally {
@@ -276,6 +291,43 @@ export default function MembersPage() {
                   </Button>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Pager */}
+          {!loading && totalCount > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 mt-4 border-t border-gray-100">
+              <p className="text-sm text-gray-500">
+                Showing {(page - 1) * PAGE_SIZE + 1}&ndash;
+                {Math.min(page * PAGE_SIZE, totalCount)} of {totalCount} member
+                {totalCount !== 1 ? "s" : ""}
+              </p>
+
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="cursor-pointer"
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-gray-600 px-2">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    className="cursor-pointer"
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
