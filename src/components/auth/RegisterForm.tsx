@@ -91,10 +91,24 @@ export function RegisterForm() {
           Create an Account
         </CardTitle>
         <CardDescription className="text-center">
-          Enter your details to create your account
+          For patients booking consultations and second opinions
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="mb-6 rounded-lg border border-[#0A6E75]/20 bg-[#0A6E75]/5 p-4">
+          <p className="text-sm text-gray-700">
+            <span className="font-semibold text-[#0D1F3C]">Are you a doctor?</span>{" "}
+            Membership of the Doctors Foundation for Care is a separate
+            application.{" "}
+            <Link
+              href="/auth/join"
+              className="text-[#0A6E75] font-medium underline underline-offset-2 hover:text-[#085c62]"
+            >
+              Apply for membership here
+            </Link>
+            .
+          </p>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Honeypot. Hidden from people and from screen readers, but a
               scripted submitter fills every input it finds. */}
