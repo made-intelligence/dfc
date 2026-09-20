@@ -184,7 +184,7 @@ export default function AdminExcoPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-48" />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-20 bg-gray-200 rounded" />
@@ -194,8 +194,8 @@ export default function AdminExcoPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Executive Committee</h1>
           <p className="text-sm text-gray-600 mt-1">Manage elected EXCO positions for DFC members.</p>

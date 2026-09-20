@@ -166,7 +166,7 @@ export default function AdminInitiativesPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-64" />
         <div className="h-10 bg-gray-200 rounded w-96" />
         {[1, 2, 3].map((i) => (
@@ -177,9 +177,9 @@ export default function AdminInitiativesPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Committees & Initiatives</h1>
           <p className="text-sm text-gray-600 mt-1">

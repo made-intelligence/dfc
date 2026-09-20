@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import {
   Loader2,
   FileText,
@@ -248,9 +247,8 @@ export default function SPLContractsPage() {
   };
 
   return (
-    <DashboardLayout title="SPL Contracts">
-      <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        {/* Header */}
+    <div className="space-y-6">
+      {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <button
@@ -721,6 +719,5 @@ export default function SPLContractsPage() {
           </>
         ) : null}
       </div>
-    </DashboardLayout>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -114,9 +113,8 @@ export default function AdminBetaFeedbackPage() {
   const resolvedCount = stats["RESOLVED"] || 0;
 
   return (
-    <DashboardLayout title="Beta Feedback">
-      <div className="space-y-6">
-        {/* Header */}
+    <div className="space-y-6">
+      {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#0D1F3C]">Beta Feedback</h1>
@@ -367,6 +365,5 @@ export default function AdminBetaFeedbackPage() {
           </p>
         )}
       </div>
-    </DashboardLayout>
   );
 }

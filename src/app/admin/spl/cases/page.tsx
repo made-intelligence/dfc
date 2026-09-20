@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import {
   Loader2,
   Briefcase,
@@ -244,9 +243,8 @@ export default function SPLCasesPage() {
   };
 
   return (
-    <DashboardLayout title="SPL Cases">
-      <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        {/* Header */}
+    <div className="space-y-6">
+      {/* Header */}
         <div>
           <h1
             className="text-2xl font-bold tracking-tight sm:text-3xl"
@@ -644,6 +642,5 @@ export default function SPLCasesPage() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
   );
 }

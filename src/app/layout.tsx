@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/components/ui/toast";
 import CsrfBootstrap from "@/components/auth/CsrfBootstrap";
+import CookieConsent from "@/components/layout/CookieConsent";
 import { OrganizationJsonLd } from "@/components/seo/JsonLd";
 import { appUrl } from "@/lib/app-url";
 
@@ -106,6 +107,7 @@ export default function RootLayout({
         <ToastProvider>
           <CsrfBootstrap />
           <AuthProvider>{children}</AuthProvider>
+          <CookieConsent />
         </ToastProvider>
       </body>
     </html>

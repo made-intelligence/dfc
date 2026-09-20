@@ -230,7 +230,7 @@ export default function AdminEventsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-64" />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-20 bg-gray-200 rounded" />
@@ -244,8 +244,8 @@ export default function AdminEventsPage() {
   const past = events.filter((e) => new Date(e.date).getTime() < now);
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Events</h1>
           <p className="text-sm text-gray-600 mt-1">

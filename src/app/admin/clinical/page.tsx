@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import {
   Shield,
@@ -138,9 +137,8 @@ export default function ClinicalGovernancePage() {
   // ── Render ──────────────────────────────────────────────────────────
 
   return (
-    <DashboardLayout title="Clinical Governance">
-      <div className="space-y-8 max-w-7xl mx-auto">
-        {/* Header */}
+    <div className="space-y-6">
+      {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-[#0D1F3C]/10">
@@ -407,6 +405,5 @@ export default function ClinicalGovernancePage() {
           )}
         </section>
       </div>
-    </DashboardLayout>
   );
 }

@@ -216,7 +216,7 @@ export default function AdminLeadershipPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-64" />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-24 bg-gray-200 rounded" />
@@ -226,8 +226,8 @@ export default function AdminLeadershipPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
+    <div className="space-y-6">
+      <div>
         <h1 className="text-2xl font-bold text-gray-900">Leadership Profiles</h1>
         <p className="text-sm text-gray-600 mt-1">
           Manage the Founder, Executive Committee, and Board of Trustees shown on the public{" "}

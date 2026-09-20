@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import {
   Loader2,
   Receipt,
@@ -132,9 +131,8 @@ export default function SPLInvoicesPage() {
   };
 
   return (
-    <DashboardLayout title="SPL Invoices">
-      <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        {/* Header */}
+    <div className="space-y-6">
+      {/* Header */}
         <div>
           <button
             onClick={() => router.push("/admin/spl")}
@@ -346,6 +344,5 @@ export default function SPLInvoicesPage() {
           </>
         )}
       </div>
-    </DashboardLayout>
   );
 }

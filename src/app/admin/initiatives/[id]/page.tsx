@@ -323,7 +323,7 @@ export default function InitiativeDetailPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         <div className="h-6 bg-gray-200 rounded w-32" />
         <div className="h-8 bg-gray-200 rounded w-64" />
         {[1, 2, 3, 4].map((i) => (
@@ -335,7 +335,7 @@ export default function InitiativeDetailPage() {
 
   if (!initiative) {
     return (
-      <div className="p-6">
+      <div className="space-y-6">
         <p className="text-gray-600">Initiative not found.</p>
         <button
           onClick={() => router.push("/admin/initiatives")}
@@ -348,7 +348,7 @@ export default function InitiativeDetailPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="max-w-4xl">
       {/* Back + Header */}
       <button
         onClick={() => router.push("/admin/initiatives")}

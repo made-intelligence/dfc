@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ArrowLeft, Loader2, Building } from "lucide-react";
 
 const PARTNER_TYPES = [
@@ -64,9 +63,8 @@ export default function NewPartnerPage() {
   };
 
   return (
-    <DashboardLayout title="New Partner">
-      <div className="mx-auto w-full max-w-2xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        {/* Header */}
+    <div className="max-w-2xl space-y-6">
+      {/* Header */}
         <div>
           <button
             onClick={() => router.push("/admin/spl/partners")}
@@ -244,6 +242,5 @@ export default function NewPartnerPage() {
           </div>
         </form>
       </div>
-    </DashboardLayout>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import {
   Building,
   Briefcase,
@@ -122,9 +121,8 @@ export default function SPLOverviewPage() {
   ];
 
   return (
-    <DashboardLayout title="SPL Management">
-      <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-6 lg:px-8">
-        {/* Header */}
+    <div className="space-y-6">
+      {/* Header */}
         <div>
           <h1
             className="text-2xl font-bold tracking-tight sm:text-3xl"
@@ -224,6 +222,5 @@ export default function SPLOverviewPage() {
           })}
         </div>
       </div>
-    </DashboardLayout>
   );
 }

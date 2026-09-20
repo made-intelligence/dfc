@@ -243,9 +243,10 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
                 </span>
               </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-white">{user.name}</p>
-              <p className="text-xs text-blue-200 capitalize">
+            <div className="ml-3 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{user.name}</p>
+              <p className="text-xs text-blue-200 truncate">{user.email}</p>
+              <p className="text-xs text-blue-200/70 capitalize">
                 {user.role.toLowerCase()}
               </p>
             </div>
@@ -283,7 +284,10 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
 
             <div className="flex items-center space-x-4">
               <NotificationsDropdown />
-              <div className="text-sm text-gray-600">Welcome, {user.name}</div>
+              <div className="text-right text-sm leading-tight">
+                <div className="text-gray-900 font-medium">{user.name}</div>
+                <div className="text-gray-500 text-xs">{user.email}</div>
+              </div>
             </div>
           </div>
         </div>

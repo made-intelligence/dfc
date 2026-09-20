@@ -148,14 +148,13 @@ export default function SecretariatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <h1 className="mb-2 text-3xl font-bold tracking-tight text-gray-900">
-          Secretariat Dashboard
-        </h1>
-        <p className="mb-8 text-base text-gray-500" style={{ fontSize: "16px" }}>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Secretariat Dashboard</h1>
+        <p className="text-sm text-gray-600 mt-1">
           Manage incoming requests and tickets.
         </p>
+      </div>
 
         {/* Status filter tabs */}
         <div className="mb-4 flex flex-wrap gap-1 border-b border-gray-200">
@@ -387,6 +386,5 @@ export default function SecretariatPage() {
           </div>
         )}
       </div>
-    </div>
   );
 }
