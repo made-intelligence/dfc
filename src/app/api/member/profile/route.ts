@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { generateDoctorSlug } from '@/lib/utils/slug';
 
 export async function GET(request: NextRequest) {
   try {
@@ -81,33 +82,59 @@ export async function PATCH(request: NextRequest) {
         });
       }
 
-      // Update DoctorProfile if exists
+      // Members imported from the register were created without a
+      // DoctorProfile, and this block used to run only "if exists" - so every
+      // professional detail they entered was silently discarded and they never
+      // appeared in search. Create the profile when it is missing.
       const doctorProfile = await tx.doctorProfile.findUnique({
         where: { userId: payload.userId },
       });
-      if (doctorProfile) {
-        let specialtyId = doctorProfile.specialtyId;
-        if (specialty) {
-          let specialtyRecord = await tx.specialty.findFirst({
-            where: { name: { equals: specialty, mode: 'insensitive' } },
-          });
-          if (!specialtyRecord) {
-            specialtyRecord = await tx.specialty.create({ data: { name: specialty } });
-          }
-          specialtyId = specialtyRecord.id;
-        }
 
+      let specialtyId = doctorProfile?.specialtyId ?? null;
+      if (specialty) {
+        let specialtyRecord = await tx.specialty.findFirst({
+          where: { name: { equals: specialty, mode: 'insensitive' } },
+        });
+        if (!specialtyRecord) {
+          specialtyRecord = await tx.specialty.create({ data: { name: specialty } });
+        }
+        specialtyId = specialtyRecord.id;
+      }
+
+      const profileFields = {
+        ...(title !== undefined && { title }),
+        ...(institution !== undefined && { institution }),
+        ...(city !== undefined && { city }),
+        ...(country !== undefined && { country }),
+        ...(subSpecialty !== undefined && { subSpecialty }),
+        ...(bio !== undefined && { bio }),
+        ...(mdcnNumber !== undefined && { mdcnNumber }),
+        ...(specialtyId && { specialtyId }),
+      };
+
+      if (doctorProfile) {
         await tx.doctorProfile.update({
           where: { userId: payload.userId },
+          data: profileFields,
+        });
+      } else {
+        const user = await tx.user.findUnique({
+          where: { id: payload.userId },
+          select: { name: true },
+        });
+
+        let slug = generateDoctorSlug(user?.name || 'member');
+        let counter = 1;
+        while (await tx.doctorProfile.findUnique({ where: { slug } })) {
+          slug = generateDoctorSlug(user?.name || 'member', counter++);
+        }
+
+        await tx.doctorProfile.create({
           data: {
-            ...(title !== undefined && { title }),
-            ...(institution !== undefined && { institution }),
-            ...(city !== undefined && { city }),
-            ...(country !== undefined && { country }),
-            ...(subSpecialty !== undefined && { subSpecialty }),
-            ...(bio !== undefined && { bio }),
-            ...(mdcnNumber !== undefined && { mdcnNumber }),
-            ...(specialtyId && { specialtyId }),
+            userId: payload.userId,
+            slug,
+            experience: 0,
+            ...profileFields,
           },
         });
       }
