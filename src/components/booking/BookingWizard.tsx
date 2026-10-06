@@ -94,6 +94,12 @@ export function BookingWizard({ doctor }: BookingWizardProps) {
     }
   }, [availableModes]);
 
+  const hasAnyAvailability = useMemo(() => {
+    return Object.values(schedules || {}).some((day: any) =>
+      Array.isArray(day) && day.some((s: any) => s.scheduleType === 'AVAILABLE'),
+    );
+  }, [schedules]);
+
   const timeSlots = useMemo(() => {
     if (!date) return [];
     const dayOfWeek = date.getDay();
@@ -316,8 +322,33 @@ export function BookingWizard({ doctor }: BookingWizardProps) {
                       </Button>
                     ))}
                   </div>
-                ) : (
+                ) : hasAnyAvailability ? (
                   <p className="text-gray-500 text-center py-8">No available slots for this date</p>
+                ) : (
+                  <div className="text-center py-8 px-4">
+                    <p className="text-gray-900 font-medium mb-1">
+                      This specialist has not published consulting hours yet
+                    </p>
+                    <p className="text-sm text-gray-500 mb-4">
+                      No date will show slots until they do, so please do not keep
+                      checking. You can still reach them through the secretariat,
+                      or request a written second opinion.
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                      <a
+                        href="/second-opinion"
+                        className="inline-flex items-center justify-center h-10 px-5 rounded-lg bg-[#0D1F3C] text-white text-sm font-semibold hover:bg-[#162d52] transition-colors"
+                      >
+                        Request a second opinion
+                      </a>
+                      <a
+                        href="/contact"
+                        className="inline-flex items-center justify-center h-10 px-5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        Contact the secretariat
+                      </a>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

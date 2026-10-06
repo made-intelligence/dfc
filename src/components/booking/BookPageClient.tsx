@@ -53,6 +53,7 @@ interface Doctor {
   city?: string;
   hasVideo?: boolean;
   hasInPerson?: boolean;
+  acceptingBookings?: boolean;
   clinicLocation?: string | null;
 }
 
@@ -663,6 +664,12 @@ function BookPageContent() {
                             <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100">
                               <MapPin className="w-3 h-3" />
                               In-Person
+                            </span>
+                          )}
+                          {!doctor.acceptingBookings && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-100">
+                              <Clock className="w-3 h-3" />
+                              Not yet open for booking
                             </span>
                           )}
                         </div>

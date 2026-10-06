@@ -169,8 +169,12 @@ export async function GET(request: NextRequest) {
               )
             : 0,
         totalRatings: doctor.ratings.length,
-        hasVideo: modes.has('VIDEO') || modes.size === 0, // default to video if no schedules
+        // Only claim a consultation mode the doctor has actually scheduled.
+        // This used to default to video whenever there were no schedules, so
+        // every card advertised video while the booking page had no slots.
+        hasVideo: modes.has('VIDEO'),
         hasInPerson: modes.has('IN_PERSON'),
+        acceptingBookings: doctor.schedules.length > 0,
         clinicLocation,
       };
     });
