@@ -310,12 +310,15 @@ export function BookingWizard({ doctor }: BookingWizardProps) {
               <div className="flex-1">
                 <h3 className="font-semibold mb-3">Available Slots</h3>
                 {timeSlots.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2 max-h-80 overflow-y-auto">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-80 overflow-y-auto">
                     {timeSlots.map(slot => (
+                      /* 44px minimum: these are the primary tap targets of
+                         the whole booking flow, on a mostly mobile audience,
+                         and the shared button default is 36px. */
                       <Button
                         key={slot}
                         variant={selectedTime === slot ? "default" : "outline"}
-                        className="w-full"
+                        className="w-full h-11 text-base tabular-nums"
                         onClick={() => setSelectedTime(slot)}
                       >
                         {slot}
