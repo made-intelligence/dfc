@@ -149,8 +149,17 @@ export async function GET(request: NextRequest) {
       })),
     }));
 
+    // Lead with the entries worth reading. Members backfilled from the
+    // register have no specialty yet, and scattering them through the
+    // directory makes it look emptier than it is.
+    const ranked = [...specialists].sort((a, b) => {
+      const score = (s: typeof a) =>
+        (s.specialty ? 4 : 0) + (s.bio ? 2 : 0) + (s.endorsementCount > 0 ? 1 : 0);
+      return score(b) - score(a);
+    });
+
     return NextResponse.json(
-      { success: true, specialists },
+      { success: true, specialists: ranked },
       { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' } },
     );
   } catch (error) {

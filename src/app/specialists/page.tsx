@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Topbar from "@/components/layout/Topbar";
 import Footer from "@/components/layout/Footer";
+import { formatDisplayName } from "@/lib/display-name";
 
 interface Specialist {
   id: string;
@@ -442,12 +443,12 @@ export default function SpecialistsPage() {
                       {/* Avatar */}
                       <div className="w-11 h-11 rounded-full bg-[#0D1F3C] flex items-center justify-center shrink-0">
                         <span className="text-white text-sm font-semibold">
-                          {spec.name.charAt(0)}
+                          {formatDisplayName(spec.name).charAt(0)}
                         </span>
                       </div>
                       <div>
                         <h3 className="text-base font-semibold text-gray-900 group-hover:text-[#0D1F3C] transition-colors">
-                          {spec.name}
+                          {formatDisplayName(spec.name)}
                         </h3>
                         <p className="text-sm text-gray-600">
                           {spec.specialty}

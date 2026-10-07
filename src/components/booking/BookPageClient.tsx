@@ -26,6 +26,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Loading } from "@/components/ui/loading";
 import { SPECIALTIES, normalizeSpecialtyName } from "@/lib/specialties";
+import { formatDisplayName } from "@/lib/display-name";
 import { usePlatformStats } from "@/lib/usePlatformStats";
 
 interface Specialty {
@@ -611,7 +612,7 @@ function BookPageContent() {
                         <div className="flex items-center gap-3.5 mb-3">
                           <div className="relative w-14 h-14 rounded-xl overflow-hidden ring-2 ring-gray-200 shrink-0">
                             {doctor.profileImage ? (
-                              <Image src={doctor.profileImage} alt={doctor.name} fill className="object-cover" />
+                              <Image src={doctor.profileImage} alt={formatDisplayName(doctor.name)} fill className="object-cover" />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-[#0A3454] to-[#0A6E75] flex items-center justify-center">
                                 <User className="w-6 h-6 text-white/90" />
@@ -620,7 +621,7 @@ function BookPageContent() {
                           </div>
                           <div className="min-w-0">
                             <h3 className="text-base font-bold text-[#0D1F3C] truncate group-hover:text-[#0A6E75] transition-colors">
-                              {doctor.name}
+                              {formatDisplayName(doctor.name)}
                             </h3>
                             <div className="flex items-center gap-2 mt-0.5 text-sm text-gray-500">
                               {doctor.experience > 0 && (
