@@ -40,7 +40,7 @@ interface Doctor {
   slug: string;
   name: string;
   profileImage: string | null;
-  specialty: string;
+  specialty: string | null;
   specialtyId: string | null;
   consultationFee: number | string;
   currency: string;
@@ -587,10 +587,17 @@ function BookPageContent() {
                       <div className="p-5 pt-4">
                         {/* Specialty + rating row */}
                         <div className="flex items-center justify-between mb-4">
-                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-gray-50 text-gray-600 border-gray-200">
-                            <Stethoscope className="w-3 h-3" />
-                            {doctor.specialty}
-                          </span>
+                          {doctor.specialty ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-gray-50 text-gray-600 border-gray-200">
+                              <Stethoscope className="w-3 h-3" />
+                              {doctor.specialty}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border border-dashed border-gray-200 text-gray-400">
+                              <Stethoscope className="w-3 h-3" />
+                              Specialty not yet listed
+                            </span>
+                          )}
                           {doctor.rating > 0 && (
                             <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600">
                               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
