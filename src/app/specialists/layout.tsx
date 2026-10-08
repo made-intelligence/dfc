@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     title: "Find a Specialist — Doctors Foundation For Care",
     description:
       "Browse verified diaspora-trained Nigerian specialists. Credentialed doctors across every major specialty.",
-    images: [{ url: "/hero.jpg", width: 1200, height: 630, alt: "DFC Specialists" }],
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "DFC Specialists" }],
   },
 };
 

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     template: "%s | DFC — Doctors Foundation For Care",
   },
   description:
-    "Turning brain drain into brain gain. DFC connects Nigerian diaspora doctors with patients at home — book consultations, get second opinions, and access specialist care from world-trained physicians.",
+    "Find a verified Nigerian specialist for a consultation or an expert second opinion. DFC physicians practise in Nigeria, the UK, the US and beyond.",
   keywords: [
     "Nigerian doctors abroad",
     "diaspora doctors Nigeria",
@@ -49,10 +49,10 @@ export const metadata: Metadata = {
     siteName: "Doctors Foundation For Care (DFC)",
     title: "DFC | Doctors Foundation For Care — Nigerian Diaspora Medical Experts",
     description:
-      "Turning brain drain into brain gain. Connect with Nigerian diaspora doctors for consultations, second opinions, and specialist care.",
+      "Connect with verified Nigerian specialists for consultations and expert second opinions. DFC physicians practise in Nigeria, the UK, the US and beyond.",
     images: [
       {
-        url: "/hero.jpg",
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "Doctors Foundation For Care — Connecting diaspora physicians with patients in Nigeria",
@@ -63,8 +63,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "DFC | Doctors Foundation For Care",
     description:
-      "Turning brain drain into brain gain. Connect with Nigerian diaspora doctors for consultations, second opinions, and specialist care.",
-    images: ["/hero.jpg"],
+      "Connect with verified Nigerian specialists for consultations and expert second opinions. DFC physicians practise in Nigeria, the UK, the US and beyond.",
+    images: ["/og-image.jpg"],
   },
   robots: {
     index: true,

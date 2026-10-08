@@ -34,6 +34,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let specialistRoutes: MetadataRoute.Sitemap = [];
 
   try {
+    // /book and /specialists are served by different queries, so a slug that
+    // appears on one does not necessarily resolve on the other. Listing every
+    // doctor under both paths published URLs that render empty, which wastes
+    // crawl budget and reads as thin content.
     const doctors = await prisma.doctorProfile.findMany({
       where: { isAvailable: true, user: { isActive: true } },
       select: { slug: true, updatedAt: true },
@@ -46,9 +50,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-    specialistRoutes = doctors.map((doctor) => ({
-      url: `${baseUrl}/specialists/${doctor.slug}`,
-      lastModified: doctor.updatedAt,
+    // Mirrors /api/public/specialists: active members only.
+    const specialists = await prisma.doctorProfile.findMany({
+      where: {
+        slug: { not: undefined },
+        user: { isActive: true, dfcMember: { status: "ACTIVE" } },
+      },
+      select: { slug: true, updatedAt: true },
+    });
+
+    specialistRoutes = specialists.map((specialist) => ({
+      url: `${baseUrl}/specialists/${specialist.slug}`,
+      lastModified: specialist.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.8,
     }));

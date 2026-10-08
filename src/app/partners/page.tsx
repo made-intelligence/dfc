@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     title: "Partner with DFC — Doctors Foundation For Care",
     description:
       "Host visiting diaspora specialists, run outreach programmes, and transform healthcare delivery in Nigeria.",
-    images: [{ url: "/partners-hero.jpg", width: 1200, height: 630, alt: "DFC Hospital Partners" }],
+    images: [{ url: "/og-partners.jpg", width: 1200, height: 630, alt: "DFC Hospital Partners" }],
   },
 };
 
