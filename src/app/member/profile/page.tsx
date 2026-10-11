@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { SPECIALTIES } from "@/lib/specialties";
+import { SPECIALTIES, subSpecialtiesFor } from "@/lib/specialties";
 import {
   Camera,
   User,
@@ -890,8 +890,16 @@ export default function MemberProfilePage() {
               value={profile.subSpecialty}
               onChange={handleChange}
               optional
+              list="subSpecialtyOptions"
               placeholder="e.g. Paediatric Cardiology"
             />
+            {/* Suggestions only. The field stays free text, so a specialty we
+                have no list for never blocks anyone. */}
+            <datalist id="subSpecialtyOptions">
+              {subSpecialtiesFor(profile.specialty).map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
             <FormInput
               label="Institution"
               id="institution"

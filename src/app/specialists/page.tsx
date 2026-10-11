@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Topbar from "@/components/layout/Topbar";
 import Footer from "@/components/layout/Footer";
+import { SPECIALTIES as SHARED_SPECIALTIES } from "@/lib/specialties";
 import { formatDisplayName } from "@/lib/display-name";
 
 interface Specialist {
@@ -31,33 +32,9 @@ interface Specialist {
   bio?: string;
 }
 
-const SPECIALTIES = [
-  "All specialties",
-  "Cardiology",
-  "Dermatology",
-  "Endocrinology",
-  "Gastroenterology",
-  "General Surgery",
-  "Haematology",
-  "Infectious Diseases",
-  "Internal Medicine",
-  "Nephrology",
-  "Neurology",
-  "Neurosurgery",
-  "Obstetrics & Gynaecology",
-  "Oncology",
-  "Ophthalmology",
-  "Orthopaedics",
-  "Otorhinolaryngology (ENT)",
-  "Paediatrics",
-  "Pathology",
-  "Plastic Surgery",
-  "Psychiatry",
-  "Pulmonology",
-  "Radiology",
-  "Rheumatology",
-  "Urology",
-];
+// Derived from the shared list so the public filter can never drift from
+// what members can actually select on their profile.
+const SPECIALTIES = ["All specialties", ...SHARED_SPECIALTIES];
 
 const INSTITUTIONS = [
   "All institutions",
