@@ -38,8 +38,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // appears on one does not necessarily resolve on the other. Listing every
     // doctor under both paths published URLs that render empty, which wastes
     // crawl budget and reads as thin content.
+    // A profile with neither a specialty nor a bio has nothing on it but a
+    // name. Submitting ninety of those is thin content at scale: it suppresses
+    // the domain rather than extending it. They are still crawlable, and they
+    // return here the moment the member fills something in.
+    const worthIndexing = {
+      OR: [{ specialtyId: { not: null } }, { bio: { not: null } }],
+    };
+
     const doctors = await prisma.doctorProfile.findMany({
-      where: { isAvailable: true, user: { isActive: true } },
+      where: { isAvailable: true, user: { isActive: true }, ...worthIndexing },
       select: { slug: true, updatedAt: true },
     });
 
@@ -55,6 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       where: {
         slug: { not: undefined },
         user: { isActive: true, dfcMember: { status: "ACTIVE" } },
+        ...worthIndexing,
       },
       select: { slug: true, updatedAt: true },
     });
