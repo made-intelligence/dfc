@@ -33,7 +33,10 @@ function slugify(name) {
 }
 
 function doctorSlug(name, suffix) {
-  const base = `dr-${slugify(name)}`;
+  // Strip a leading honorific first: names are stored as "Dr. Debo Odulana",
+  // and prefixing blindly produced "dr-dr-debo-odulana".
+  const bare = (name || 'member').replace(/^\s*(dr|prof|mr|mrs|ms|miss)\.?\s+/i, '');
+  const base = `dr-${slugify(bare)}`;
   return suffix ? `${base}-${suffix}` : base;
 }
 

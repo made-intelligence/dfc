@@ -2,6 +2,7 @@ import { Metadata, ResolvingMetadata } from "next";
 import { appUrl } from "@/lib/app-url";
 import DoctorProfileClient from "@/components/booking/DoctorProfileClient";
 import { DoctorJsonLd } from "@/components/seo/JsonLd";
+import { notFound } from "next/navigation";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -31,8 +32,11 @@ export async function generateMetadata(
   const doctor = await getDoctor(slug);
 
   if (!doctor) {
+    // Unknown slugs used to render a "Doctor Not Found" body under HTTP 200,
+    // which is a soft 404. Google treats those worse than thin pages.
     return {
       title: "Doctor Not Found | DFC",
+      robots: { index: false, follow: false },
     };
   }
 
@@ -73,6 +77,11 @@ export async function generateMetadata(
 export default async function DoctorProfilePage({ params }: Props) {
   const { slug } = await params;
   const doctor = await getDoctor(slug);
+
+  // A real 404, not a 200 carrying the words "Doctor Not Found". Soft 404s
+  // get indexed and then counted against the domain.
+  if (!doctor) notFound();
+
   const baseUrl = appUrl();
 
   return (
