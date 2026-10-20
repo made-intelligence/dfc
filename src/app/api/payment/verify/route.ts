@@ -5,6 +5,7 @@ import { UserRole } from "@prisma/client";
 import { v4 as uuidv4 } from 'uuid';
 import React from 'react';
 import { logger } from '@/lib/logger';
+import { findOpenSlot } from '@/lib/booking-availability';
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,6 +69,9 @@ export async function POST(request: NextRequest) {
     }
 
     const { metadata, amount, currency } = verifyData.data;
+    // isGuest only appears on payments started before booking required an
+    // account; initialize no longer creates them, so this path just lets
+    // those last in-flight payments complete.
     const { doctorId, patientId, date, time, reason, isGuest, guestName, guestEmail, guestPhone, consultationMode, clinicLocation } = metadata;
 
     // Price-integrity check: the amount actually paid must match the doctor's
@@ -154,6 +158,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Re-check the slot: someone may have paid for it since this payment
+    // started. The money is already captured, so log it for a refund.
+    const slot = await findOpenSlot(doctorId, date, time);
+    if (!slot) {
+      logger.error('PaymentVerify', 'Slot taken after payment; refund needed', { reference, doctorId, date, time });
+      return NextResponse.json(
+        {
+          error: `Sorry, that time was booked by someone else while you were paying. Please contact support with payment reference ${reference} for a refund or to rebook.`,
+          code: "SLOT_TAKEN",
+        },
+        { status: 409 }
+      );
+    }
+
     // Resolve patient: either existing user or create guest account
     let resolvedPatientId: string;
     let resolvedPatientProfileId: string;
@@ -215,10 +233,7 @@ export async function POST(request: NextRequest) {
 
     // Create Appointment
     const appointmentDate = new Date(date);
-    const [hours, mins] = time.split(':').map(Number);
-    const endTimeDate = new Date(appointmentDate);
-    endTimeDate.setHours(hours, mins + 30);
-    const endTime = `${endTimeDate.getHours().toString().padStart(2, '0')}:${endTimeDate.getMinutes().toString().padStart(2, '0')}`;
+    const endTime = slot.endTime;
 
     // Generate meeting link
     const meetingId = uuidv4();
@@ -258,7 +273,7 @@ export async function POST(request: NextRequest) {
 
     const emailPromise = sendEmail({
       to: appointment.patient.email,
-      subject: 'Booking Confirmation - DFC Medical',
+      subject: 'Booking Confirmation - DFC',
       templateName: 'BookingConfirmation',
       component: React.createElement(BookingConfirmation, {
         patientName: appointment.patient.name,
@@ -272,7 +287,7 @@ export async function POST(request: NextRequest) {
 
     const doctorEmailPromise = sendEmail({
       to: appointment.doctor.email,
-      subject: 'New Appointment Booked - DFC Medical',
+      subject: 'New Appointment Booked - DFC',
       templateName: 'BookingConfirmation',
       component: React.createElement(BookingConfirmation, {
          patientName: appointment.doctor.name,

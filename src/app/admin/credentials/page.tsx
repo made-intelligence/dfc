@@ -130,8 +130,8 @@ export default function CredentialVerificationPage() {
     <>
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Credential Verification</h1>
-        <p className="text-sm text-gray-600 mt-1">
+        <h1 className="text-2xl font-bold text-[#0D1F3C]">Credential Verification</h1>
+        <p className="mt-1 text-sm text-gray-500">
           Review and verify member medical credentials against primary sources.
         </p>
       </div>

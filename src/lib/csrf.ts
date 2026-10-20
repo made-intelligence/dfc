@@ -61,12 +61,12 @@ export function validateCsrf(request: NextRequest): NextResponse | null {
   // Skip CSRF for auth endpoints that don't have a session yet
   if (
     pathname === "/api/auth/login" ||
-    pathname === "/api/auth/register" ||
     pathname === "/api/auth/join" ||
     pathname === "/api/auth/legacy-claim" ||
-    pathname === "/api/auth/claim-account" ||
     pathname === "/api/auth/claim" ||
-    pathname === "/api/auth/resend-claim"
+    pathname === "/api/auth/resend-claim" ||
+    pathname === "/api/auth/booking-start" ||
+    pathname === "/api/auth/send-password"
   ) {
     return null;
   }

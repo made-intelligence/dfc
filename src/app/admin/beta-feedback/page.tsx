@@ -118,7 +118,7 @@ export default function AdminBetaFeedbackPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#0D1F3C]">Beta Feedback</h1>
-            <p className="text-gray-500 mt-1">Review feedback from beta testers</p>
+            <p className="mt-1 text-sm text-gray-500">Review feedback from beta testers</p>
           </div>
           <Button
             variant="outline"

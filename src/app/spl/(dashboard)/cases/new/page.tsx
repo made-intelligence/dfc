@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Card,
@@ -173,7 +173,7 @@ export default function NewCasePage() {
             Back to Cases
           </button>
           <h1 className="text-2xl font-bold text-[#0D1F3C]">Submit New Case</h1>
-          <p className="text-gray-500 mt-1">
+          <p className="mt-1 text-sm text-gray-500">
             Complete the form below to submit a patient case for specialist review.
           </p>
         </div>

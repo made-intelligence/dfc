@@ -8,15 +8,22 @@ import { Badge } from "@/components/ui/badge";
 import { AddAdminModal } from "@/components/admin/AddAdminModal";
 import {
   Search,
-  Filter,
   UserPlus,
-  MoreHorizontal,
   Mail,
   Phone,
   Calendar,
   Shield,
 } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/loading";
+import { FilterChips } from "@/components/admin/ListControls";
+
+type RoleFilter = "" | "SUPERADMIN" | "SECRETARIAT";
+
+const ROLE_OPTIONS: { value: RoleFilter; label: string }[] = [
+  { value: "", label: "All" },
+  { value: "SUPERADMIN", label: "Super admins" },
+  { value: "SECRETARIAT", label: "Secretariat" },
+];
 
 interface AdminData {
   id: string;
@@ -40,6 +47,7 @@ interface AdminsResponse {
 
 export default function AdminsPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("");
   const [admins, setAdmins] = useState<AdminData[]>([]);
   const [stats, setStats] = useState({
     totalAdmins: 0,
@@ -74,10 +82,10 @@ export default function AdminsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Admin Management</h1>
-          <p className="text-gray-600">Manage platform administrators</p>
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">Admins</h1>
+          <p className="mt-1 text-sm text-gray-500">Platform administrators and secretariat staff</p>
         </div>
         <Button onClick={() => setShowAddModal(true)}>
           <UserPlus className="h-4 w-4 mr-2" />
@@ -85,7 +93,7 @@ export default function AdminsPage() {
         </Button>
       </div>
 
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -134,22 +142,19 @@ export default function AdminsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>All Administrators</CardTitle>
-            <div className="flex gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search admins..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
-                />
-              </div>
-              <Button variant="outline">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <CardTitle>All Administrators</CardTitle>
+              <FilterChips options={ROLE_OPTIONS} value={roleFilter} onChange={setRoleFilter} />
+            </div>
+            <div className="relative w-full sm:w-auto">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search admins..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 sm:w-64"
+              />
             </div>
           </div>
         </CardHeader>
@@ -158,17 +163,20 @@ export default function AdminsPage() {
             <TableSkeleton rows={5} />
           ) : (
             <div className="space-y-4">
-              {admins.map((admin) => (
+              {admins.filter((a) => !roleFilter || a.role === roleFilter).length === 0 && (
+                <p className="py-10 text-center text-sm text-gray-500">No admins match these filters.</p>
+              )}
+              {admins.filter((a) => !roleFilter || a.role === roleFilter).map((admin) => (
                 <div
                   key={admin.id}
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                      <Shield className="h-5 w-5 text-purple-600" />
+                    <div className="w-10 h-10 shrink-0 bg-[#0D1F3C]/10 rounded-full flex items-center justify-center">
+                      <Shield className="h-5 w-5 text-[#0D1F3C]" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-medium">{admin.name}</h3>
                         <Badge
                           variant={
@@ -186,7 +194,7 @@ export default function AdminsPage() {
                           {admin.isActive ? "active" : "inactive"}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 mt-1">
                         <div className="flex items-center gap-1">
                           <Mail className="h-3 w-3" />
                           {admin.email}
@@ -205,9 +213,6 @@ export default function AdminsPage() {
                       </div>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
                 </div>
               ))}
             </div>

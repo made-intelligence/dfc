@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = { patientId };
     if (type) where.type = type;
+    // Patients see only documents their clinicians have released to them.
+    if (payload.role === 'PATIENT') where.isPatientVisible = true;
 
     const documents = await prisma.clinicalDocument.findMany({
       where,

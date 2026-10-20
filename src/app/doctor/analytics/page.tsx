@@ -86,8 +86,8 @@ export default function DoctorAnalytics() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
-        <p className="text-gray-600">Insights into your practice performance</p>
+        <h1 className="text-2xl font-bold text-[#0D1F3C]">Analytics Dashboard</h1>
+        <p className="mt-1 text-sm text-gray-500">Insights into your practice performance</p>
       </div>
 
       {/* Revenue Trend */}
@@ -147,7 +147,7 @@ export default function DoctorAnalytics() {
               <Users className="h-5 w-5" />
               Patient Metrics
             </CardTitle>
-            <CardDescription>This month's patient data</CardDescription>
+            <CardDescription>This month&apos;s patient data</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

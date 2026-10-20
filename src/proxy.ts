@@ -38,12 +38,12 @@ const CSRF_SKIP_PREFIXES = [
 ];
 const CSRF_SKIP_EXACT = [
   "/api/auth/login",
-  "/api/auth/register",
   "/api/auth/join",
   "/api/auth/legacy-claim",
-  "/api/auth/claim-account",
   "/api/auth/claim",
   "/api/auth/resend-claim",
+  "/api/auth/booking-start",
+  "/api/auth/send-password",
   "/api/auth/csrf",
   "/api/auth/refresh",
   "/api/payment/initialize",

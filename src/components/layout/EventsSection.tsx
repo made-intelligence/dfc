@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { eventPath } from "@/lib/event-url";
 import {
   MapPin,
   Video,
@@ -16,6 +17,7 @@ import {
 
 interface DFCEvent {
   id: string;
+  slug: string;
   title: string;
   description: string | null;
   type: string;
@@ -25,6 +27,7 @@ interface DFCEvent {
   location: string | null;
   city: string | null;
   isVirtual: boolean;
+  isInPerson: boolean;
   imageUrl: string | null;
   registrationUrl: string | null;
   isFeatured: boolean;
@@ -134,7 +137,7 @@ export default function EventsSection() {
             return (
               <div
                 key={event.id}
-                className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+                className="group relative bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
               >
                 {/* Date strip */}
                 <div className="flex items-stretch">
@@ -162,7 +165,10 @@ export default function EventsSection() {
                     </div>
 
                     <h3 className="text-base font-semibold text-[#0D1F3C] leading-snug mb-2">
-                      {event.title}
+                      {/* Stretched link: the whole card opens the event page. */}
+                      <Link href={eventPath(event)} className="after:absolute after:inset-0 group-hover:text-[#0A6E75]">
+                        {event.title}
+                      </Link>
                     </h3>
 
                     {event.description && (
@@ -179,7 +185,7 @@ export default function EventsSection() {
                           {event.time}
                         </span>
                       )}
-                      {event.isVirtual ? (
+                      {event.isVirtual && !event.isInPerson ? (
                         <span className="inline-flex items-center gap-1 text-purple-600">
                           <Video className="w-3.5 h-3.5" />
                           Virtual

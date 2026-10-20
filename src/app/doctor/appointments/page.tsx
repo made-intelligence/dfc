@@ -115,8 +115,8 @@ export default function AppointmentsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Appointments</h1>
-          <p className="text-gray-600">Manage your patient appointments</p>
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">Appointments</h1>
+          <p className="mt-1 text-sm text-gray-500">Manage your patient appointments</p>
         </div>
       </div>
 

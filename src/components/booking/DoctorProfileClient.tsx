@@ -52,7 +52,7 @@ interface DoctorDetails {
   }>;
 }
 
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 
 const FALLBACK_IMAGE = "/hero.jpg";
 

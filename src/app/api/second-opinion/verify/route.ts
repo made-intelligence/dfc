@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { notifySecondOpinion } from '@/lib/second-opinion-report';
 
 // Verify Paystack payment for second opinion
 export async function POST(request: NextRequest) {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Case does not belong to authenticated user' }, { status: 403 });
     }
 
-    if (soCase.status === 'PAID' || soCase.status === 'ASSIGNED') {
+    if (soCase.status !== 'SUBMITTED') {
       return NextResponse.json({
         success: true,
         message: 'Payment already verified',
@@ -58,13 +59,31 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    await prisma.secondOpinionCase.update({
-      where: { id: soCase.id },
+    if (Number(data.data.amount) < soCase.amountKobo) {
+      logger.error('SecondOpinionVerify', 'Amount paid is less than the case fee', {
+        reference,
+        paid: data.data.amount,
+        expected: soCase.amountKobo,
+      });
+      return NextResponse.json({ error: 'Payment amount does not match this request' }, { status: 400 });
+    }
+
+    // Conditional update so two concurrent verifications (a page refresh, or
+    // React re-running the effect) cannot both record the payment.
+    const transitioned = await prisma.secondOpinionCase.updateMany({
+      where: { id: soCase.id, status: 'SUBMITTED' },
       data: {
         status: 'PAID',
         paidAt: new Date(),
       },
     });
+    if (transitioned.count === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'Payment already verified',
+        caseReference: soCase.reference,
+      });
+    }
 
     // Also create a Payment record for accounting
     await prisma.payment.create({
@@ -82,6 +101,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    await notifySecondOpinion(soCase.id, 'PAID');
 
     return NextResponse.json({
       success: true,

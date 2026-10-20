@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { useScrollAnimation } from "@/lib/useScrollAnimation";

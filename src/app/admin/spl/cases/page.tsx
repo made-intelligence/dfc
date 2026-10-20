@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   Loader2,
   Briefcase,
@@ -246,10 +247,7 @@ export default function SPLCasesPage() {
     <div className="space-y-6">
       {/* Header */}
         <div>
-          <h1
-            className="text-2xl font-bold tracking-tight sm:text-3xl"
-            style={{ color: "#0D1F3C" }}
-          >
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">
             SPL Case Management
           </h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -627,13 +625,21 @@ export default function SPLCasesPage() {
                       </div>
                     </div>
                     {selectedCase.status === "DELIVERED" && (
-                      <button
-                        disabled
-                        className="mt-4 inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-500 cursor-not-allowed"
+                      <Link
+                        href={`/admin/spl/invoices?contractId=${selectedCase.contractId}`}
+                        className="mt-4 inline-flex items-center rounded-lg border border-[#0A6E75] bg-white px-4 py-2 text-sm font-medium text-[#0A6E75] hover:bg-[#0A6E75]/5"
                       >
                         <DollarSign className="mr-2 h-4 w-4" />
-                        Generate Invoice (Coming Soon)
-                      </button>
+                        Generate Invoice
+                      </Link>
+                    )}
+                    {(selectedCase.status === "BILLED" || selectedCase.status === "PAID") && (
+                      <Link
+                        href={`/admin/spl/invoices?partnerId=${selectedCase.partnerId}`}
+                        className="mt-4 inline-flex items-center text-sm font-medium text-[#0A6E75] hover:underline"
+                      >
+                        View invoices for {selectedCase.partner.shortName}
+                      </Link>
                     )}
                   </div>
                 </div>

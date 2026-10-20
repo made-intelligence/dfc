@@ -82,6 +82,14 @@ export default function Footer() {
               </li>
               <li>
                 <Link
+                  href="/ask"
+                  className="text-gray-300 hover:text-white transition-colors"
+                >
+                  Ask a Specialist
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/contact"
                   className="text-gray-300 hover:text-white transition-colors"
                 >

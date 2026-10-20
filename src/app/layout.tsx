@@ -5,6 +5,9 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/components/ui/toast";
 import CsrfBootstrap from "@/components/auth/CsrfBootstrap";
 import CookieConsent from "@/components/layout/CookieConsent";
+import EventBanner from "@/components/layout/EventBanner";
+import NavigationProgress from "@/components/layout/NavigationProgress";
+import { Suspense } from "react";
 import { OrganizationJsonLd } from "@/components/seo/JsonLd";
 import { appUrl } from "@/lib/app-url";
 
@@ -104,10 +107,15 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <OrganizationJsonLd />
+        {/* useSearchParams needs a Suspense boundary to keep pages static. */}
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
         <ToastProvider>
           <CsrfBootstrap />
           <AuthProvider>{children}</AuthProvider>
           <CookieConsent />
+          <EventBanner />
         </ToastProvider>
       </body>
     </html>

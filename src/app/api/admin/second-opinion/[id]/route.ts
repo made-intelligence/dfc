@@ -4,6 +4,8 @@ import { Prisma } from '@prisma/client';
 import { verifyToken, getTokenFromCookies, JWTPayload } from '@/lib/auth';
 import { audit } from '@/lib/audit';
 import { validateFields, MAX_LENGTHS } from '@/lib/validation';
+import { signCaseDocuments } from '@/lib/second-opinion-documents';
+import { deliverSecondOpinionReport, notifySecondOpinion } from '@/lib/second-opinion-report';
 
 async function requireAdmin(request: NextRequest): Promise<JWTPayload | null> {
   const token = getTokenFromCookies(request.headers.get('cookie'));
@@ -47,7 +49,9 @@ export async function GET(
     return NextResponse.json({ error: 'Case not found' }, { status: 404 });
   }
 
-  return NextResponse.json({ success: true, case: soCase });
+  const documents = await signCaseDocuments(soCase.documents);
+
+  return NextResponse.json({ success: true, case: { ...soCase, documents } });
 }
 
 // PATCH — update case (coordinator notes, status, cancel, etc.)
@@ -67,12 +71,27 @@ export async function PATCH(
     coordinatorNotes: { maxLength: MAX_LENGTHS.longText },
     cancelReason: { maxLength: MAX_LENGTHS.mediumText },
     status: { maxLength: MAX_LENGTHS.shortText },
+    videoCallLink: { maxLength: MAX_LENGTHS.mediumText },
   });
   if (fieldError) return fieldError;
+
+  // Coordinators may only move a case to these states; the rest are set by
+  // payment, assignment and the specialist's own workflow.
+  const SETTABLE_STATUSES = ['COMPLETED', 'CANCELLED', 'REFUNDED'] as const;
+  if (body.status && !SETTABLE_STATUSES.includes(body.status)) {
+    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+  }
 
   const soCase = await prisma.secondOpinionCase.findUnique({ where: { id } });
   if (!soCase) {
     return NextResponse.json({ error: 'Case not found' }, { status: 404 });
+  }
+
+  if (body.status === 'COMPLETED' && !soCase.reportContent) {
+    return NextResponse.json(
+      { error: 'The specialist has not submitted a report yet' },
+      { status: 400 }
+    );
   }
 
   const updateData: Prisma.SecondOpinionCaseUpdateInput = {};
@@ -81,42 +100,50 @@ export async function PATCH(
   if (body.status) updateData.status = body.status;
   if (body.cancelReason) updateData.cancelReason = body.cancelReason;
 
-  // Handle cancellation
   if (body.status === 'CANCELLED') {
     updateData.cancelReason = body.cancelReason || 'Cancelled by coordinator';
   }
 
-  // When delivering, set timestamp and create clinical document
-  if (body.status === 'DELIVERED') {
-    updateData.reportDeliveredAt = new Date();
+  const completing = body.status === 'COMPLETED' && soCase.status !== 'COMPLETED';
+  if (completing) {
+    updateData.reportDeliveredAt = soCase.reportDeliveredAt ?? new Date();
+  }
 
-    // If the patient is a registered user, create a ClinicalDocument in their EMR
-    if (soCase.userId) {
-      const patientProfile = await prisma.patientProfile.findUnique({
-        where: { userId: soCase.userId },
-      });
-
-      if (patientProfile && (soCase.reportContent || soCase.reportPdfUrl)) {
-        await prisma.clinicalDocument.create({
-          data: {
-            patientId: patientProfile.id,
-            uploadedById: admin.userId,
-            type: 'SECOND_OPINION',
-            title: `Second Opinion Report — ${soCase.specialty} (${soCase.reference})`,
-            description: `Second opinion for: ${soCase.diagnosis}`,
-            fileUrl: soCase.reportPdfUrl || '',
-            fileType: soCase.reportPdfUrl ? 'PDF' : 'OTHER',
-            isPatientVisible: true,
-          },
-        });
+  // Video consultation (COMPLEX and ONCOLOGY tiers)
+  let callScheduled = false;
+  if (body.videoCallScheduledAt !== undefined) {
+    if (body.videoCallScheduledAt === null) {
+      updateData.videoCallScheduledAt = null;
+      updateData.videoCallLink = null;
+    } else {
+      const when = new Date(body.videoCallScheduledAt);
+      if (Number.isNaN(when.getTime())) {
+        return NextResponse.json({ error: 'Invalid video call time' }, { status: 400 });
       }
+      const link = typeof body.videoCallLink === 'string' ? body.videoCallLink.trim() : '';
+      if (link && !/^https:\/\//i.test(link)) {
+        return NextResponse.json({ error: 'Video call link must start with https://' }, { status: 400 });
+      }
+      updateData.videoCallScheduledAt = when;
+      updateData.videoCallLink = link || null;
+      callScheduled = true;
     }
+  }
+  if (body.videoCallCompleted === true) {
+    updateData.videoCallCompletedAt = new Date();
   }
 
   const updated = await prisma.secondOpinionCase.update({
     where: { id },
     data: updateData,
   });
+
+  if (completing) {
+    await deliverSecondOpinionReport(id, admin.userId);
+  }
+  if (callScheduled) {
+    await notifySecondOpinion(id, 'VIDEO_CALL');
+  }
 
   audit({
     userId: admin.userId,

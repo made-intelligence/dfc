@@ -35,7 +35,7 @@ export const SubscriptionNotification: React.FC<SubscriptionNotificationProps> =
       )}
 
       <div style={{ textAlign: 'center', margin: '30px 0' }}>
-        <a href="https://dfcmedical.com/doctor/settings/subscription" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+        <a href="https://www.dfcare.org/doctor/subscription" style={{ color: '#0D1F3C', textDecoration: 'underline' }}>
           Manage Subscription
         </a>
       </div>

@@ -100,10 +100,10 @@ export default function SPLContractsPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold font-serif" style={{ color: "#0D1F3C" }}>
+        <h1 className="text-2xl font-bold text-[#0D1F3C]">
           Contracts
         </h1>
-        <p className="text-gray-500 mt-1">
+        <p className="mt-1 text-sm text-gray-500">
           View your service contracts with DFC. Contracts are managed by the DFC
           Secretariat.
         </p>

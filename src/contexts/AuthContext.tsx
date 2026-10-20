@@ -8,6 +8,13 @@ import React, {
   ReactNode,
 } from "react";
 import { UserRole } from "@prisma/client";
+import {
+  refreshSession,
+  markSessionRefreshed,
+  clearSessionMarker,
+  msSinceLastRefresh,
+  PROACTIVE_REFRESH_MS,
+} from "@/lib/session-refresh";
 
 export interface AuthUser {
   id: string;
@@ -40,24 +47,8 @@ interface AuthContextType {
     email: string,
     password: string,
   ) => Promise<{ success: boolean; error?: string; user?: AuthUser }>;
-  register: (
-    data: RegisterData,
-  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-}
-
-interface RegisterData {
-  email: string;
-  password: string;
-  name: string;
-  phone?: string;
-  role: UserRole;
-  specialty?: string;
-  license?: string;
-  experience?: number;
-  dateOfBirth?: string;
-  gender?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,6 +61,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // While signed in, renew the 2-hour access token before it lapses so page
+  // navigations (checked server-side) don't bounce to the login page. Timers
+  // are throttled in background tabs, so also check when a tab is shown again.
+  const signedIn = !!user;
+  useEffect(() => {
+    if (!signedIn) return;
+    const renewIfDue = async () => {
+      if (msSinceLastRefresh() < PROACTIVE_REFRESH_MS) return;
+      if (!(await refreshSession())) setUser(null);
+    };
+    const interval = setInterval(renewIfDue, 60 * 1000);
+    const onVisible = () => document.visibilityState === "visible" && renewIfDue();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [signedIn]);
 
   const checkAuth = async () => {
     try {
@@ -105,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
 
       if (response.ok) {
+        markSessionRefreshed();
         setUser(data.user);
         return { success: true, user: data.user };
       } else {
@@ -112,31 +123,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error("Login failed:", error);
-      return { success: false, error: "Network error. Please try again." };
-    }
-  };
-
-  const register = async (registerData: RegisterData) => {
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(registerData),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setUser(data.user);
-        return { success: true };
-      } else {
-        return { success: false, error: data.error };
-      }
-    } catch (error) {
-      console.error("Registration failed:", error);
       return { success: false, error: "Network error. Please try again." };
     }
   };
@@ -150,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
+      clearSessionMarker();
       setUser(null);
       // Redirect to home page
       window.location.href = "/";
@@ -164,7 +151,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     loading,
     login,
-    register,
     logout,
     refreshUser,
   };

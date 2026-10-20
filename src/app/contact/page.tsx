@@ -15,11 +15,15 @@ export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    phone: "",
     subject: "",
     message: "",
   });
+  // Honeypot: hidden from people, but scripts fill every field they find.
+  const [website, setWebsite] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -32,24 +36,28 @@ export default function ContactPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setError("");
+    setSuccess(false);
 
     try {
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, website }),
       });
 
-      if (res.ok) {
-        setSuccess(true);
-        setFormData({ name: "", email: "", subject: "", message: "" });
-      } else {
-        setSuccess(true);
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "We could not send your message. Please try again.");
       }
-    } catch {
-      // Show success regardless since API may not exist yet
       setSuccess(true);
-      setFormData({ name: "", email: "", subject: "", message: "" });
+      setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "We could not send your message. Please try again."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -100,7 +108,23 @@ export default function ContactPage() {
                     </div>
                   )}
 
+                  {error && (
+                    <div role="alert" className="mb-6 rounded-lg bg-red-50 border border-red-200 p-4">
+                      <p className="text-sm font-medium text-red-800">{error}</p>
+                    </div>
+                  )}
+
                   <form onSubmit={handleSubmit} className="space-y-5">
+                    <input
+                      type="text"
+                      name="website"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      aria-hidden="true"
+                      value={website}
+                      onChange={(e) => setWebsite(e.target.value)}
+                      className="absolute -left-[9999px] h-px w-px opacity-0"
+                    />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
                         <label
@@ -138,6 +162,25 @@ export default function ContactPage() {
                           className="w-full rounded-lg border border-gray-200 px-4 py-3 text-base text-gray-800 bg-gray-50 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0A4A50]/20 focus:border-[#0A4A50] transition-colors"
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="phone"
+                        className="block text-sm font-medium text-gray-700 mb-1.5"
+                      >
+                        Phone / WhatsApp{" "}
+                        <span className="font-normal text-gray-400">(optional)</span>
+                      </label>
+                      <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        placeholder="+234..."
+                        className="w-full rounded-lg border border-gray-200 px-4 py-3 text-base text-gray-800 bg-gray-50 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0A4A50]/20 focus:border-[#0A4A50] transition-colors"
+                      />
                     </div>
 
                     <div>

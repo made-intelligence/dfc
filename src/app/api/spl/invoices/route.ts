@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
       );
 
     const invoices = await prisma.sPLInvoice.findMany({
-      where: { partnerId: splAdmin.partnerId },
+      // Drafts are still being prepared by DFC; partners see an invoice once it is sent.
+      where: { partnerId: splAdmin.partnerId, status: { not: "DRAFT" } },
       orderBy: { createdAt: "desc" },
     });
 

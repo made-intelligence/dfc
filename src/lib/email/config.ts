@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { encrypt, decrypt, isEncrypted } from '../encryption';
 
-const prisma = new PrismaClient();
 
 /**
  * Email configuration interface matching the database structure

@@ -12,6 +12,7 @@ import { logger } from "@/lib/logger";
 import { authRateLimit } from "@/lib/rate-limit";
 import { auditAuth } from "@/lib/audit";
 import { createRefreshToken, createRefreshCookie } from "@/lib/refresh-token";
+import { redeemTemporaryPassword } from "@/lib/temporary-password";
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,23 +64,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Accounts created by the secretariat (or as payment guests) have no
-    // password until the member activates them via the claim link.
-    if (!user.password) {
-      return NextResponse.json(
-        {
-          error: user.claimToken
-            ? "This account has not been activated yet. Use the activation link we emailed you, or contact the secretariat to have it resent."
-            : "No password is set on this account. Use \"Forgot Password?\" to set one.",
-        },
-        { status: 401 },
-      );
-    }
-
-    // Verify password
-    const isValidPassword = await verifyPassword(password, user.password);
+    // The account password, or failing that a password we emailed (a new
+    // booking account's first one, or a "forgot password" replacement).
+    const isValidPassword =
+      (!!user.password && (await verifyPassword(password, user.password))) ||
+      (await redeemTemporaryPassword(user.id, password));
     if (!isValidPassword) {
       auditAuth.loginFailed(email, request);
+      // Accounts created by the secretariat have no password until the member
+      // activates them via the claim link (or an emailed password).
+      if (!user.password) {
+        return NextResponse.json(
+          {
+            error: user.claimToken
+              ? "This account has not been activated yet. Use the activation link we emailed you, or use \"Forgot Password?\" to get a password by email."
+              : "No password is set on this account. Use \"Forgot Password?\" to get one by email.",
+          },
+          { status: 401 },
+        );
+      }
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 },

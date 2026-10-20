@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "@/lib/navigation";
 import { UserRole } from "@prisma/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,12 @@ import {
   Lightbulb,
   UserCog,
   KeyRound,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { NotificationsDropdown } from "./NotificationsDropdown";
+import { useSidebarCollapsed } from "@/lib/sidebar-collapse";
 
 type NavItem = {
   name: string;
@@ -52,27 +55,33 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Desktop only: shrink the sidebar to an icon rail.
+  const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  // The main column is the scroll container (so scrolling the sidebar never
+  // moves the page); start each page at the top like a window scroll would.
+  const mainRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [pathname]);
 
   useEffect(() => {
-    if (user?.id) {
-      fetchUserPermissions();
-    }
+    const userId = user?.id;
+    if (!userId) return;
+    let active = true;
+    fetch(`/api/admin/user-permissions?userId=${userId}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (active) setUserPermissions(data.permissions || []);
+      })
+      .catch((error) => console.error("Failed to fetch user permissions:", error));
+    return () => {
+      active = false;
+    };
   }, [user?.id]);
-
-  const fetchUserPermissions = async () => {
-    if (!user?.id) return;
-    try {
-      const response = await fetch(`/api/admin/user-permissions?userId=${user.id}`);
-      const data = await response.json();
-      setUserPermissions(data.permissions || []);
-    } catch (error) {
-      console.error("Failed to fetch user permissions:", error);
-    }
-  };
 
   const hasPermission = (permission: string) => {
     return userPermissions.includes(permission) || user?.role === 'SUPERADMIN';
@@ -142,7 +151,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
         { section: "Overview", name: "Dashboard", href: "/doctor", icon: Home },
         { section: "Overview", name: "Analytics", href: "/doctor/analytics", icon: Activity },
 
-        { section: "Clinical", name: "My Cases", href: "/member/cases", icon: FileText },
+        { section: "Clinical", name: "My Cases", href: "/doctor/cases", icon: FileText },
         { section: "Clinical", name: "Patient Records", href: "/doctor/emr", icon: FolderOpen },
         { section: "Clinical", name: "Patients", href: "/doctor/patients", icon: Users },
         { section: "Clinical", name: "Appointments", href: "/doctor/appointments", icon: Calendar },
@@ -159,11 +168,11 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const navigationItems = getNavigationItems();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-dvh overflow-hidden bg-gray-50 flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/70 bg-opacity-25 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/70 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -171,62 +180,79 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       {/* Sidebar */}
       <div
         className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-primary shadow-lg transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 w-64 bg-[#0D1F3C] shadow-lg transform transition-[transform,width] duration-300 ease-in-out
         flex flex-col
         lg:fixed lg:translate-x-0
+        ${collapsed ? "lg:w-16" : ""}
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}
       >
-        <div className="flex items-center justify-between bg-white h-16 px-6 border-b border-blue-500 shrink-0">
+        <div className={`flex items-center justify-between bg-white h-16 px-6 border-b border-gray-200 shrink-0 ${collapsed ? "lg:px-0 lg:justify-center" : ""}`}>
           <div className="flex items-center">
             <Image
-              src="/logo.png"
-              alt="DFC Medical"
-              width={200}
-              height={80}
-              className="h-20 w-auto"
+              src="/dfc-logo.png"
+              alt="DFC"
+              width={120}
+              height={44}
+              className={`h-10 w-auto ${collapsed ? "lg:hidden" : ""}`}
             />
+            {collapsed && (
+              <Image
+                src="/icon-192x192.png"
+                alt="DFC"
+                width={36}
+                height={36}
+                className="hidden lg:block h-9 w-9"
+              />
+            )}
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="lg:hidden text-white hover:bg-blue-500"
+            className="lg:hidden"
+            aria-label="Close menu"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
           </Button>
         </div>
 
-        <nav className="mt-6 px-3 pb-4 flex-1 min-h-0 overflow-y-auto">
+        <nav className={`mt-6 px-3 pb-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain ${collapsed ? "lg:px-2" : ""}`}>
           <div className="space-y-1">
             {navigationItems.map((item, index) => {
               const isActive = pathname === item.href ||
-                (item.href !== "/admin" && pathname.startsWith(item.href + "/"));
+                (item.href !== "/admin" && item.href !== "/doctor" && pathname.startsWith(item.href + "/"));
               const startsSection =
                 !!item.section && item.section !== navigationItems[index - 1]?.section;
               return (
                 <div key={item.href}>
                   {startsSection && (
                     <p
-                      className={`px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-blue-200/70 ${
+                      className={`px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/30 ${
                         index === 0 ? "pt-1" : "pt-4"
-                      }`}
+                      } ${collapsed ? "lg:hidden" : ""}`}
                     >
                       {item.section}
                     </p>
                   )}
+                  {/* Collapsed: a thin rule stands in for the section heading. */}
+                  {startsSection && collapsed && index > 0 && (
+                    <div className="hidden lg:block mx-2 my-3 border-t border-white/15" />
+                  )}
                   <Button
                     variant="ghost"
-                    className={`w-full justify-start text-white hover:bg-blue-500 ${
-                      isActive ? "bg-blue-500 text-white" : ""
-                    }`}
+                    title={collapsed ? item.name : undefined}
+                    aria-label={item.name}
+                    className={`w-full justify-start hover:bg-white/10 hover:text-white ${
+                      isActive ? "bg-white/10 text-white" : "text-white/70"
+                    } ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
                     onClick={() => {
                       router.push(item.href);
                       setSidebarOpen(false);
                     }}
                   >
-                    <item.icon className="mr-3 h-5 w-5" />
-                    {item.name}
+                    <item.icon className={`mr-3 h-5 w-5 shrink-0 ${collapsed ? "lg:mr-0" : ""}`} />
+                    <span className={`truncate ${collapsed ? "lg:hidden" : ""}`}>{item.name}</span>
                   </Button>
                 </div>
               );
@@ -234,19 +260,19 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
           </div>
         </nav>
 
-        <div className="shrink-0 p-4 border-t border-blue-500">
-          <div className="flex items-center mb-4">
-            <div className="flex-shrink-0">
+        <div className={`shrink-0 p-4 border-t border-white/10 ${collapsed ? "lg:px-2" : ""}`}>
+          <div className={`flex items-center mb-4 ${collapsed ? "lg:justify-center" : ""}`}>
+            <div className="flex-shrink-0" title={collapsed ? `${user.name} (${user.email})` : undefined}>
               <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                <span className="text-blue-600 text-sm font-medium">
+                <span className="text-[#0D1F3C] text-sm font-medium">
                   {user.name.charAt(0).toUpperCase()}
                 </span>
               </div>
             </div>
-            <div className="ml-3 min-w-0">
+            <div className={`ml-3 min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
               <p className="text-sm font-medium text-white truncate">{user.name}</p>
-              <p className="text-xs text-blue-200 truncate">{user.email}</p>
-              <p className="text-xs text-blue-200/70 capitalize">
+              <p className="text-xs text-white/60 truncate">{user.email}</p>
+              <p className="text-xs text-white/40 capitalize">
                 {user.role.toLowerCase()}
               </p>
             </div>
@@ -254,17 +280,19 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
           <Button
             variant="outline"
             size="sm"
-            className="w-full cursor-pointer hover:text-red-800 text-red-700"
+            className={`w-full cursor-pointer hover:text-red-800 text-red-700 ${collapsed ? "lg:px-0" : ""}`}
             onClick={handleLogout}
+            title={collapsed ? "Sign Out" : undefined}
+            aria-label="Sign Out"
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
+            <LogOut className={`mr-2 h-4 w-4 ${collapsed ? "lg:mr-0" : ""}`} />
+            <span className={collapsed ? "lg:hidden" : ""}>Sign Out</span>
           </Button>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-64">
+      <div ref={mainRef} className={`flex-1 min-w-0 h-dvh overflow-y-auto transition-[margin] duration-300 ${collapsed ? "lg:ml-16" : "lg:ml-64"}`}>
         {/* Top bar */}
         <div className="sticky top-0 z-10 bg-white shadow-sm border-b">
           <div className="flex items-center justify-between h-16 px-6">
@@ -276,6 +304,16 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
                 onClick={() => setSidebarOpen(true)}
               >
                 <Menu className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hidden lg:inline-flex mr-2 text-gray-600"
+                onClick={toggleCollapsed}
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
               </Button>
               <h1 className="text-xl font-semibold text-gray-900">
                 {title}

@@ -174,9 +174,9 @@ export default function SubscriptionPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Subscription Management</h1>
-          <p className="text-gray-600">
-            Manage your DFC Medical subscription and billing
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">Subscription Management</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage your DFC subscription and billing
           </p>
         </div>
       </div>
@@ -346,7 +346,7 @@ export default function SubscriptionPage() {
               No Active Subscription
             </h3>
             <p className="text-gray-500 mb-6">
-              Choose a subscription plan to start using DFC Medical services
+              Choose a subscription plan to start using DFC services
             </p>
             <Button
               onClick={() =>

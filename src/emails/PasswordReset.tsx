@@ -10,10 +10,10 @@ export const PasswordReset: React.FC<PasswordResetProps> = ({ name, resetLink })
   return (
     <Layout preview="Reset your password" heading="Password Reset Request">
       <p>Hi {name},</p>
-      <p>We received a request to reset your password for your DFC Medical account. If you didn't make this request, you can safely ignore this email.</p>
+      <p>We received a request to reset your password for your DFC account. If you did not make this request, you can safely ignore this email.</p>
       
       <div style={{ textAlign: 'center', margin: '30px 0' }}>
-        <a href={resetLink} style={{ backgroundColor: '#2563eb', color: '#ffffff', padding: '12px 24px', borderRadius: '5px', textDecoration: 'none', fontWeight: 'bold' }}>
+        <a href={resetLink} style={{ backgroundColor: '#0D1F3C', color: '#ffffff', padding: '12px 24px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold' }}>
           Reset Password
         </a>
       </div>

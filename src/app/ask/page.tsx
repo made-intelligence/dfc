@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback, type FormEvent } from "react";
+import Link from "next/link";
+import Topbar from "@/components/layout/Topbar";
+import Footer from "@/components/layout/Footer";
 import { SPECIALTIES } from "@/lib/specialties";
 
 interface Question {
   id: string;
   slug?: string;
   title: string;
-  questionBody: string;
+  body: string;
   specialty: string | null;
   status: "OPEN" | "ANSWERED" | "CLOSED";
   answerCount: number;
@@ -17,9 +20,7 @@ interface Question {
 
 interface QuestionsResponse {
   questions: Question[];
-  total: number;
-  page: number;
-  totalPages: number;
+  pagination: { page: number; limit: number; total: number; pages: number };
 }
 
 const STATUS_TABS = ["All", "Open", "Answered"] as const;
@@ -83,8 +84,8 @@ export default function AskPage() {
       if (!res.ok) throw new Error("Failed to load questions");
       const data: QuestionsResponse = await res.json();
       setQuestions(data.questions);
-      setTotal(data.total);
-      setTotalPages(data.totalPages);
+      setTotal(data.pagination.total);
+      setTotalPages(Math.max(1, data.pagination.pages));
     } catch {
       setQuestions([]);
     } finally {
@@ -132,9 +133,11 @@ export default function AskPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+    <Topbar />
+    <main className="min-h-screen bg-gray-50">
       {/* Header */}
-      <section className="bg-[#0D1F3C] text-white py-16 px-4">
+      <section className="bg-[#0D1F3C] text-white px-4 pt-32 pb-16 lg:pt-36">
         <div className="max-w-3xl mx-auto text-center">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
             Ask a DFC Specialist
@@ -241,7 +244,7 @@ export default function AskPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full sm:w-auto rounded-lg bg-[#0D1F3C] text-white font-semibold px-8 py-3 hover:bg-[#162d54] focus:outline-none focus:ring-2 focus:ring-[#0D1F3C] focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                className="w-full sm:w-auto rounded-lg bg-[#0D1F3C] text-white font-semibold px-8 py-3 hover:bg-[#162d52] focus:outline-none focus:ring-2 focus:ring-[#0D1F3C] focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                 style={{ fontSize: "16px", minHeight: "44px" }}
               >
                 {submitting ? "Submitting..." : "Submit Question"}
@@ -311,7 +314,7 @@ export default function AskPage() {
             </div>
           ) : (
             questions.map((q) => (
-              <a
+              <Link
                 key={q.id}
                 href={`/ask/${q.slug || q.id}`}
                 className="block bg-white rounded-xl border border-gray-200 px-6 py-5 hover:shadow-md hover:border-gray-300 transition-all"
@@ -328,9 +331,7 @@ export default function AskPage() {
                       className="mt-1 text-gray-600 line-clamp-2"
                       style={{ fontSize: "16px" }}
                     >
-                      {q.questionBody.length > 200
-                        ? q.questionBody.slice(0, 200) + "..."
-                        : q.questionBody}
+                      {q.body.length >= 200 ? q.body + "..." : q.body}
                     </p>
                   </div>
                   {q.specialty && (
@@ -356,7 +357,7 @@ export default function AskPage() {
                   <span>{q.viewCount} {q.viewCount === 1 ? "view" : "views"}</span>
                   <span>{timeAgo(q.createdAt)}</span>
                 </div>
-              </a>
+              </Link>
             ))
           )}
         </div>
@@ -393,6 +394,8 @@ export default function AskPage() {
           </div>
         )}
       </div>
-    </div>
+    </main>
+    <Footer />
+    </>
   );
 }

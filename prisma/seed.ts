@@ -106,7 +106,6 @@ async function main() {
     },
     notifications: {
       email: true,
-      sms: false,
       push: true,
       appointments: true,
       payments: true,

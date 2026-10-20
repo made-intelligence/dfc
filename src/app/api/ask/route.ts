@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     const fieldError = validateFields(body, {
       title: { required: true, maxLength: MAX_LENGTHS.searchQuery },
       questionBody: { required: true, maxLength: MAX_LENGTHS.longText },
-      specialty: { required: true, maxLength: MAX_LENGTHS.shortText },
+      specialty: { maxLength: MAX_LENGTHS.shortText },
       visibility: { maxLength: MAX_LENGTHS.shortText },
     });
     if (fieldError) return fieldError;
@@ -117,9 +117,10 @@ export async function POST(request: NextRequest) {
         submittedBy: payload?.userId || null,
         title,
         body: questionBody,
-        specialty,
+        // The form leaves specialty optional; the secretariat routes "General" questions.
+        specialty: specialty?.trim() || "General",
         slug,
-        visibility: visibility || "PUBLIC",
+        visibility: ["PUBLIC", "PRIVATE", "MEMBERS_ONLY"].includes(visibility) ? visibility : "PUBLIC",
         status: "OPEN",
       },
     });

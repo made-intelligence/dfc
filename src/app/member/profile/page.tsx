@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useToast } from "@/components/ui/toast";
 import { SPECIALTIES } from "@/lib/specialties";
 import {
   Camera,
@@ -354,7 +355,12 @@ export default function MemberProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const { addToast } = useToast();
+  const notify = useCallback(
+    (type: "success" | "error", message: string) =>
+      addToast({ type, title: type === "success" ? "Success" : "Error", description: message }),
+    [addToast],
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile completion state
@@ -449,12 +455,6 @@ export default function MemberProfilePage() {
     setScoreData((prev) => ({ ...prev, hasVerifiedCredential: hasVerified }));
   }, [credentials]);
 
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -473,7 +473,7 @@ export default function MemberProfilePage() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      setToast({ type: "error", message: "Photo must be less than 5MB." });
+      notify("error", "Photo must be less than 5MB.");
       return;
     }
 
@@ -497,10 +497,10 @@ export default function MemberProfilePage() {
       if (saveRes.ok) {
         setProfile((prev) => ({ ...prev, profileImage: url }));
         setScoreData((prev) => ({ ...prev, profileImage: true }));
-        setToast({ type: "success", message: "Profile photo updated." });
+        notify("success", "Profile photo updated.");
       }
     } catch {
-      setToast({ type: "error", message: "Failed to upload photo. Try again." });
+      notify("error", "Failed to upload photo. Try again.");
     } finally {
       setUploadingPhoto(false);
     }
@@ -529,16 +529,13 @@ export default function MemberProfilePage() {
         }),
       });
       if (res.ok) {
-        setToast({ type: "success", message: "Profile updated successfully." });
+        notify("success", "Profile updated successfully.");
       } else {
         const data = await res.json().catch(() => null);
-        setToast({
-          type: "error",
-          message: data?.error || "Failed to save changes. Please try again.",
-        });
+        notify("error", data?.error || "Failed to save changes. Please try again.",);
       }
     } catch {
-      setToast({ type: "error", message: "Network error. Please check your connection." });
+      notify("error", "Network error. Please check your connection.");
     } finally {
       setSaving(false);
     }
@@ -566,7 +563,7 @@ export default function MemberProfilePage() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      setToast({ type: "error", message: "File size must be less than 5MB." });
+      notify("error", "File size must be less than 5MB.");
       return;
     }
 
@@ -591,18 +588,18 @@ export default function MemberProfilePage() {
             body: JSON.stringify({ credentialId: existingCredentialId, documentUrl: data.url }),
           });
           if (patchRes.ok) {
-            setToast({ type: "success", message: "Document uploaded." });
+            notify("success", "Document uploaded.");
             fetchCredentials();
           }
         } else {
           setNewCredential((prev) => ({ ...prev, documentUrl: data.url }));
-          setToast({ type: "success", message: "Document uploaded." });
+          notify("success", "Document uploaded.");
         }
       } else {
-        setToast({ type: "error", message: "Failed to upload document." });
+        notify("error", "Failed to upload document.");
       }
     } catch {
-      setToast({ type: "error", message: "Upload failed. Please try again." });
+      notify("error", "Upload failed. Please try again.");
     } finally {
       setUploadingDoc(false);
       setUploadingDocForId(null);
@@ -613,7 +610,7 @@ export default function MemberProfilePage() {
     e.preventDefault();
 
     if (!newCredential.type || !newCredential.registrationNumber) {
-      setToast({ type: "error", message: "Type and registration number are required." });
+      notify("error", "Type and registration number are required.");
       return;
     }
 
@@ -634,16 +631,16 @@ export default function MemberProfilePage() {
       });
 
       if (res.ok) {
-        setToast({ type: "success", message: "Credential submitted for verification." });
+        notify("success", "Credential submitted for verification.");
         setNewCredential(defaultNewCredential);
         setShowAddForm(false);
         fetchCredentials();
       } else {
         const data = await res.json().catch(() => null);
-        setToast({ type: "error", message: data?.error || "Failed to submit credential." });
+        notify("error", data?.error || "Failed to submit credential.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error. Please try again." });
+      notify("error", "Network error. Please try again.");
     } finally {
       setSubmittingCredential(false);
     }
@@ -668,25 +665,6 @@ export default function MemberProfilePage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Toast notification */}
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm shadow-lg transition-all ${
-            toast.type === "success"
-              ? "bg-green-50 border-green-200 text-green-800"
-              : "bg-red-50 border-red-200 text-red-800"
-          }`}
-        >
-          {toast.type === "success" ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-          ) : (
-            <XCircle className="h-4 w-4 shrink-0" />
-          )}
-          {toast.message}
-          <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100">
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
 
       {/* Page header */}
       <div className="mb-6">

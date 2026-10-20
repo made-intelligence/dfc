@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 interface Notification {
@@ -33,44 +33,63 @@ export function NotificationsDropdown() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
+  const userId = user?.id;
+
   useEffect(() => {
-    if (user?.id) {
-      fetchNotifications();
-      // Poll every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [user?.id]);
+    if (!userId) return;
+    let cancelled = false;
 
-  const fetchNotifications = async () => {
-    if (!user?.id) return;
-    try {
-      const response = await fetch(`/api/notifications?userId=${user.id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data);
-        setUnreadCount(data.filter((n: Notification) => !n.isRead).length);
-      }
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
-    }
-  };
+    const load = () =>
+      fetch("/api/notifications")
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data: Notification[] | null) => {
+          if (cancelled || !data) return;
+          setNotifications(data);
+          setUnreadCount(data.filter((n) => !n.isRead).length);
+        })
+        .catch((error) => console.error("Failed to fetch notifications:", error));
 
-  const markAsRead = async (id: string, link?: string) => {
+    load();
+    // Poll every 30 seconds
+    const interval = setInterval(load, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [userId]);
+
+  const markAsRead = async (notification: Notification) => {
+    // Navigate regardless of whether the read-receipt succeeds.
+    if (notification.link) {
+      setOpen(false);
+      router.push(notification.link);
+    }
+    if (notification.isRead) return;
     try {
-      await fetch(`/api/notifications/${id}/read`, { method: "POST" });
+      const res = await fetch(`/api/notifications/${notification.id}/read`, { method: "POST" });
+      if (!res.ok) return;
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+        prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-      
-      if (link) {
-        router.push(link);
-        setOpen(false);
-      }
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }
+  };
+
+  const markAllAsRead = async () => {
+    const unread = notifications.filter((n) => !n.isRead);
+    const results = await Promise.allSettled(
+      unread.map((n) => fetch(`/api/notifications/${n.id}/read`, { method: "POST" }))
+    );
+    const done = new Set(
+      unread.filter((_, i) => {
+        const r = results[i];
+        return r.status === "fulfilled" && r.value.ok;
+      }).map((n) => n.id)
+    );
+    setNotifications((prev) => prev.map((n) => (done.has(n.id) ? { ...n, isRead: true } : n)));
+    setUnreadCount((prev) => Math.max(0, prev - done.size));
   };
 
   const getIcon = (type: string) => {
@@ -100,9 +119,13 @@ export function NotificationsDropdown() {
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifications</span>
           {unreadCount > 0 && (
-            <span className="text-xs font-normal text-muted-foreground">
-              {unreadCount} unread
-            </span>
+            <button
+              type="button"
+              className="text-xs font-normal text-blue-600 hover:underline"
+              onClick={markAllAsRead}
+            >
+              Mark all read ({unreadCount})
+            </button>
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -120,7 +143,7 @@ export function NotificationsDropdown() {
                     "flex flex-col items-start gap-1 p-3 cursor-pointer",
                     !notification.isRead && "bg-blue-50"
                   )}
-                  onClick={() => markAsRead(notification.id, notification.link)}
+                  onClick={() => markAsRead(notification)}
                 >
                   <div className="flex items-center gap-2 w-full">
                     {getIcon(notification.type)}

@@ -103,10 +103,10 @@ export default function SPLReportsPage() {
     <div className="space-y-8">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold font-serif" style={{ color: "#0D1F3C" }}>
+        <h1 className="text-2xl font-bold text-[#0D1F3C]">
           Reports
         </h1>
-        <p className="text-gray-500 mt-1">
+        <p className="mt-1 text-sm text-gray-500">
           Analytics and insights for your specialist partnership.
         </p>
       </div>

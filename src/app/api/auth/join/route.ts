@@ -12,6 +12,7 @@ import { generateDoctorSlug } from '@/lib/utils/slug';
 import { UserRole, DFCMemberCategory, DFCMemberStatus } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import { authRateLimit } from '@/lib/rate-limit';
+import { screenSignup, normalizeEmailForDedupe } from '@/lib/signup-guard';
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,8 +61,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: errors.join('. ') }, { status: 400 });
     }
 
-    // Check email uniqueness
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    // Screen out automated signups before creating anything. `website` is a
+    // honeypot field hidden from people on the join form.
+    const rejection = screenSignup({ email, name, honeypot: body.website });
+    if (rejection) {
+      logger.warn?.('Join', `blocked signup (${rejection.reason}): ${email}`);
+      return NextResponse.json({ error: rejection.message }, { status: 400 });
+    }
+
+    // Check email uniqueness, treating Gmail dot/+ variants as one inbox.
+    const existingUser = await prisma.user.findFirst({
+      where: { OR: [{ email }, { email: email.toLowerCase() }, { email: normalizeEmailForDedupe(email) }] },
+    });
     if (existingUser) {
       return NextResponse.json(
         {

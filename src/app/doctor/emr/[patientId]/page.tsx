@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "@/lib/navigation";
 import {
   ArrowLeft,
   Plus,
@@ -540,6 +540,29 @@ export default function EMRPatientViewPage() {
     }
   }, [patientId]);
 
+  // Update an allergy, problem or medication, then refresh the sidebar.
+  const updateRecord = useCallback(
+    async (url: string, body: Record<string, unknown>, successMessage: string) => {
+      try {
+        const res = await fetch(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.error || "Update failed");
+        }
+        await refreshSummary();
+        addToast("success", successMessage);
+      } catch (err) {
+        addToast("error", err instanceof Error ? err.message : "Update failed");
+      }
+    },
+    [refreshSummary, addToast],
+  );
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -678,6 +701,19 @@ export default function EMRPatientViewPage() {
                       <AlertTriangle className="h-3 w-3" />
                     )}
                     {a.allergen}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Mark the ${a.allergen} allergy as inactive?`)) {
+                          updateRecord(`/api/emr/allergies/${a.id}`, { status: "INACTIVE" }, "Allergy marked inactive");
+                        }
+                      }}
+                      className="-mr-1 ml-0.5 rounded-full p-0.5 opacity-60 hover:opacity-100"
+                      aria-label={`Mark ${a.allergen} allergy inactive`}
+                      title="Mark inactive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </span>
                 ))}
             </div>
@@ -727,6 +763,19 @@ export default function EMRPatientViewPage() {
                         ({p.icdCode})
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Mark "${p.problem}" as resolved?`)) {
+                          updateRecord(`/api/emr/problems/${p.id}`, { status: "RESOLVED" }, "Problem marked resolved");
+                        }
+                      }}
+                      className="ml-1 -mr-1 rounded-full p-0.5 text-blue-600 opacity-60 hover:opacity-100"
+                      aria-label={`Mark ${p.problem} resolved`}
+                      title="Mark resolved"
+                    >
+                      <Check className="h-3 w-3" />
+                    </button>
                   </span>
                 ))}
             </div>
@@ -765,11 +814,29 @@ export default function EMRPatientViewPage() {
             )}
             <div className="space-y-2">
               {currentMedications.map((med) => (
-                <div key={med.id} className="text-sm">
-                  <p className="font-medium text-[#0D1F3C]">{med.drugName}</p>
-                  <p className="text-gray-500">
-                    {med.dose} &middot; {med.frequency}
-                  </p>
+                <div key={med.id} className="flex items-start justify-between gap-2 text-sm">
+                  <div>
+                    <p className="font-medium text-[#0D1F3C]">{med.drugName}</p>
+                    <p className="text-gray-500">
+                      {med.dose} &middot; {med.frequency}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const reason = prompt(`Reason for stopping ${med.drugName}?`);
+                      if (reason !== null) {
+                        updateRecord(
+                          `/api/emr/medications/${med.id}`,
+                          { status: "DISCONTINUED", discontinuedReason: reason.trim() || undefined },
+                          "Medication discontinued",
+                        );
+                      }
+                    }}
+                    className="shrink-0 text-xs font-medium text-red-600 hover:underline"
+                  >
+                    Stop
+                  </button>
                 </div>
               ))}
             </div>
@@ -896,6 +963,11 @@ export default function EMRPatientViewPage() {
             <InvestigationsTab
               investigations={investigations}
               loading={investigationsLoading}
+              onResulted={() => {
+                fetchInvestigations();
+                addToast("success", "Result recorded");
+              }}
+              onError={(msg) => addToast("error", msg)}
             />
           )}
           {activeTab === "documents" && (
@@ -1076,10 +1148,16 @@ function EncountersTab({
 function InvestigationsTab({
   investigations,
   loading,
+  onResulted,
+  onError,
 }: {
   investigations: Investigation[];
   loading: boolean;
+  onResulted: () => void;
+  onError: (msg: string) => void;
 }) {
+  const [resultFor, setResultFor] = useState<string | null>(null);
+
   if (loading) return <MainSkeleton />;
 
   const pending = investigations.filter(
@@ -1103,8 +1181,9 @@ function InvestigationsTab({
           {pending.map((inv) => (
             <div
               key={inv.id}
-              className="rounded-xl border border-gray-200 p-4 flex items-center justify-between"
+              className="rounded-xl border border-gray-200 p-4"
             >
+              <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium text-[#0D1F3C] text-base">
@@ -1130,6 +1209,27 @@ function InvestigationsTab({
                   })}
                 </p>
               </div>
+              {resultFor !== inv.id && (
+                <button
+                  type="button"
+                  onClick={() => setResultFor(inv.id)}
+                  className="shrink-0 rounded-lg border border-[#0A6E75] px-3 py-1.5 text-sm font-medium text-[#0A6E75] hover:bg-[#0A6E75]/5"
+                >
+                  Enter result
+                </button>
+              )}
+              </div>
+              {resultFor === inv.id && (
+                <ResultForm
+                  investigation={inv}
+                  onClose={() => setResultFor(null)}
+                  onSuccess={() => {
+                    setResultFor(null);
+                    onResulted();
+                  }}
+                  onError={onError}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -1187,6 +1287,149 @@ function InvestigationsTab({
         </div>
       </div>
     </div>
+  );
+}
+
+function ResultForm({
+  investigation,
+  onClose,
+  onSuccess,
+  onError,
+}: {
+  investigation: Investigation;
+  onClose: () => void;
+  onSuccess: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [reportDate, setReportDate] = useState(new Date().toISOString().slice(0, 10));
+  const [labName, setLabName] = useState("");
+  const [value, setValue] = useState("");
+  const [unit, setUnit] = useState("");
+  const [refRange, setRefRange] = useState("");
+  const [interpretation, setInterpretation] = useState("");
+  const [isAbnormal, setIsAbnormal] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const inputClass =
+    "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A6E75]";
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!value.trim() && !interpretation.trim()) {
+      onError("Enter a value or an interpretation");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/emr/investigations/${investigation.id}/result`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          testName: investigation.name,
+          labName: labName.trim() || undefined,
+          reportDate,
+          results: value.trim()
+            ? [{
+                test: investigation.name,
+                value: value.trim(),
+                unit: unit.trim() || undefined,
+                refRange: refRange.trim() || undefined,
+                flag: isAbnormal ? "ABNORMAL" : "N",
+              }]
+            : undefined,
+          interpretation: interpretation.trim() || undefined,
+          isAbnormal,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Could not save the result");
+      }
+      onSuccess();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Could not save the result");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+      <div className="grid gap-2 sm:grid-cols-3">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Result value"
+          className={inputClass}
+        />
+        <input
+          type="text"
+          value={unit}
+          onChange={(e) => setUnit(e.target.value)}
+          placeholder="Unit (e.g. mmol/L)"
+          className={inputClass}
+        />
+        <input
+          type="text"
+          value={refRange}
+          onChange={(e) => setRefRange(e.target.value)}
+          placeholder="Reference range"
+          className={inputClass}
+        />
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <input
+          type="date"
+          value={reportDate}
+          onChange={(e) => setReportDate(e.target.value)}
+          required
+          className={inputClass}
+          aria-label="Report date"
+        />
+        <input
+          type="text"
+          value={labName}
+          onChange={(e) => setLabName(e.target.value)}
+          placeholder="Laboratory (optional)"
+          className={inputClass}
+        />
+      </div>
+      <textarea
+        rows={2}
+        value={interpretation}
+        onChange={(e) => setInterpretation(e.target.value)}
+        placeholder="Interpretation / comment"
+        className={inputClass}
+      />
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          checked={isAbnormal}
+          onChange={(e) => setIsAbnormal(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 accent-[#0A6E75]"
+        />
+        Abnormal (the patient is notified)
+      </label>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[#0A6E75] px-4 py-2 text-sm font-medium text-white hover:bg-[#085C62] disabled:opacity-50"
+        >
+          {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          Save result
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 

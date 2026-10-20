@@ -1,23 +1,19 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "@/lib/navigation";
 import {
   CheckCircle,
   XCircle,
   Video,
   Loader2,
-  Eye,
-  EyeOff,
   Calendar,
   ArrowRight,
   Copy,
   Check,
-  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Suspense } from "react";
-import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/contexts/AuthContext";
 import Topbar from "@/components/layout/Topbar";
 import Footer from "@/components/layout/Footer";
@@ -26,21 +22,15 @@ function PaymentCallbackContent() {
   const searchParams = useSearchParams();
   const reference = searchParams.get("reference");
   const router = useRouter();
-  const { user, refreshUser } = useAuth();
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+  const { user } = useAuth();
+  const [status, setStatus] = useState<"loading" | "success" | "error">(
+    reference ? "loading" : "error"
+  );
   const [meetingLink, setMeetingLink] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string>("");
-  const [isGuest, setIsGuest] = useState(false);
-  const [guestEmail, setGuestEmail] = useState<string | null>(null);
-  const { addToast } = useToast();
+  const [errorMessage, setErrorMessage] = useState<string>(
+    reference ? "" : "No payment reference was found."
+  );
 
-  // Claim account state
-  const [claimPassword, setClaimPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [claimLoading, setClaimLoading] = useState(false);
-  const [claimError, setClaimError] = useState<string | null>(null);
-  const [claimed, setClaimed] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const hasVerified = useRef(false);
@@ -62,72 +52,20 @@ function PaymentCallbackContent() {
         if (response.ok && data.success) {
           setStatus("success");
           setMeetingLink(data.meetingLink);
-          if (data.isGuest) {
-            setIsGuest(true);
-            setGuestEmail(data.guestEmail || null);
-          }
         } else {
           console.error("Payment verification failed:", data);
           setErrorMessage(data.error || "Payment verification failed");
           setStatus("error");
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error("Verification error:", error);
-        setErrorMessage(error.message || "An error occurred");
+        setErrorMessage(error instanceof Error ? error.message : "An error occurred");
         setStatus("error");
       }
     };
 
-    if (reference) {
-      verifyPayment();
-    } else {
-      setStatus("error");
-    }
+    verifyPayment();
   }, [reference]);
-
-  const handleClaimAccount = async () => {
-    if (!guestEmail || !claimPassword) return;
-
-    if (claimPassword !== confirmPassword) {
-      setClaimError("Passwords do not match");
-      return;
-    }
-
-    if (claimPassword.length < 8) {
-      setClaimError("Password must be at least 8 characters");
-      return;
-    }
-
-    setClaimLoading(true);
-    setClaimError(null);
-
-    try {
-      const response = await fetch("/api/auth/claim-account", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: guestEmail, password: claimPassword }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setClaimed(true);
-        await refreshUser();
-        addToast({
-          title: "Account Created",
-          description: "You can now sign in and manage your appointments.",
-          type: "success",
-        });
-      } else {
-        setClaimError(data.error || "Failed to create account");
-      }
-    } catch (err: any) {
-      setClaimError(err.message || "An error occurred");
-    } finally {
-      setClaimLoading(false);
-    }
-  };
 
   const handleCopyLink = () => {
     if (!meetingLink) return;
@@ -202,9 +140,6 @@ function PaymentCallbackContent() {
             <h2 className="text-2xl font-bold text-white">Booking Confirmed</h2>
             <p className="text-white/60 mt-1">
               Your appointment has been scheduled
-              {isGuest && guestEmail && (
-                <span className="block text-sm mt-1">Confirmation sent to {guestEmail}</span>
-              )}
             </p>
           </div>
 
@@ -246,17 +181,11 @@ function PaymentCallbackContent() {
                 <Video className="w-4 h-4 text-[#0A6E75] mt-0.5 shrink-0" />
                 <span>Join the consultation room from the link above at your scheduled time.</span>
               </div>
-              {isGuest && !claimed && !user && (
-                <div className="flex items-start gap-3 text-sm text-gray-600">
-                  <Shield className="w-4 h-4 text-[#0A6E75] mt-0.5 shrink-0" />
-                  <span>Create a password below to manage your bookings and access your room.</span>
-                </div>
-              )}
             </div>
 
             {/* Action buttons */}
             <div className="space-y-2.5 pt-2">
-              {(user || claimed) && (
+              {user && (
                 <>
                   <Button
                     className="w-full bg-[#0A6E75] hover:bg-[#085c62]"
@@ -273,7 +202,7 @@ function PaymentCallbackContent() {
                   )}
                 </>
               )}
-              {!user && !claimed && (
+              {!user && (
                 <Button variant="outline" className="w-full" onClick={() => router.push("/book")}>
                   Back to Specialists
                   <ArrowRight className="w-4 h-4 ml-2" />
@@ -283,73 +212,6 @@ function PaymentCallbackContent() {
           </div>
         </div>
 
-        {/* Guest account claim — inline, not a separate card */}
-        {isGuest && !claimed && !user && (
-          <div className="bg-white rounded-2xl shadow-sm border border-[#0A6E75]/20 overflow-hidden">
-            <div className="px-6 py-4 bg-[#0A6E75]/5 border-b border-[#0A6E75]/10">
-              <h3 className="font-bold text-[#0D1F3C] flex items-center gap-2">
-                <Shield className="w-5 h-5 text-[#0A6E75]" />
-                Activate Your Account
-              </h3>
-              <p className="text-sm text-gray-600 mt-0.5">
-                Set a password to manage appointments and access your consultation room.
-              </p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={claimPassword}
-                    onChange={(e) => setClaimPassword(e.target.value)}
-                    placeholder="Min. 8 characters"
-                    className="w-full pr-10 pl-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0A6E75]/20 focus:border-[#0A6E75] outline-none text-base"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter password"
-                  className="w-full pl-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0A6E75]/20 focus:border-[#0A6E75] outline-none text-base"
-                />
-              </div>
-              {claimError && (
-                <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{claimError}</p>
-              )}
-              <Button
-                className="w-full bg-[#0A6E75] hover:bg-[#085459] py-3"
-                onClick={handleClaimAccount}
-                disabled={claimLoading || !claimPassword || !confirmPassword}
-              >
-                {claimLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-                Activate Account
-              </Button>
-              <p className="text-xs text-gray-400 text-center">
-                You can always do this later from the sign-in page
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Claimed success */}
-        {claimed && (
-          <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-5 text-center">
-            <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-            <p className="font-medium text-emerald-800">Account activated — you&apos;re signed in.</p>
-          </div>
-        )}
       </div>
     </div>
   );

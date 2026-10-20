@@ -26,7 +26,7 @@ Set every variable for the **Production** environment (and Preview if you want P
 | `ENCRYPTION_KEY` | 32+ chars, for sensitive-field encryption. |
 | `PAYSTACK_SECRET_KEY` | Live key for production (`sk_live_...`). |
 | `ANTHROPIC_API_KEY` | Claude API (ticket classification). |
-| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_UPLOAD_PRESET` | Image uploads. |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Image uploads and deletes (signed, server-side). |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google OAuth. Add `https://dfcare.org/api/auth/google/callback` to the authorized redirect URIs in Google Cloud Console. |
 | `GOOGLE_SITE_VERIFICATION` | Search Console (optional). |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Email. Note the var is `SMTP_PASS`. |

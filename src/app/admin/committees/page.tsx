@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useToast } from "@/components/ui/toast";
 import { Users, Plus, Pencil, Trash2, Search, X, ChevronDown, ChevronUp } from "lucide-react";
 
 interface CommitteeMember {
@@ -52,7 +53,12 @@ export default function AdminCommitteesPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingMember, setEditingMember] = useState<CommitteeMember | null>(null);
   const [targetCommitteeId, setTargetCommitteeId] = useState("");
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const { addToast } = useToast();
+  const notify = useCallback(
+    (type: "success" | "error", message: string) =>
+      addToast({ type, title: type === "success" ? "Success" : "Error", description: message }),
+    [addToast],
+  );
 
   // Modal form state
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,12 +87,6 @@ export default function AdminCommitteesPage() {
     fetchCommittees();
   }, [fetchCommittees]);
 
-  useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [toast]);
 
   async function searchUsers(query: string) {
     if (query.length < 2) {
@@ -145,14 +145,14 @@ export default function AdminCommitteesPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setToast({ type: "success", message: "Member added to committee." });
+        notify("success", "Member added to committee.");
         setShowModal(false);
         fetchCommittees();
       } else {
-        setToast({ type: "error", message: data.error || "Failed to add member." });
+        notify("error", data.error || "Failed to add member.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     } finally {
       setSaving(false);
     }
@@ -172,14 +172,14 @@ export default function AdminCommitteesPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setToast({ type: "success", message: "Member role updated." });
+        notify("success", "Member role updated.");
         setShowModal(false);
         fetchCommittees();
       } else {
-        setToast({ type: "error", message: data.error || "Failed to update." });
+        notify("error", data.error || "Failed to update.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     } finally {
       setSaving(false);
     }
@@ -194,14 +194,14 @@ export default function AdminCommitteesPage() {
         body: JSON.stringify({ memberId, isActive: false }),
       });
       if (res.ok) {
-        setToast({ type: "success", message: "Member removed from committee." });
+        notify("success", "Member removed from committee.");
         fetchCommittees();
       } else {
         const data = await res.json();
-        setToast({ type: "error", message: data.error || "Failed to remove." });
+        notify("error", data.error || "Failed to remove.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     }
   }
 
@@ -219,23 +219,12 @@ export default function AdminCommitteesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Standing Committees</h1>
-        <p className="text-sm text-gray-600 mt-1">
+        <h1 className="text-2xl font-bold text-[#0D1F3C]">Standing Committees</h1>
+        <p className="mt-1 text-sm text-gray-500">
           Manage the 6 constitutional standing committees and their members.
         </p>
       </div>
 
-      {toast && (
-        <div
-          className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
-            toast.type === "success"
-              ? "bg-green-50 border-green-200 text-green-800"
-              : "bg-red-50 border-red-200 text-red-800"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
 
       <div className="space-y-4">
         {committees.map((committee) => {

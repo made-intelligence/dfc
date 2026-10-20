@@ -75,7 +75,8 @@ export async function GET(
         : 0;
 
     // Format schedules by day
-    const scheduleByDay = doctor.schedules.reduce(
+    // Weekly view only; one-off blocks (days off, extra clinics) are dated.
+    const scheduleByDay = doctor.schedules.filter((s) => s.isRecurring).reduce(
       (acc, schedule) => {
         const days = [
           "Sunday",
@@ -96,6 +97,7 @@ export async function GET(
           startTime: schedule.startTime,
           endTime: schedule.endTime,
           slotDuration: schedule.slotDuration,
+          bufferTime: schedule.bufferTime,
           scheduleType: schedule.scheduleType,
           consultationMode: schedule.consultationMode,
           location: schedule.location,
@@ -103,13 +105,14 @@ export async function GET(
 
         return acc;
       },
-      {} as Record<string, Array<{ startTime: string; endTime: string; slotDuration: number; scheduleType: string; consultationMode: string; location: string | null }>>,
+      {} as Record<string, Array<{ startTime: string; endTime: string; slotDuration: number; bufferTime: number; scheduleType: string; consultationMode: string; location: string | null }>>,
     );
 
     // Derive consultation modes from schedules
-    const hasVideo = doctor.schedules.some((s) => s.consultationMode === "VIDEO" || s.consultationMode === "BOTH");
-    const hasInPerson = doctor.schedules.some((s) => s.consultationMode === "IN_PERSON" || s.consultationMode === "BOTH");
-    const clinicLocation = doctor.schedules.find((s) => s.consultationMode === "IN_PERSON" || s.consultationMode === "BOTH")?.location || null;
+    const bookable = doctor.schedules.filter((s) => s.scheduleType === "AVAILABLE");
+    const hasVideo = bookable.some((s) => s.consultationMode === "VIDEO" || s.consultationMode === "BOTH");
+    const hasInPerson = bookable.some((s) => s.consultationMode === "IN_PERSON" || s.consultationMode === "BOTH");
+    const clinicLocation = bookable.find((s) => s.consultationMode === "IN_PERSON" || s.consultationMode === "BOTH")?.location || null;
 
     const doctorData = {
       id: doctor.user.id,
@@ -133,6 +136,21 @@ export async function GET(
       totalRatings: doctor.ratings.length,
       totalAppointments: doctor._count.appointments,
       schedules: scheduleByDay,
+      // Every block with its dates, for the booking wizard's per-date slots.
+      scheduleBlocks: doctor.schedules.map((s) => ({
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        slotDuration: s.slotDuration,
+        bufferTime: s.bufferTime,
+        scheduleType: s.scheduleType,
+        maxBookingsPerSlot: s.maxBookingsPerSlot,
+        isRecurring: s.isRecurring,
+        validFrom: s.validFrom ? s.validFrom.toISOString().slice(0, 10) : null,
+        validUntil: s.validUntil ? s.validUntil.toISOString().slice(0, 10) : null,
+        consultationMode: s.consultationMode,
+        location: s.location,
+      })),
       reviews: doctor.ratings.map((r) => ({
         rating: r.rating,
         review: r.review,

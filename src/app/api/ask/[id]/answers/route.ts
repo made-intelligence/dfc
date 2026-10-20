@@ -10,10 +10,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { id: idOrSlug } = await params;
 
-    const question = await prisma.clinicalQuestion.findUnique({
-      where: { id },
+    // Public links use the slug; older links and the API use the id.
+    const question = await prisma.clinicalQuestion.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
       include: {
         answers: {
           orderBy: [{ isAccepted: "desc" }, { helpfulCount: "desc" }, { createdAt: "asc" }],
@@ -28,9 +29,22 @@ export async function GET(
       return NextResponse.json({ error: "Question not found" }, { status: 404 });
     }
 
+    // Non-public questions are visible to the asker, DFC members and admins only.
+    if (question.visibility !== "PUBLIC") {
+      const token = getTokenFromCookies(request.headers.get("cookie"));
+      const viewer = token ? await verifyToken(token) : null;
+      const allowed =
+        !!viewer &&
+        (viewer.userId === question.submittedBy ||
+          ["DFC_MEMBER", "SUPERADMIN", "SECRETARIAT"].includes(viewer.role));
+      if (!allowed) {
+        return NextResponse.json({ error: "Question not found" }, { status: 404 });
+      }
+    }
+
     // Increment view count
     await prisma.clinicalQuestion.update({
-      where: { id },
+      where: { id: question.id },
       data: { viewCount: { increment: 1 } },
     });
 
@@ -45,6 +59,7 @@ export async function GET(
         doctorProfile: {
           select: {
             title: true,
+            slug: true,
             specialty: { select: { name: true } },
           },
         },
@@ -79,6 +94,7 @@ export async function GET(
                 name: author.name,
                 profileImage: author.profileImage,
                 title: author.doctorProfile?.title,
+                slug: author.doctorProfile?.slug,
                 specialty: author.doctorProfile?.specialty?.name,
               }
             : null,
@@ -100,7 +116,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: questionId } = await params;
+    const { id: idOrSlug } = await params;
     const token = getTokenFromCookies(request.headers.get("cookie"));
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -131,12 +147,16 @@ export async function POST(
     }
 
     // Verify question exists
-    const question = await prisma.clinicalQuestion.findUnique({
-      where: { id: questionId },
+    const question = await prisma.clinicalQuestion.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
     });
     if (!question) {
       return NextResponse.json({ error: "Question not found" }, { status: 404 });
     }
+    if (question.status === "CLOSED") {
+      return NextResponse.json({ error: "This question is closed to new answers" }, { status: 400 });
+    }
+    const questionId = question.id;
 
     const answer = await prisma.clinicalAnswer.create({
       data: {

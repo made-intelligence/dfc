@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "@/lib/navigation";
 import {
   ArrowLeft,
   Plus,

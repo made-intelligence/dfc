@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,8 +118,8 @@ export default function MembersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Members</h1>
-        <p className="text-gray-600 text-sm">
+        <h1 className="text-2xl font-bold text-[#0D1F3C]">Members</h1>
+        <p className="mt-1 text-sm text-gray-500">
           Manage DFC members — diaspora physicians, local specialists, and associates
         </p>
       </div>

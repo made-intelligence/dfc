@@ -16,6 +16,7 @@ interface SmtpTransportConfig {
   host: string;
   port: number;
   secure: boolean;
+  requireTLS?: boolean;
   auth: { user: string; pass: string };
 }
 
@@ -50,10 +51,14 @@ async function getEmailConfigFromDB() {
       const pass =
         (settings.smtpPassword || '').trim() || defaultEmailConfig.auth.pass;
 
+      // "Enable SSL" means the connection must be encrypted: implicit TLS on
+      // 465, mandatory STARTTLS on any other port (587 can't take implicit
+      // TLS). Turned off, the transport still upgrades when the server offers.
       cachedEmailConfig = {
         host: settings.smtpHost || defaultEmailConfig.host,
         port,
-        secure: port === 465, // Use SSL only for port 465
+        secure: settings.enableSSL && port === 465,
+        requireTLS: settings.enableSSL && port !== 465,
         auth: {
           user: settings.smtpUser || defaultEmailConfig.auth.user,
           pass,

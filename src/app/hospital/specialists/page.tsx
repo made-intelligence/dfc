@@ -2,7 +2,7 @@
 
 import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 
 export default function SpecialistsPage() {
   const router = useRouter();

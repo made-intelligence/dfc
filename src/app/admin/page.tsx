@@ -178,7 +178,7 @@ export default function AdminDashboard() {
           <div className="flex justify-between items-center">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-[#0D1F3C]">
                   Admin Dashboard
                 </h1>
                 <Badge variant={isSuperAdmin ? "default" : "secondary"}>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "@/lib/navigation";
 import {
   FileText,
   Clock,
@@ -71,6 +72,8 @@ function formatDate(dateStr: string): string {
 }
 
 export default function MemberCasesPage() {
+  // Shared by /member/cases and /doctor/cases; keep links in the current section.
+  const casesBase = usePathname().startsWith("/doctor") ? "/doctor/cases" : "/member/cases";
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("all");
@@ -129,7 +132,7 @@ export default function MemberCasesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900">My Cases</h1>
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">My Cases</h1>
           <span className="inline-flex items-center justify-center h-7 min-w-[28px] px-2 rounded-full bg-[#0D1F3C] text-white text-xs font-semibold">
             {cases.length}
           </span>
@@ -217,7 +220,7 @@ export default function MemberCasesPage() {
 
               {/* Action */}
               <Link
-                href={`/member/cases/${c.id}`}
+                href={`${casesBase}/${c.id}`}
                 className="inline-flex items-center gap-1 text-sm font-medium text-[#0A4A50] hover:underline"
               >
                 {c.status === "ASSIGNED"

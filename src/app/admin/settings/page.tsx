@@ -16,6 +16,8 @@ import {
   Mail,
   CreditCard,
   Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Loading } from "@/components/ui/loading";
 import { useToast } from "@/components/ui/toast";
@@ -29,7 +31,6 @@ interface SettingsData {
   };
   notifications: {
     email: boolean;
-    sms: boolean;
     push: boolean;
     appointments: boolean;
     payments: boolean;
@@ -57,10 +58,12 @@ interface SettingsData {
     smtpPort: number;
     smtpUser: string;
     smtpPassword?: string;
+    hasSmtpPassword?: boolean;
     fromEmail: string;
     replyEmail: string;
     enableSSL: boolean;
   };
+  emailTransport?: "zeptomail" | "smtp";
 }
 
 export default function SettingsPage() {
@@ -68,6 +71,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -98,6 +102,11 @@ export default function SettingsPage() {
       });
 
       if (response.ok) {
+        setSettings((prev) =>
+          prev && prev.email.smtpPassword
+            ? { ...prev, email: { ...prev.email, hasSmtpPassword: true } }
+            : prev
+        );
         addToast({
           title: "Success",
           description: "Settings saved successfully",
@@ -112,7 +121,7 @@ export default function SettingsPage() {
   };
 
   const updateSettings = (
-    section: keyof SettingsData,
+    section: Exclude<keyof SettingsData, "emailTransport">,
     key: string,
     value: any,
   ) => {
@@ -138,8 +147,8 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">System Settings</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">System Settings</h1>
+          <p className="mt-1 text-sm text-gray-500">
             Configure platform settings and preferences
           </p>
         </div>
@@ -228,20 +237,6 @@ export default function SettingsPage() {
                 checked={settings.notifications.email}
                 onCheckedChange={(checked) =>
                   updateSettings("notifications", "email", checked)
-                }
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>SMS Notifications</Label>
-                <p className="text-sm text-gray-600">
-                  Send notifications via SMS
-                </p>
-              </div>
-              <Switch
-                checked={settings.notifications.sms}
-                onCheckedChange={(checked) =>
-                  updateSettings("notifications", "sms", checked)
                 }
               />
             </div>
@@ -454,6 +449,13 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {settings.emailTransport === "zeptomail" && (
+            <p className="mb-6 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              Emails are currently sent through ZeptoMail (ZEPTOMAIL_API_KEY is set), so
+              these SMTP settings are not in use. Set MAIL_TRANSPORT=smtp on the server
+              to send with them instead.
+            </p>
+          )}
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
@@ -483,13 +485,29 @@ export default function SettingsPage() {
               </div>
               <div>
                 <Label htmlFor="smtpPassword">SMTP Password</Label>
-                <Input 
-                  id="smtpPassword" 
-                  type="password"
-                  value={settings.email.smtpPassword || ''}
-                  onChange={(e) => updateSettings("email", "smtpPassword", e.target.value)}
-                  placeholder="Enter SMTP password"
-                />
+                <div className="relative">
+                  <Input
+                    id="smtpPassword"
+                    type={showSmtpPassword ? "text" : "password"}
+                    value={settings.email.smtpPassword || ''}
+                    onChange={(e) => updateSettings("email", "smtpPassword", e.target.value)}
+                    autoComplete="new-password"
+                    className="pr-10"
+                    placeholder={
+                      settings.email.hasSmtpPassword && !settings.email.smtpPassword
+                        ? "Saved. Leave blank to keep it"
+                        : "Enter SMTP password"
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSmtpPassword((v) => !v)}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                    aria-label={showSmtpPassword ? "Hide password" : "Show password"}
+                  >
+                    {showSmtpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
             <div className="space-y-4">

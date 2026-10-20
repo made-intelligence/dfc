@@ -10,6 +10,8 @@
  * so every same-origin mutating request carries the token automatically.
  */
 
+import { refreshSession, isAuthEndpoint } from "@/lib/session-refresh";
+
 const CSRF_COOKIE = "csrf_token";
 const CSRF_HEADER = "x-csrf-token";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -84,6 +86,13 @@ async function isCsrfRejection(response: Response): Promise<boolean> {
   }
 }
 
+/** A consumed stream body can't be sent twice; strings, FormData etc. can. */
+function canReplay(input: RequestInfo | URL, init?: RequestInit): boolean {
+  if (init?.body instanceof ReadableStream) return false;
+  if (input instanceof Request && input.body && !init?.body) return false;
+  return true;
+}
+
 /**
  * Patch window.fetch so same-origin mutating requests carry the CSRF header.
  * Idempotent: safe to call from every mount.
@@ -115,10 +124,10 @@ export function installCsrfFetch(): void {
     });
   };
 
-  const patched = async function (
+  const sendWithCsrf = async (
     input: RequestInfo | URL,
     init?: RequestInit,
-  ): Promise<Response> {
+  ): Promise<Response> => {
     const method = methodOf(input, init);
     if (SAFE_METHODS.has(method) || !isSameOrigin(input)) {
       return originalFetch(input, init);
@@ -135,6 +144,25 @@ export function installCsrfFetch(): void {
     if (await isCsrfRejection(response)) {
       const fresh = await ensureCsrfToken(originalFetch, true);
       if (fresh && fresh !== token) return send(input, init, fresh);
+    }
+
+    return response;
+  };
+
+  const patched = async function (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> {
+    const response = await sendWithCsrf(input, init);
+
+    // 401 from our own API means the 2-hour access token expired. Renew it with
+    // the refresh token and replay the request once. Login/register etc. are
+    // excluded: their 401 means bad credentials, not an expired session.
+    if (response.status === 401 && isSameOrigin(input) && canReplay(input, init)) {
+      const path = new URL(requestUrl(input)!, window.location.href).pathname;
+      if (path.startsWith("/api/") && !isAuthEndpoint(path) && (await refreshSession(originalFetch))) {
+        return sendWithCsrf(input, init);
+      }
     }
 
     return response;

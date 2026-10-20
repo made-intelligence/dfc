@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Topbar from '@/components/layout/Topbar';
@@ -11,16 +11,17 @@ function SecondOpinionCallbackContent() {
   const searchParams = useSearchParams();
   const reference = searchParams.get('reference') || searchParams.get('trxref');
 
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
+    reference ? 'loading' : 'error'
+  );
   const [caseReference, setCaseReference] = useState<string>('');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState(reference ? '' : 'No payment reference found.');
+  const hasVerified = useRef(false);
 
   useEffect(() => {
-    if (!reference) {
-      setStatus('error');
-      setErrorMsg('No payment reference found.');
-      return;
-    }
+    // Verify once per page load, even if React runs the effect twice.
+    if (!reference || hasVerified.current) return;
+    hasVerified.current = true;
 
     async function verify() {
       try {

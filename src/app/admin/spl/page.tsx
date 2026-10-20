@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import {
   Building,
   Briefcase,
@@ -124,10 +124,7 @@ export default function SPLOverviewPage() {
     <div className="space-y-6">
       {/* Header */}
         <div>
-          <h1
-            className="text-2xl font-bold tracking-tight sm:text-3xl"
-            style={{ color: "#0D1F3C" }}
-          >
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">
             Specialist Partners
           </h1>
           <p className="mt-1 text-sm text-gray-500">

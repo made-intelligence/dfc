@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import {
   Search,
   FileText,
@@ -238,10 +238,7 @@ export default function SecondOpinionCoordinatorPage() {
     <div className="space-y-6">
       {/* Page heading */}
         <div>
-          <h1
-            className="text-2xl font-bold tracking-tight sm:text-3xl"
-            style={{ color: "#0D1F3C" }}
-          >
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">
             Second Opinion Cases
           </h1>
           <p className="mt-1 text-sm text-gray-500">

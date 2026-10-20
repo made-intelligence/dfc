@@ -4,45 +4,40 @@ import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { paymentRateLimit } from "@/lib/rate-limit";
 import { auditPayment } from "@/lib/audit";
+import { findOpenSlot } from "@/lib/booking-availability";
 
 export async function POST(request: NextRequest) {
   try {
     const rateLimitResponse = await paymentRateLimit(request);
     if (rateLimitResponse) return rateLimitResponse;
 
-    // Try to authenticate — but allow guest bookings
+    // Booking requires an account: guests sign in or register first.
     const token = getTokenFromCookies(request.headers.get("cookie"));
-    let authenticatedUserId: string | null = null;
-
-    if (token) {
-      const payload = await verifyToken(token);
-      if (payload) {
-        authenticatedUserId = payload.userId;
-      }
+    const session = token ? await verifyToken(token) : null;
+    if (!session) {
+      return NextResponse.json(
+        { error: "Please sign in to book", code: "SIGN_IN_REQUIRED" },
+        { status: 401 }
+      );
     }
+    const authenticatedUserId = session.userId;
 
     const body = await request.json();
-    const { email, amount, callbackUrl, metadata } = body;
+    const { amount, callbackUrl, metadata } = body;
 
-    if (!email || !amount || amount <= 0) {
+    if (!amount || amount <= 0) {
       return NextResponse.json(
-        { error: "Valid email and amount are required" },
+        { error: "A valid amount is required" },
         { status: 400 }
       );
     }
 
-    // For guest bookings, require guest info in metadata
-    const isGuest = metadata?.isGuest === true;
-    if (!authenticatedUserId && !isGuest) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (isGuest && (!metadata?.guestName || !metadata?.guestEmail)) {
-      return NextResponse.json(
-        { error: "Guest name and email are required" },
-        { status: 400 }
-      );
-    }
+    // The booking belongs to the session user; ignore any guest fields.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { isGuest: _g, guestName: _n, guestEmail: _e, guestPhone: _p, ...rest } = metadata || {};
+    const bookingMetadata: Record<string, unknown> = rest.doctorId
+      ? { ...rest, patientId: authenticatedUserId }
+      : rest;
 
     const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
 
@@ -59,6 +54,14 @@ export async function POST(request: NextRequest) {
     // and verify-time enforcement below only applies when a fee is set.)
     let chargeAmount = amount;
     if (metadata?.doctorId) {
+      // Refuse before taking money if the slot is taken or not on the schedule.
+      if (!metadata.date || !metadata.time ||
+          !(await findOpenSlot(metadata.doctorId, metadata.date, metadata.time))) {
+        return NextResponse.json(
+          { error: "That time is no longer available. Please pick another slot.", code: "SLOT_UNAVAILABLE" },
+          { status: 409 }
+        );
+      }
       const doctorProfile = await prisma.doctorProfile.findUnique({
         where: { userId: metadata.doctorId },
         select: { consultationFee: true },
@@ -69,12 +72,12 @@ export async function POST(request: NextRequest) {
 
     // Build Paystack payload — include split if subaccount provided
     const paystackPayload: Record<string, unknown> = {
-      email,
+      email: session.email,
       amount: chargeAmount * 100, // Paystack expects amount in kobo
       callback_url: callbackUrl,
       metadata: {
-        ...metadata,
-        initiatedBy: authenticatedUserId || "guest",
+        ...bookingMetadata,
+        initiatedBy: authenticatedUserId,
       },
     };
 
@@ -107,11 +110,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    auditPayment.initialize(authenticatedUserId || `guest:${email}`, data.data?.reference || "unknown", {
-      email,
+    auditPayment.initialize(authenticatedUserId, data.data?.reference || "unknown", {
+      email: session.email,
       amount,
       reference: data.data?.reference,
-      isGuest,
     }, request);
 
     return NextResponse.json(data.data);

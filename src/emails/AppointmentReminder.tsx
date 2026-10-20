@@ -28,7 +28,7 @@ export const AppointmentReminder: React.FC<AppointmentReminderProps> = ({
 
       {meetingLink && (
         <div style={{ textAlign: 'center', margin: '30px 0' }}>
-          <a href={meetingLink} style={{ backgroundColor: '#2563eb', color: '#ffffff', padding: '12px 24px', borderRadius: '5px', textDecoration: 'none', fontWeight: 'bold' }}>
+          <a href={meetingLink} style={{ backgroundColor: '#0D1F3C', color: '#ffffff', padding: '12px 24px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold' }}>
             Join Consultation
           </a>
         </div>

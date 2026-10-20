@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import { ArrowLeft, Loader2, Building } from "lucide-react";
 
 const PARTNER_TYPES = [
@@ -73,10 +73,7 @@ export default function NewPartnerPage() {
             <ArrowLeft className="mr-1 h-4 w-4" />
             Back to Partners
           </button>
-          <h1
-            className="text-2xl font-bold tracking-tight sm:text-3xl"
-            style={{ color: "#0D1F3C" }}
-          >
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">
             New Partner
           </h1>
           <p className="mt-1 text-sm text-gray-500">

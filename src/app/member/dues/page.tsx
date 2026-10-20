@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "@/lib/navigation";
 
 interface Payment {
   id: string;
@@ -249,7 +249,7 @@ function MemberDuesContent() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
-              onClick={() => router.push("/member/dashboard")}
+              onClick={() => router.push("/member")}
               className="px-6 py-2.5 rounded-lg bg-[#0D1F3C] text-white text-base font-medium hover:bg-[#0D1F3C]/90 transition-colors"
             >
               Go to Dashboard

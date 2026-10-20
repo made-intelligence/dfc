@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { AppointmentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdminAuth, isAuthError } from "@/lib/auth";
 import { parsePagination } from "@/lib/pagination";
@@ -12,7 +13,12 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || "";
     const { page, limit, skip } = parsePagination(searchParams);
 
-    const where = search
+    const statusParam = (searchParams.get("status") || "").toUpperCase();
+    const status = ["PENDING", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"].includes(statusParam)
+      ? (statusParam as AppointmentStatus)
+      : undefined;
+
+    const searchWhere = search
       ? {
           OR: [
             {
@@ -28,13 +34,14 @@ export async function GET(request: NextRequest) {
           ],
         }
       : {};
+    const where = { ...searchWhere, ...(status ? { status } : {}) };
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const [appointments, todayTotal, confirmed, pending, cancelled] =
+    const [appointments, matching, todayTotal, confirmed, pending, cancelled] =
       await Promise.all([
         prisma.appointment.findMany({
           where,
@@ -50,6 +57,7 @@ export async function GET(request: NextRequest) {
             },
           },
         }),
+        prisma.appointment.count({ where }),
         prisma.appointment.count({
           where: {
             appointmentDate: {
@@ -110,8 +118,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: appointments.length,
-        pages: Math.ceil(appointments.length / limit),
+        total: matching,
+        pages: Math.ceil(matching / limit),
       },
     });
   } catch (error) {

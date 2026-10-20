@@ -50,6 +50,11 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: ['react-dom/server'],
+  async redirects() {
+    // Public patient signup was retired; send old links to the membership
+    // application. Patients still get accounts through guest booking.
+    return [{ source: "/auth/register", destination: "/auth/join", permanent: true }];
+  },
   async headers() {
     // Same-origin app requests don't rely on this header; it only governs
     // cross-origin browser access. Pin it to the canonical production origin
