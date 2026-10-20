@@ -140,6 +140,7 @@ model User {
 
   committeeMembers                  CommitteeMember[]
   betaFeedback                      BetaFeedback[]
+  temporaryPasswords                TemporaryPassword[]
 
   @@unique([provider, providerId])
   @@index([role])
@@ -433,7 +434,7 @@ model SystemSettings {
   
   // Settings groups stored as JSON for flexibility
   general                           Json?                   // Site name, description, contact info
-  notifications                     Json?                   // Email, SMS, Push toggles
+  notifications                     Json?                   // Email, Push toggles
   security                          Json?                   // 2FA, session timeout, password policy
   system                            Json?                   // Maintenance mode, backup settings
   payment                           Json?                   // Currency, fees, payment methods
@@ -620,6 +621,7 @@ model SecretariatTicket {
   // Contact info (for non-registered users via WhatsApp)
   fromPhone                         String?
   fromName                          String?
+  fromEmail                         String?                 // web contact form submissions
 
   // AI-generated content
   aiClassification                  Json?
@@ -847,6 +849,7 @@ model SecondOpinionCase {
 model DFCEvent {
   id                                String                  @id @default(cuid())
   title                             String
+  slug                              String                  @unique // public URL: /events/<slug>; fixed at creation
   description                       String?
   type                              String                  @default("GENERAL") // GENERAL, CONFERENCE, OUTREACH, WEBINAR, AGM, CAMP
   date                              DateTime
@@ -855,17 +858,33 @@ model DFCEvent {
   location                          String?
   city                              String?
   isVirtual                         Boolean                 @default(false)
+  isInPerson                        Boolean                 @default(true)  // both true = hybrid
   virtualLink                       String?
+  hideVirtualLink                   Boolean                 @default(false) // keep the link off public pages even with no registration
   imageUrl                          String?
   registrationUrl                   String?
   isPublished                       Boolean                 @default(false)
-  isFeatured                        Boolean                 @default(false)
+  isFeatured                       Boolean                 @default(false)
+  showBanner                        Boolean                 @default(false) // pop-up announcement on every page
 
   createdAt                         DateTime                @default(now())
   updatedAt                         DateTime                @updatedAt
 
+  interactions                      DFCEventInteraction[]
+
   @@index([date])
   @@index([isPublished, date])
+}
+
+// Anonymous engagement log for events: no user or visitor identifiers.
+model DFCEventInteraction {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     DFCEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  kind      String   // BANNER_VIEW, BANNER_CLICK, PAGE_VIEW, DETAIL_VIEW, REGISTER_CLICK
+  createdAt DateTime @default(now())
+
+  @@index([eventId, kind])
 }
 
 // ============================================
@@ -2158,4 +2177,19 @@ model BetaFeedback {
 
   @@index([status, createdAt])
   @@index([category])
+}
+
+// A password emailed to someone: a new booking account's first password, or
+// a forgotten one's replacement. Kept apart from User.password until it is
+// used to sign in, so requesting one can't lock anyone out of their account.
+model TemporaryPassword {
+  id                                String                  @id @default(cuid())
+  userId                            String
+  user                              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordHash                      String
+  expiresAt                         DateTime
+  consumedAt                        DateTime?
+  createdAt                         DateTime                @default(now())
+
+  @@index([userId, createdAt])
 }

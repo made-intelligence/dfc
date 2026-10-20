@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
+import { useParams, useRouter } from "@/lib/navigation";
 import {
   ArrowLeft,
   Save,
@@ -92,7 +93,12 @@ export default function InitiativeDetailPage() {
   const [initiative, setInitiative] = useState<Initiative | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const { addToast } = useToast();
+  const notify = useCallback(
+    (type: "success" | "error", message: string) =>
+      addToast({ type, title: type === "success" ? "Success" : "Error", description: message }),
+    [addToast],
+  );
 
   // Initiative form fields
   const [formName, setFormName] = useState("");
@@ -152,12 +158,6 @@ export default function InitiativeDetailPage() {
     fetchInitiative();
   }, [fetchInitiative]);
 
-  useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [toast]);
 
   // --- Save initiative details ---
   async function handleSaveDetails() {
@@ -181,13 +181,13 @@ export default function InitiativeDetailPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setToast({ type: "success", message: "Initiative details saved." });
+        notify("success", "Initiative details saved.");
         fetchInitiative();
       } else {
-        setToast({ type: "error", message: data.error || "Failed to save." });
+        notify("error", data.error || "Failed to save.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     } finally {
       setSaving(false);
     }
@@ -211,7 +211,7 @@ export default function InitiativeDetailPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setToast({ type: "success", message: "Pillar added." });
+        notify("success", "Pillar added.");
         setShowPillarForm(false);
         setPillarName("");
         setPillarSubtitle("");
@@ -219,10 +219,10 @@ export default function InitiativeDetailPage() {
         setPillarOutputs("");
         fetchInitiative();
       } else {
-        setToast({ type: "error", message: data.error || "Failed to add pillar." });
+        notify("error", data.error || "Failed to add pillar.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     } finally {
       setSavingPillar(false);
     }
@@ -235,14 +235,14 @@ export default function InitiativeDetailPage() {
         method: "DELETE",
       });
       if (res.ok) {
-        setToast({ type: "success", message: "Pillar deleted." });
+        notify("success", "Pillar deleted.");
         fetchInitiative();
       } else {
         const data = await res.json();
-        setToast({ type: "error", message: data.error || "Failed to delete pillar." });
+        notify("error", data.error || "Failed to delete pillar.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     }
   }
 
@@ -290,14 +290,14 @@ export default function InitiativeDetailPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setToast({ type: "success", message: "Member added to initiative." });
+        notify("success", "Member added to initiative.");
         setShowMemberForm(false);
         fetchInitiative();
       } else {
-        setToast({ type: "error", message: data.error || "Failed to add member." });
+        notify("error", data.error || "Failed to add member.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     } finally {
       setSavingMember(false);
     }
@@ -310,20 +310,20 @@ export default function InitiativeDetailPage() {
         method: "DELETE",
       });
       if (res.ok) {
-        setToast({ type: "success", message: "Member removed." });
+        notify("success", "Member removed.");
         fetchInitiative();
       } else {
         const data = await res.json();
-        setToast({ type: "error", message: data.error || "Failed to remove member." });
+        notify("error", data.error || "Failed to remove member.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     }
   }
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         <div className="h-6 bg-gray-200 rounded w-32" />
         <div className="h-8 bg-gray-200 rounded w-64" />
         {[1, 2, 3, 4].map((i) => (
@@ -335,7 +335,7 @@ export default function InitiativeDetailPage() {
 
   if (!initiative) {
     return (
-      <div className="p-6">
+      <div className="space-y-6">
         <p className="text-gray-600">Initiative not found.</p>
         <button
           onClick={() => router.push("/admin/initiatives")}
@@ -348,7 +348,7 @@ export default function InitiativeDetailPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="max-w-4xl">
       {/* Back + Header */}
       <button
         onClick={() => router.push("/admin/initiatives")}
@@ -359,17 +359,6 @@ export default function InitiativeDetailPage() {
       </button>
 
       {/* Toast */}
-      {toast && (
-        <div
-          className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
-            toast.type === "success"
-              ? "bg-green-50 border-green-200 text-green-800"
-              : "bg-red-50 border-red-200 text-red-800"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
 
       {/* ========== SECTION 1: Initiative Details ========== */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">

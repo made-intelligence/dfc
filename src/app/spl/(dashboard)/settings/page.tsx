@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, Save, Building2 } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 interface PartnerData {
   id: string;
@@ -20,7 +21,7 @@ export default function SPLSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { addToast } = useToast();
 
   // Editable fields
   const [primaryContact, setPrimaryContact] = useState("");
@@ -52,8 +53,6 @@ export default function SPLSettingsPage() {
 
   const handleSave = async () => {
     setSaving(true);
-    setError(null);
-    setSuccessMessage(null);
     try {
       const response = await fetch("/api/spl/settings", {
         method: "PATCH",
@@ -68,10 +67,9 @@ export default function SPLSettingsPage() {
       if (!response.ok) throw new Error("Failed to save settings");
       const data = await response.json();
       setPartner(data.partner);
-      setSuccessMessage("Settings saved successfully.");
-      setTimeout(() => setSuccessMessage(null), 3000);
+      addToast({ type: "success", title: "Success", description: "Settings saved successfully." });
     } catch (err) {
-      setError("Failed to save settings. Please try again.");
+      addToast({ type: "error", title: "Error", description: "Failed to save settings. Please try again." });
       console.error(err);
     } finally {
       setSaving(false);
@@ -98,26 +96,14 @@ export default function SPLSettingsPage() {
     <div className="space-y-6 max-w-2xl">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold font-serif" style={{ color: "#0D1F3C" }}>
+        <h1 className="text-2xl font-bold text-[#0D1F3C]">
           Settings
         </h1>
-        <p className="text-gray-500 mt-1">
+        <p className="mt-1 text-sm text-gray-500">
           Manage your partner contact details. Organization details are managed
           by the DFC Secretariat.
         </p>
       </div>
-
-      {/* Success / Error messages */}
-      {successMessage && (
-        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          {successMessage}
-        </div>
-      )}
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      )}
 
       {/* Partner info card */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

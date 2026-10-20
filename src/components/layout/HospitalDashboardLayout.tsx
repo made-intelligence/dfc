@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "@/lib/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -15,8 +15,11 @@ import {
   FileText,
   Settings,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { NotificationsDropdown } from "./NotificationsDropdown";
+import { useSidebarCollapsed } from "@/lib/sidebar-collapse";
 
 interface HospitalDashboardLayoutProps {
   children: React.ReactNode;
@@ -35,30 +38,35 @@ export function HospitalDashboardLayout({
   children,
 }: HospitalDashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Desktop only: shrink the sidebar to an icon rail.
+  const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
   const [hospitalName, setHospitalName] = useState<string>("");
   const [hospitalTier, setHospitalTier] = useState<string>("");
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  // The main column is the scroll container (so scrolling the sidebar never
+  // moves the page); start each page at the top like a window scroll would.
+  const mainRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [pathname]);
 
   useEffect(() => {
-    if (user?.id) {
-      fetchHospitalInfo();
-    }
-  }, [user?.id]);
-
-  const fetchHospitalInfo = async () => {
-    try {
-      const response = await fetch("/api/hospital/settings");
-      if (response.ok) {
-        const data = await response.json();
+    if (!user?.id) return;
+    let active = true;
+    fetch("/api/hospital/settings")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (!active || !data) return;
         setHospitalName(data.hospital?.name || "Hospital Portal");
         setHospitalTier(data.hospital?.tier || "STANDARD");
-      }
-    } catch (error) {
-      console.error("Failed to fetch hospital info:", error);
-    }
-  };
+      })
+      .catch((error) => console.error("Failed to fetch hospital info:", error));
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (sidebarOpen) {
@@ -85,7 +93,7 @@ export function HospitalDashboardLayout({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-dvh overflow-hidden bg-gray-50 flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -97,21 +105,32 @@ export function HospitalDashboardLayout({
       {/* Sidebar */}
       <div
         className={`
-        fixed inset-y-0 left-0 z-50 w-64 shadow-lg transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 w-64 shadow-lg transform transition-[transform,width] duration-300 ease-in-out
+        flex flex-col
         lg:fixed lg:translate-x-0
+        ${collapsed ? "lg:w-16" : ""}
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}
         style={{ backgroundColor: "#0D1F3C" }}
       >
-        <div className="flex items-center justify-between bg-white h-16 px-6 border-b border-[#0A4A50]">
+        <div className={`flex items-center justify-between bg-white h-16 px-6 border-b border-gray-200 shrink-0 ${collapsed ? "lg:px-0 lg:justify-center" : ""}`}>
           <div className="flex items-center">
             <Image
-              src="/logo.png"
-              alt="DFC Medical"
-              width={200}
-              height={80}
-              className="h-20 w-auto"
+              src="/dfc-logo.png"
+              alt="DFC"
+              width={120}
+              height={44}
+              className={`h-10 w-auto ${collapsed ? "lg:hidden" : ""}`}
             />
+            {collapsed && (
+              <Image
+                src="/icon-192x192.png"
+                alt="DFC"
+                width={36}
+                height={36}
+                className="hidden lg:block h-9 w-9"
+              />
+            )}
           </div>
           <Button
             variant="ghost"
@@ -124,7 +143,7 @@ export function HospitalDashboardLayout({
         </div>
 
         {/* Hospital name & tier */}
-        <div className="px-4 py-4 border-b border-[#1a3258]">
+        <div className={`px-4 py-4 border-b border-[#1a3258] shrink-0 ${collapsed ? "lg:hidden" : ""}`}>
           <p className="text-sm font-serif font-semibold text-white truncate">
             {hospitalName || "Hospital Portal"}
           </p>
@@ -137,7 +156,7 @@ export function HospitalDashboardLayout({
           )}
         </div>
 
-        <nav className="mt-4 px-3 flex-1 overflow-y-auto">
+        <nav className={`mt-4 px-3 pb-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain ${collapsed ? "lg:px-2" : ""}`}>
           <div className="space-y-1">
             {navigationItems.map((item) => {
               const isActive =
@@ -148,50 +167,54 @@ export function HospitalDashboardLayout({
                 <Button
                   key={item.name}
                   variant="ghost"
+                  title={collapsed ? item.name : undefined}
+                  aria-label={item.name}
                   className={`w-full justify-start text-white hover:bg-[#0A4A50] ${
                     isActive ? "bg-[#0A4A50] text-white" : ""
-                  }`}
+                  } ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
                   onClick={() => {
                     router.push(item.href);
                     setSidebarOpen(false);
                   }}
                 >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
+                  <item.icon className={`mr-3 h-5 w-5 shrink-0 ${collapsed ? "lg:mr-0" : ""}`} />
+                  <span className={`truncate ${collapsed ? "lg:hidden" : ""}`}>{item.name}</span>
                 </Button>
               );
             })}
           </div>
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[#1a3258]">
-          <div className="flex items-center mb-4">
-            <div className="flex-shrink-0">
+        <div className={`shrink-0 p-4 border-t border-[#1a3258] ${collapsed ? "lg:px-2" : ""}`}>
+          <div className={`flex items-center mb-4 ${collapsed ? "lg:justify-center" : ""}`}>
+            <div className="flex-shrink-0" title={collapsed ? `${user.name} (Hospital Admin)` : undefined}>
               <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
                 <span className="text-[#0D1F3C] text-sm font-medium">
                   {user.name.charAt(0).toUpperCase()}
                 </span>
               </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-white">{user.name}</p>
+            <div className={`ml-3 min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
+              <p className="text-sm font-medium text-white truncate">{user.name}</p>
               <p className="text-xs text-gray-400">Hospital Admin</p>
             </div>
           </div>
           <Button
             variant="outline"
             size="sm"
-            className="w-full cursor-pointer hover:text-red-800 text-red-700"
+            className={`w-full cursor-pointer hover:text-red-800 text-red-700 ${collapsed ? "lg:px-0" : ""}`}
             onClick={handleLogout}
+            title={collapsed ? "Sign Out" : undefined}
+            aria-label="Sign Out"
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
+            <LogOut className={`mr-2 h-4 w-4 ${collapsed ? "lg:mr-0" : ""}`} />
+            <span className={collapsed ? "lg:hidden" : ""}>Sign Out</span>
           </Button>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-64">
+      <div ref={mainRef} className={`flex-1 min-w-0 h-dvh overflow-y-auto transition-[margin] duration-300 ${collapsed ? "lg:ml-16" : "lg:ml-64"}`}>
         {/* Top bar */}
         <div className="sticky top-0 z-10 bg-white shadow-sm border-b">
           <div className="flex items-center justify-between h-16 px-6">
@@ -203,6 +226,16 @@ export function HospitalDashboardLayout({
                 onClick={() => setSidebarOpen(true)}
               >
                 <Menu className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hidden lg:inline-flex mr-2 text-gray-600"
+                onClick={toggleCollapsed}
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
               </Button>
               <h1 className="text-xl font-serif font-semibold text-[#0D1F3C]">
                 Hospital Portal

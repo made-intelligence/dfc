@@ -22,7 +22,7 @@ import {
   UserPen,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 
 interface DashboardStats {
   todayAppointments: number;
@@ -106,19 +106,19 @@ export default function DoctorDashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white">
+      <div className="bg-gradient-to-r from-[#0D1F3C] to-[#0A4A50] rounded-lg p-6 text-white">
         <h1 className="text-2xl font-bold mb-2">Welcome back, {user.name}</h1>
-        <p className="text-blue-100">
-          Here's what's happening with your practice today
+        <p className="text-white/70">
+          Here&apos;s what&apos;s happening with your practice today
         </p>
       </div>
 
       {/* Quick Stats */}
       <div className="grid md:grid-cols-4 gap-6">
-        <Card className="transition-all duration-500 hover:shadow-lg hover:scale-105">
+        <Card className="transition-all duration-500 hover:shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Today's Appointments
+              Today&apos;s Appointments
             </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -130,7 +130,7 @@ export default function DoctorDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="transition-all duration-500 hover:shadow-lg hover:scale-105">
+        <Card className="transition-all duration-500 hover:shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Total Patients
@@ -143,22 +143,22 @@ export default function DoctorDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="transition-all duration-500 hover:shadow-lg hover:scale-105">
+        <Card className="transition-all duration-500 hover:shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              This Month's Revenue
+              This Month&apos;s Revenue
             </CardTitle>
             <span className="text-sm font-bold text-muted-foreground">₦</span>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₦{dashboardData.stats.thisMonthRevenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              This month's earnings
+              This month&apos;s earnings
             </p>
           </CardContent>
         </Card>
 
-        <Card className="transition-all duration-500 hover:shadow-lg hover:scale-105">
+        <Card className="transition-all duration-500 hover:shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg. Rating</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -179,7 +179,7 @@ export default function DoctorDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Today's Schedule</CardTitle>
+              <CardTitle>Today&apos;s Schedule</CardTitle>
               <CardDescription>Your appointments for today</CardDescription>
             </div>
           </CardHeader>

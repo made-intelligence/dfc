@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { verifyToken, getTokenFromCookies, JWTPayload } from '@/lib/auth';
+import { signCaseDocuments } from '@/lib/second-opinion-documents';
+import { deliverSecondOpinionReport } from '@/lib/second-opinion-report';
 
 async function getSpecialistId(payload: JWTPayload): Promise<string | null> {
   const doctor = await prisma.doctorProfile.findUnique({
@@ -39,7 +41,9 @@ export async function GET(
     return NextResponse.json({ error: 'Not authorized to view this case' }, { status: 403 });
   }
 
-  return NextResponse.json({ success: true, case: soCase });
+  const documents = await signCaseDocuments(soCase.documents);
+
+  return NextResponse.json({ success: true, case: { ...soCase, documents } });
 }
 
 // PATCH — specialist updates (start review, save notes, submit report)
@@ -121,6 +125,10 @@ export async function PATCH(
     where: { id },
     data: updateData,
   });
+
+  if (body.action === 'submit_report' && soCase.status !== 'COMPLETED') {
+    await deliverSecondOpinionReport(id, payload.userId);
+  }
 
   return NextResponse.json({ success: true, case: updated });
 }

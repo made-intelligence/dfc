@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "@/lib/navigation";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, FileText, Activity, Clock, Loader2, User, Signal, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { getDashboardUrl } from "@/lib/dashboard-url";
 
 // Web Speech API types
 interface IWindow extends Window {
@@ -16,6 +18,7 @@ export default function ConsultationRoom() {
   const params = useParams();
   const id = params?.id as string;
   const router = useRouter();
+  const { user: authUser } = useAuth();
   const { addToast } = useToast();
   
   // Data State
@@ -341,7 +344,7 @@ export default function ConsultationRoom() {
   };
   
   if (loading) return <div className="h-screen flex items-center justify-center bg-gray-900 text-white"><Loader2 className="w-8 h-8 animate-spin" /></div>;
-  if (error) return <div className="h-screen flex items-center justify-center bg-gray-900 text-white"><div className="text-center"><h2 className="text-xl font-bold mb-2">Error</h2><p>{error}</p><Button className="mt-4" onClick={() => router.push('/dashboard')}>Go to Dashboard</Button></div></div>;
+  if (error) return <div className="h-screen flex items-center justify-center bg-gray-900 text-white"><div className="text-center"><h2 className="text-xl font-bold mb-2">Error</h2><p>{error}</p><Button className="mt-4" onClick={() => router.push(getDashboardUrl(authUser?.role))}>Go to Dashboard</Button></div></div>;
 
   const isDoctor = meetingData?.currentUser?.role === 'DFC_MEMBER';
   // If current user is doctor, show patient name. If patient, show doctor name.

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 import {
   Search,
   Users,
@@ -110,7 +110,7 @@ export default function EMRPatientListPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[#0D1F3C]">Patient Records</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="mt-1 text-sm text-gray-500">
           View and manage electronic medical records for your patients
         </p>
       </div>

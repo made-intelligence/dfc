@@ -19,7 +19,7 @@ export const Newsletter: React.FC<NewsletterProps> = ({ subject, content }) => {
      <div className="newsletter-content" dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
      
      <div style={{ marginTop: '40px', fontSize: '11px', color: '#999', textAlign: 'center' }}>
-        <p>You received this email because you are subscribed to the DFC Medical newsletter.</p>
+        <p>You received this email because you are subscribed to the DFC newsletter.</p>
         <p><a href="#" style={{ color: '#999' }}>Unsubscribe</a></p>
      </div>
     </Layout>

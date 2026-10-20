@@ -11,8 +11,6 @@ import {
   Calendar,
   Activity,
   Download,
-  BarChart3,
-  Loader2,
 } from "lucide-react";
 
 interface AnalyticsData {
@@ -44,10 +42,69 @@ interface AnalyticsData {
   availableYears: number[];
 }
 
+interface SystemHealth {
+  status: string;
+  database: { status: string; latencyMs: number | null };
+  email?: { transport: string; sent24h: number; failed24h: number };
+  payments?: { configured: boolean };
+  metrics?: { totalUsers: number; totalDoctors: number; totalAppointments: number; openTickets: number };
+}
+
+/** Quote a value for CSV. */
+function csvCell(value: string | number): string {
+  const s = String(value);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function downloadCsv(filename: string, rows: (string | number)[][]) {
+  const csv = rows.map((r) => r.map(csvCell).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [health, setHealth] = useState<SystemHealth | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/system-health")
+      .then((res) => res.json())
+      .then(setHealth)
+      .catch(() => setHealth(null));
+  }, []);
+
+  const exportReport = () => {
+    if (!analytics) return;
+    const m = analytics.metrics;
+    const rows: (string | number)[][] = [
+      [`DFC analytics report — ${selectedYear ?? ""}`],
+      [],
+      ["Metric", "Value"],
+      ["Total revenue (NGN)", m.totalRevenue],
+      ["Revenue growth vs last month (%)", m.revenueGrowth.toFixed(1)],
+      ["New members", m.newPatients],
+      ["Member growth vs last month (%)", m.patientGrowth.toFixed(1)],
+      ["Appointments", m.totalAppointments],
+      ["Appointment growth vs last month (%)", m.appointmentGrowth.toFixed(1)],
+      ["Completion rate (%)", m.completionRate.toFixed(1)],
+      [],
+      ["Month", "Revenue (NGN)", "New users"],
+      ...analytics.revenueData.map((r, i) => [r.month, r.revenue, analytics.userGrowthData[i]?.users ?? ""]),
+      [],
+      ["Specialty", "Members"],
+      ...analytics.topSpecialties.map((s) => [s.specialty, s.count]),
+      [],
+      ["Time", "Appointments"],
+      ...analytics.peakHours.map((h) => [h.time, h.appointments]),
+    ];
+    downloadCsv(`dfc-analytics-${selectedYear ?? "report"}.csv`, rows);
+  };
 
   useEffect(() => {
     if (selectedYear) {
@@ -140,14 +197,12 @@ export default function AnalyticsPage() {
   }
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Analytics Dashboard
-          </h1>
-          <p className="text-gray-600">Platform performance and insights</p>
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">Analytics</h1>
+          <p className="mt-1 text-sm text-gray-500">Platform performance and insights</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Select value={selectedYear?.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Select Year" />
@@ -160,15 +215,15 @@ export default function AnalyticsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button>
+          <Button onClick={exportReport}>
             <Download className="h-4 w-4 mr-2" />
-            Export Report
+            Export CSV
           </Button>
         </div>
       </div>
 
       {/* Key Metrics */}
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -442,31 +497,59 @@ export default function AnalyticsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>System Performance</CardTitle>
+            <CardTitle>System Health</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Server Uptime</span>
-                <span className="font-medium text-green-600">99.9%</span>
+            {!health ? (
+              <p className="text-sm text-gray-500">Health check unavailable.</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Database</span>
+                  <span
+                    className={`font-medium capitalize ${
+                      health.database.status === "operational" ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {health.database.status}
+                    {health.database.latencyMs != null && ` · ${health.database.latencyMs}ms`}
+                  </span>
+                </div>
+                {health.email && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Emails (24h)</span>
+                    <span className="font-medium">
+                      {health.email.sent24h} sent
+                      {health.email.failed24h > 0 && (
+                        <span className="text-red-600"> · {health.email.failed24h} failed</span>
+                      )}
+                    </span>
+                  </div>
+                )}
+                {health.payments && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Payments (Paystack)</span>
+                    <span
+                      className={`font-medium ${health.payments.configured ? "text-green-600" : "text-red-600"}`}
+                    >
+                      {health.payments.configured ? "Configured" : "Not configured"}
+                    </span>
+                  </div>
+                )}
+                {health.metrics && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Registered users</span>
+                      <span className="font-medium">{health.metrics.totalUsers.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Open secretariat tickets</span>
+                      <span className="font-medium">{health.metrics.openTickets}</span>
+                    </div>
+                  </>
+                )}
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Response Time</span>
-                <span className="font-medium">245ms</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Active Users</span>
-                <span className="font-medium">1,234</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Database Size</span>
-                <span className="font-medium">2.4 GB</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">API Calls Today</span>
-                <span className="font-medium">45,678</span>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

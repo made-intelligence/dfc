@@ -4,6 +4,9 @@ import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { sendTextMessage } from '@/lib/whatsapp/service';
 import { UserRole } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import React from 'react';
+import { sendEmail } from '@/lib/email/service';
+import SecretariatReply from '@/emails/SecretariatReply';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,16 +26,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ticketId and message are required' }, { status: 400 });
     }
 
-    const ticket = await prisma.secretariatTicket.findUnique({ where: { id: ticketId } });
+    const ticket = await prisma.secretariatTicket.findUnique({
+      where: { id: ticketId },
+      include: { user: { select: { email: true, name: true } } },
+    });
     if (!ticket) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
-    if (!ticket.fromPhone) {
-      return NextResponse.json({ error: 'No phone number on this ticket' }, { status: 400 });
-    }
+    // WhatsApp when we have a number (that is how most tickets arrive),
+    // otherwise email: web contact-form and portal tickets often have no phone.
+    const replyEmail = ticket.fromEmail || ticket.user?.email || null;
+    let channel: 'whatsapp' | 'email';
+    let result: unknown;
 
-    const result = await sendTextMessage(ticket.fromPhone, message, ticket.userId || undefined);
+    if (ticket.fromPhone) {
+      channel = 'whatsapp';
+      result = await sendTextMessage(ticket.fromPhone, message, ticket.userId || undefined);
+    } else if (replyEmail) {
+      channel = 'email';
+      result = await sendEmail({
+        to: replyEmail,
+        subject: ticket.subject ? `Re: ${ticket.subject}` : 'A reply from the DFC Secretariat',
+        templateName: 'secretariat-reply',
+        component: React.createElement(SecretariatReply, {
+          name: ticket.fromName || ticket.user?.name || 'there',
+          message,
+          originalMessage: ticket.rawMessage,
+        }),
+        metadata: { ticketId: ticket.id },
+      });
+      if (!(result as { success?: boolean }).success) {
+        return NextResponse.json({ error: 'The reply email could not be sent' }, { status: 502 });
+      }
+    } else {
+      return NextResponse.json(
+        { error: 'This ticket has no phone number or email address to reply to' },
+        { status: 400 }
+      );
+    }
 
     // Update ticket status
     await prisma.secretariatTicket.update({
@@ -40,12 +72,12 @@ export async function POST(request: NextRequest) {
       data: {
         status: 'AWAITING_MEMBER',
         notes: ticket.notes
-          ? `${ticket.notes}\n\n--- Reply sent ---\n${message}`
-          : `--- Reply sent ---\n${message}`,
+          ? `${ticket.notes}\n\n--- Reply sent (${channel}) ---\n${message}`
+          : `--- Reply sent (${channel}) ---\n${message}`,
       },
     });
 
-    return NextResponse.json({ success: true, whatsappResult: result });
+    return NextResponse.json({ success: true, channel, result });
   } catch (error) {
     logger.error('AdminSecretariatReply', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

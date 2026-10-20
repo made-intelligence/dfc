@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies, JWTPayload } from '@/lib/auth';
 import { audit } from '@/lib/audit';
+import { notifySecondOpinion } from '@/lib/second-opinion-report';
 
 async function requireAdmin(request: NextRequest): Promise<JWTPayload | null> {
   const token = getTokenFromCookies(request.headers.get('cookie'));
@@ -67,9 +68,14 @@ export async function POST(
       title: 'New case assigned',
       message: `You have been assigned a second opinion case (${soCase.reference}) in ${soCase.specialty}. Please review within the SLA.`,
       type: 'info',
-      link: `/member/cases/${soCase.id}`,
+      link: `/doctor/cases/${soCase.id}`,
     },
   });
+
+  // Only the first assignment is news to the patient; a reassignment is internal.
+  if (soCase.status === 'PAID') {
+    await notifySecondOpinion(id, 'ASSIGNED');
+  }
 
   audit({
     userId: admin.userId,

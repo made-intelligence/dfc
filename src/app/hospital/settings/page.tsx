@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 interface HospitalData {
   id: string;
@@ -24,7 +25,7 @@ export default function SettingsPage() {
   const [hospital, setHospital] = useState<HospitalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const { addToast } = useToast();
   const [form, setForm] = useState({
     email: "",
     phone: "",
@@ -72,7 +73,6 @@ export default function SettingsPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setSuccess(false);
     try {
       const payload = {
         email: form.email,
@@ -95,11 +95,14 @@ export default function SettingsPage() {
       });
 
       if (response.ok) {
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
+        addToast({ type: "success", title: "Success", description: "Settings saved successfully." });
+      } else {
+        const data = await response.json().catch(() => null);
+        addToast({ type: "error", title: "Error", description: data?.error || "Failed to save settings." });
       }
     } catch (error) {
       console.error("Failed to save settings:", error);
+      addToast({ type: "error", title: "Error", description: "Network error. Please try again." });
     } finally {
       setSaving(false);
     }
@@ -294,14 +297,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Save button */}
-          <div className="px-6 py-4 border-t bg-gray-50 rounded-b-xl flex items-center justify-between">
-            <div>
-              {success && (
-                <p className="text-sm text-green-600 font-medium">
-                  Settings saved successfully.
-                </p>
-              )}
-            </div>
+          <div className="px-6 py-4 border-t bg-gray-50 rounded-b-xl flex items-center justify-end">
             <Button
               type="submit"
               disabled={saving}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/navigation";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -238,7 +238,7 @@ export default function ClinicalWorkspacePage() {
           {/* Search button */}
           <button
             onClick={handleSearch}
-            className="h-11 min-h-[44px] rounded-lg bg-[#0D1F3C] px-6 text-base font-semibold text-white transition-colors hover:bg-[#162d54] focus:outline-none focus:ring-2 focus:ring-[#0D1F3C]/40 focus:ring-offset-2 cursor-pointer"
+            className="h-11 min-h-[44px] rounded-lg bg-[#0D1F3C] px-6 text-base font-semibold text-white transition-colors hover:bg-[#162d52] focus:outline-none focus:ring-2 focus:ring-[#0D1F3C]/40 focus:ring-offset-2 cursor-pointer"
           >
             Search
           </button>
@@ -356,7 +356,7 @@ export default function ClinicalWorkspacePage() {
                   <div className="border-t border-gray-100 px-5 py-3">
                     <button
                       onClick={() => handleBook(space.id)}
-                      className="w-full min-h-[44px] rounded-lg bg-[#0D1F3C] px-4 py-2.5 text-base font-semibold text-white transition-colors hover:bg-[#162d54] focus:outline-none focus:ring-2 focus:ring-[#0D1F3C]/40 focus:ring-offset-2 cursor-pointer"
+                      className="w-full min-h-[44px] rounded-lg bg-[#0D1F3C] px-4 py-2.5 text-base font-semibold text-white transition-colors hover:bg-[#162d52] focus:outline-none focus:ring-2 focus:ring-[#0D1F3C]/40 focus:ring-offset-2 cursor-pointer"
                     >
                       Book this space
                     </button>

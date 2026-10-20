@@ -3,6 +3,7 @@ import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { uploadRateLimit } from '@/lib/rate-limit';
+import { uploadPrivateObject, getPrivateObjectUrl, SECOND_OPINION_BUCKET } from '@/lib/s3';
 import crypto from 'crypto';
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -99,44 +100,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
-
-    if (!cloudName || !uploadPreset) {
-      return NextResponse.json({ error: 'File upload not configured' }, { status: 500 });
-    }
-
     // Generate safe filename to prevent path traversal
     const safeFilename = generateSafeFilename(file.name);
+    const key = `second-opinion/${caseId || 'unlinked'}/${safeFilename}`;
 
-    // Upload to Cloudinary
-    const safeFile = new File([buffer], safeFilename, { type: file.type });
-    const cloudinaryForm = new FormData();
-    cloudinaryForm.append('file', safeFile);
-    cloudinaryForm.append('upload_preset', uploadPreset);
-    cloudinaryForm.append('folder', `dfc/second-opinion/${caseId || 'unlinked'}`);
-
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
-      { method: 'POST', body: cloudinaryForm }
-    );
-
-    if (!res.ok) {
-      const err = await res.text();
+    // Upload to Neon object storage (S3-compatible), kept private since
+    // these are patient medical documents.
+    try {
+      await uploadPrivateObject(SECOND_OPINION_BUCKET, key, Buffer.from(buffer), file.type || 'application/octet-stream');
+    } catch (err) {
       logger.error('SecondOpinionUpload', err);
       return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
     }
 
-    const data = await res.json();
+    // Short-lived preview URL so the uploader can confirm the upload succeeded.
+    // Documents are re-signed on every authorized read of the case afterwards.
+    const previewUrl = await getPrivateObjectUrl(SECOND_OPINION_BUCKET, key);
 
     return NextResponse.json({
       success: true,
       document: {
-        url: data.secure_url,
+        key,
+        url: previewUrl,
         name: file.name,
         type: file.type,
         size: file.size,
-        cloudinaryId: data.public_id,
         uploadedAt: new Date().toISOString(),
       },
     });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname } from "@/lib/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -40,8 +40,8 @@ interface CaseDetail {
   reportContent: string;
   reportDeliveredAt: string | null;
   reviewStartedAt: string | null;
-  scheduledCallTime: string | null;
-  meetingLink: string | null;
+  videoCallScheduledAt: string | null;
+  videoCallLink: string | null;
 }
 
 const statusStyles: Record<string, string> = {
@@ -86,6 +86,7 @@ function formatDateTime(dateStr: string): string {
 }
 
 export default function MemberCaseDetailPage() {
+  const casesBase = usePathname().startsWith("/doctor") ? "/doctor/cases" : "/member/cases";
   const params = useParams();
   const router = useRouter();
   const { addToast } = useToast();
@@ -98,6 +99,7 @@ export default function MemberCaseDetailPage() {
   const [specialistNotes, setSpecialistNotes] = useState("");
   const [reportContent, setReportContent] = useState("");
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [reportUrl, setReportUrl] = useState<string | null>(null);
 
   const fetchCase = useCallback(async () => {
     try {
@@ -107,6 +109,13 @@ export default function MemberCaseDetailPage() {
         setCaseData(data.case);
         setSpecialistNotes(data.case.specialistNotes || "");
         setReportContent(data.case.reportContent || "");
+        if (data.case.status === "COMPLETED" && data.case.reportContent) {
+          const reportRes = await fetch(`/api/member/cases/${caseId}/report`);
+          if (reportRes.ok) {
+            const report = await reportRes.json();
+            setReportUrl(report.reportUrl ?? null);
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to fetch case:", error);
@@ -189,7 +198,7 @@ export default function MemberCaseDetailPage() {
           This case may have been removed or you do not have access.
         </p>
         <Link
-          href="/member/cases"
+          href={casesBase}
           className="text-sm font-medium text-[#0A4A50] hover:underline"
         >
           Back to My Cases
@@ -252,7 +261,7 @@ export default function MemberCaseDetailPage() {
       {/* Header */}
       <div className="mb-6">
         <Link
-          href="/member/cases"
+          href={casesBase}
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-3"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -263,7 +272,7 @@ export default function MemberCaseDetailPage() {
             <p className="text-xs font-mono text-gray-400 mb-1">
               {caseData.reference}
             </p>
-            <h1 className="text-2xl font-bold text-gray-900">Case Review</h1>
+            <h1 className="text-2xl font-bold text-[#0D1F3C]">Case Review</h1>
           </div>
           <div className="flex items-center gap-2">
             <span
@@ -420,7 +429,7 @@ export default function MemberCaseDetailPage() {
             </h2>
           </div>
           <div className="p-6">
-            {caseData.scheduledCallTime ? (
+            {caseData.videoCallScheduledAt ? (
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <p className="text-sm text-gray-900 font-medium">
@@ -428,12 +437,12 @@ export default function MemberCaseDetailPage() {
                   </p>
                   <p className="text-sm text-gray-600 flex items-center gap-1.5 mt-0.5">
                     <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                    {formatDateTime(caseData.scheduledCallTime)}
+                    {formatDateTime(caseData.videoCallScheduledAt)}
                   </p>
                 </div>
-                {caseData.meetingLink && (
+                {caseData.videoCallLink && (
                   <a
-                    href={caseData.meetingLink}
+                    href={caseData.videoCallLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2 bg-[#0A4A50] text-white text-sm font-medium rounded-lg hover:bg-[#0A4A50]/90 transition-colors"
@@ -447,8 +456,8 @@ export default function MemberCaseDetailPage() {
               <div className="text-center py-4">
                 <Video className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">
-                  Video call scheduling will be available once the review is in
-                  progress.
+                  The DFC secretariat will schedule the video consultation with
+                  the patient and share the time here.
                 </p>
               </div>
             )}
@@ -568,11 +577,24 @@ export default function MemberCaseDetailPage() {
               <CheckCircle className="w-5 h-5 text-green-600" />
               <h2 className="font-semibold text-gray-900">Submitted Report</h2>
             </div>
-            {caseData.reportDeliveredAt && (
-              <p className="text-xs text-gray-500">
-                Delivered {formatDateTime(caseData.reportDeliveredAt)}
-              </p>
-            )}
+            <div className="flex items-center gap-3">
+              {caseData.reportDeliveredAt && (
+                <p className="text-xs text-gray-500">
+                  Delivered {formatDateTime(caseData.reportDeliveredAt)}
+                </p>
+              )}
+              {reportUrl && (
+                <a
+                  href={reportUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#0A4A50] hover:underline"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Print / PDF
+                </a>
+              )}
+            </div>
           </div>
           <div className="p-6">
             <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">

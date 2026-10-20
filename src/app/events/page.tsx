@@ -4,9 +4,14 @@ import { useState, useEffect, FormEvent } from "react";
 import Topbar from "@/components/layout/Topbar";
 import Footer from "@/components/layout/Footer";
 import { Calendar, MapPin, Clock, Bell } from "lucide-react";
+import Link from "next/link";
+import { FullImage } from "@/components/ui/full-image";
+import { trackEvent } from "@/lib/event-tracking";
+import { eventPath } from "@/lib/event-url";
 
 interface DFCEvent {
   id: string;
+  slug: string;
   title: string;
   description: string | null;
   date: string;
@@ -15,7 +20,10 @@ interface DFCEvent {
   location: string | null;
   city: string | null;
   isVirtual: boolean;
+  isInPerson: boolean;
+  virtualLink: string | null;
   registrationUrl: string | null;
+  imageUrl: string | null;
 }
 
 function formatEventDate(dateStr: string, endStr: string | null) {
@@ -33,14 +41,21 @@ function formatEventDate(dateStr: string, endStr: string | null) {
 }
 
 function eventVenue(event: DFCEvent) {
+  const venue = event.city || event.location;
+  if (event.isVirtual && event.isInPerson) return venue ? `${venue} + Online` : "Hybrid";
   if (event.isVirtual) return "Virtual";
-  return event.city || event.location || "Venue to be confirmed";
+  return venue || "Venue to be confirmed";
 }
 
 export default function EventsPage() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState<DFCEvent[]>([]);
+
+  // One anonymous view per listed event per visit.
+  useEffect(() => {
+    upcomingEvents.forEach((e) => trackEvent(e.id, "PAGE_VIEW", { oncePerSession: true }));
+  }, [upcomingEvents]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -113,17 +128,18 @@ export default function EventsPage() {
               {upcomingEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="relative bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 hover:shadow-lg transition-shadow"
+                  className="group relative flex flex-col overflow-hidden bg-white rounded-2xl border border-gray-200 hover:shadow-lg transition-shadow"
                 >
-                  {!event.registrationUrl && (
-                    <span className="absolute top-5 right-5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
-                      <Clock className="w-3 h-3" />
-                      Coming Soon
-                    </span>
+                  {event.imageUrl && (
+                    <FullImage src={event.imageUrl} alt="" loading="lazy" className="aspect-[4/3] w-full" />
                   )}
 
-                  <h3 className="text-lg font-semibold text-[#0D1F3C] pr-24 mb-4 leading-snug">
-                    {event.title}
+                  <div className="flex flex-1 flex-col p-6 sm:p-8">
+                  <h3 className="text-lg font-semibold text-[#0D1F3C] mb-4 leading-snug">
+                    {/* Stretched link: the whole card opens the event page. */}
+                    <Link href={eventPath(event)} className="after:absolute after:inset-0 group-hover:text-[#0A6E75]">
+                      {event.title}
+                    </Link>
                   </h3>
 
                   <p className="text-sm text-gray-500 leading-relaxed mb-5">
@@ -145,24 +161,38 @@ export default function EventsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-5 border-t border-gray-100">
-                    {event.registrationUrl ? (
-                      <a
-                        href={event.registrationUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-full py-2.5 rounded-lg bg-[#0D1F3C] text-white text-sm font-medium text-center hover:bg-[#0A4A50] transition-colors"
-                      >
-                        Register
-                      </a>
-                    ) : (
-                      <button
-                        disabled
-                        className="w-full py-2.5 rounded-lg bg-gray-100 text-gray-400 text-sm font-medium cursor-not-allowed"
-                      >
-                        Registration Opens Soon
-                      </button>
-                    )}
+                  {/* Registration links are optional. The API only sends the join link for open events
+                      (no registration) the admin hasn't hidden it on. */}
+                  {(event.registrationUrl || (event.isVirtual && event.virtualLink)) && (
+                  <div className="mt-auto pt-6">
+                    <div className="flex flex-col gap-3 pt-5 border-t border-gray-100 sm:flex-row">
+                      {event.registrationUrl && (
+                        <a
+                          href={event.registrationUrl}
+                          onClick={() => trackEvent(event.id, "REGISTER_CLICK")}
+                          // Sits above the stretched card link.
+                          style={{ position: "relative", zIndex: 1 }}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block flex-1 py-2.5 rounded-lg bg-[#0D1F3C] text-white text-sm font-medium text-center hover:bg-[#0A4A50] transition-colors"
+                        >
+                          Register
+                        </a>
+                      )}
+                      {!event.registrationUrl && event.isVirtual && event.virtualLink && (
+                        <a
+                          href={event.virtualLink}
+                          style={{ position: "relative", zIndex: 1 }}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block flex-1 py-2.5 rounded-lg border border-[#0D1F3C] bg-white text-[#0D1F3C] text-sm font-medium text-center hover:bg-gray-100 transition-colors"
+                        >
+                          Join online
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  )}
                   </div>
                 </div>
               ))}

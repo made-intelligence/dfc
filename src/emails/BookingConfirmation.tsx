@@ -21,12 +21,12 @@ export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
       <p>Dear {patientName},</p>
       <p>Your appointment with <strong>Dr. {doctorName}</strong> has been successfully booked.</p>
       
-      <div style={{ backgroundColor: '#f9fafb', padding: '15px', borderRadius: '5px', margin: '20px 0' }}>
+      <div style={{ backgroundColor: '#f9fafb', padding: '15px', borderRadius: '6px', margin: '20px 0' }}>
         <p style={{ margin: '5px 0' }}><strong>Date:</strong> {date}</p>
         <p style={{ margin: '5px 0' }}><strong>Time:</strong> {time}</p>
         {meetingLink && (
           <p style={{ margin: '5px 0' }}>
-            <strong>Meeting Link:</strong> <a href={meetingLink} style={{ color: '#2563eb' }}>Join Call</a>
+            <strong>Meeting Link:</strong> <a href={meetingLink} style={{ color: '#0D1F3C' }}>Join Call</a>
           </p>
         )}
       </div>

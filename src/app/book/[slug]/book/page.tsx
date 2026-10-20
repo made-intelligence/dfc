@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "@/lib/navigation";
 import Topbar from "@/components/layout/Topbar";
 import Footer from "@/components/layout/Footer";
 import { BookingWizard } from "@/components/booking/BookingWizard";

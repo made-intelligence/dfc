@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminAuth, isAuthError, JWTPayload } from "@/lib/auth";
+import { requireAdminAuth, isAuthError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
@@ -9,12 +9,15 @@ export async function PATCH(
 ) {
   const auth = await requireAdminAuth(request);
   if (isAuthError(auth)) return auth;
-  const payload = auth as JWTPayload;
 
   try {
     const { id } = await params;
     const body = await request.json();
     const { status } = body;
+
+    if (status && !["DRAFT", "SENT", "PAID", "OVERDUE"].includes(status)) {
+      return NextResponse.json({ error: "Invalid invoice status" }, { status: 400 });
+    }
 
     const updateData: Record<string, unknown> = {};
 
@@ -23,6 +26,14 @@ export async function PATCH(
       if (status === "PAID") {
         updateData.paidAt = new Date();
       }
+    }
+
+    if (status === "PAID") {
+      // Settle the cases this invoice billed.
+      await prisma.sPLCase.updateMany({
+        where: { invoiceId: id, status: "BILLED" },
+        data: { status: "PAID", paidAt: new Date() },
+      });
     }
 
     const updated = await prisma.sPLInvoice.update({

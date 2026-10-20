@@ -95,6 +95,8 @@ const INITIAL_FORM: FormData = {
 
 export function JoinDFCForm() {
   const [step, setStep] = useState(1);
+  // Honeypot: hidden from people, so only bots fill it in.
+  const [website, setWebsite] = useState('');
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [showPassword, setShowPassword] = useState(false);
   const [confirmAccuracy, setConfirmAccuracy] = useState(false);
@@ -181,6 +183,7 @@ export function JoinDFCForm() {
           country: form.path === 'local_specialist' ? 'Nigeria' : form.countryOfPractice,
           yearsQualified: form.yearOfQualification,
           whatsappOptIn: form.whatsappOptIn,
+          website,
         }),
       });
       if (!res.ok) {
@@ -671,6 +674,16 @@ export function JoinDFCForm() {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
       <StepIndicator />
+      <input
+        type="text"
+        name="website"
+        value={website}
+        onChange={(e) => setWebsite(e.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="absolute -left-[9999px] h-0 w-0 opacity-0"
+      />
 
       {step === 1 && renderStep1()}
       {step === 2 && renderStep2()}

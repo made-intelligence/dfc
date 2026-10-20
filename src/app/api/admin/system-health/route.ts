@@ -1,63 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminAuth, isAuthError } from "@/lib/auth";
+import { activeEmailTransport } from "@/lib/email/service";
+import { logger } from "@/lib/logger";
 
+/**
+ * Operational snapshot for the admin Analytics page. Every figure here is
+ * measured; nothing is estimated or simulated.
+ */
 export async function GET(request: NextRequest) {
+  const auth = await requireAdminAuth(request);
+  if (isAuthError(auth)) return auth;
+
   try {
-    const auth = await requireAdminAuth(request);
-    if (isAuthError(auth)) return auth;
-    // Test database connection
     const dbStart = Date.now();
-    await prisma.user.count();
-    const dbResponseTime = Date.now() - dbStart;
+    await prisma.$queryRaw`SELECT 1`;
+    const dbLatencyMs = Date.now() - dbStart;
 
-    // Simulate API response time check
-    const apiResponseTime = Math.floor(Math.random() * 200) + 150; // 150-350ms
-
-    // Get basic system stats
-    const [userCount, doctorCount, appointmentCount] = await Promise.all([
-      prisma.user.count(),
-      prisma.doctorProfile.count(),
-      prisma.appointment.count()
-    ]);
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [totalUsers, totalDoctors, totalAppointments, emailsSent24h, emailsFailed24h, openTickets] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.doctorProfile.count(),
+        prisma.appointment.count(),
+        prisma.emailLog.count({ where: { status: "SENT", createdAt: { gte: since } } }),
+        prisma.emailLog.count({ where: { status: "FAILED", createdAt: { gte: since } } }),
+        prisma.secretariatTicket.count({ where: { status: "OPEN" } }),
+      ]);
 
     return NextResponse.json({
-      status: "healthy",
+      status: dbLatencyMs < 1000 ? "healthy" : "degraded",
       timestamp: new Date().toISOString(),
-      services: {
-        database: {
-          status: dbResponseTime < 1000 ? "operational" : "slow",
-          responseTime: `${dbResponseTime}ms`
-        },
-        api: {
-          status: apiResponseTime < 500 ? "operational" : "slow", 
-          responseTime: `${apiResponseTime}ms`
-        },
-        paymentGateway: {
-          status: "operational",
-          responseTime: "120ms"
-        }
+      database: { status: dbLatencyMs < 1000 ? "operational" : "slow", latencyMs: dbLatencyMs },
+      email: {
+        transport: activeEmailTransport(),
+        sent24h: emailsSent24h,
+        failed24h: emailsFailed24h,
       },
-      metrics: {
-        totalUsers: userCount,
-        totalDoctors: doctorCount,
-        totalAppointments: appointmentCount,
-        uptime: "99.9%",
-        memoryUsage: "2.4 GB",
-        apiCallsToday: Math.floor(Math.random() * 50000) + 40000
-      }
+      payments: { configured: !!process.env.PAYSTACK_SECRET_KEY },
+      metrics: { totalUsers, totalDoctors, totalAppointments, openTickets },
     });
-
   } catch (error) {
-    return NextResponse.json({
-      status: "error",
-      timestamp: new Date().toISOString(),
-      services: {
-        database: { status: "error", responseTime: "timeout" },
-        api: { status: "error", responseTime: "timeout" },
-        paymentGateway: { status: "unknown", responseTime: "unknown" }
+    logger.error("SystemHealth", error);
+    return NextResponse.json(
+      {
+        status: "error",
+        timestamp: new Date().toISOString(),
+        database: { status: "error", latencyMs: null },
+        error: "System health check failed",
       },
-      error: "System health check failed"
-    }, { status: 500 });
+      { status: 500 }
+    );
   }
 }

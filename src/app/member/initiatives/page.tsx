@@ -205,10 +205,10 @@ export default function MemberInitiativesPage() {
 
       {/* Page header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-[#0D1F3C]">
           Committees & Initiatives
         </h1>
-        <p className="text-sm text-gray-600 mt-1">
+        <p className="mt-1 text-sm text-gray-500">
           View your current memberships and browse available committees to join.
         </p>
       </div>
@@ -450,7 +450,7 @@ export default function MemberInitiativesPage() {
                     setJoinPillarId("");
                     setJoinNote("");
                   }}
-                  className="w-full flex items-center justify-center gap-2 bg-[#0D1F3C] text-white text-sm font-medium py-2.5 px-4 rounded-lg hover:bg-[#162d54] transition-colors"
+                  className="w-full flex items-center justify-center gap-2 bg-[#0D1F3C] text-white text-sm font-medium py-2.5 px-4 rounded-lg hover:bg-[#162d52] transition-colors"
                 >
                   <UserPlus className="w-4 h-4" />
                   Request to Join
@@ -523,7 +523,7 @@ export default function MemberInitiativesPage() {
               <button
                 onClick={handleJoin}
                 disabled={joining}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium text-white bg-[#0D1F3C] rounded-lg hover:bg-[#162d54] transition-colors disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium text-white bg-[#0D1F3C] rounded-lg hover:bg-[#162d52] transition-colors disabled:opacity-50"
               >
                 {joining ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

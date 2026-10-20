@@ -94,10 +94,10 @@ export default function SPLInvoicesPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold font-serif" style={{ color: "#0D1F3C" }}>
+        <h1 className="text-2xl font-bold text-[#0D1F3C]">
           Invoices
         </h1>
-        <p className="text-gray-500 mt-1">
+        <p className="mt-1 text-sm text-gray-500">
           View and download invoices for services rendered.
         </p>
       </div>

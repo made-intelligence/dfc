@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
+import { useRouter } from "@/lib/navigation";
 import { Plus, Pencil, Trash2, X, Users, Layers } from "lucide-react";
 
 interface Initiative {
@@ -56,7 +57,12 @@ export default function AdminInitiativesPage() {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const { addToast } = useToast();
+  const notify = useCallback(
+    (type: "success" | "error", message: string) =>
+      addToast({ type, title: type === "success" ? "Success" : "Error", description: message }),
+    [addToast],
+  );
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -88,12 +94,6 @@ export default function AdminInitiativesPage() {
     fetchInitiatives();
   }, [fetchInitiatives]);
 
-  useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [toast]);
 
   function openCreateModal() {
     setFormName("");
@@ -127,14 +127,14 @@ export default function AdminInitiativesPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setToast({ type: "success", message: "Initiative created successfully." });
+        notify("success", "Initiative created successfully.");
         setShowModal(false);
         fetchInitiatives();
       } else {
-        setToast({ type: "error", message: data.error || "Failed to create initiative." });
+        notify("error", data.error || "Failed to create initiative.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     } finally {
       setSaving(false);
     }
@@ -145,14 +145,14 @@ export default function AdminInitiativesPage() {
     try {
       const res = await fetch(`/api/admin/initiatives?id=${id}`, { method: "DELETE" });
       if (res.ok) {
-        setToast({ type: "success", message: "Initiative deleted." });
+        notify("success", "Initiative deleted.");
         fetchInitiatives();
       } else {
         const data = await res.json();
-        setToast({ type: "error", message: data.error || "Failed to delete." });
+        notify("error", data.error || "Failed to delete.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     }
   }
 
@@ -166,7 +166,7 @@ export default function AdminInitiativesPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-64" />
         <div className="h-10 bg-gray-200 rounded w-96" />
         {[1, 2, 3].map((i) => (
@@ -177,12 +177,12 @@ export default function AdminInitiativesPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Committees & Initiatives</h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">Committees & Initiatives</h1>
+          <p className="mt-1 text-sm text-gray-500">
             Manage DFC technical working groups, task forces, committees, and projects.
           </p>
         </div>
@@ -196,17 +196,6 @@ export default function AdminInitiativesPage() {
       </div>
 
       {/* Toast */}
-      {toast && (
-        <div
-          className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
-            toast.type === "success"
-              ? "bg-green-50 border-green-200 text-green-800"
-              : "bg-red-50 border-red-200 text-red-800"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
 
       {/* Filter Tabs */}
       <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">

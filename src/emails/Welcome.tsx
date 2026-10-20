@@ -8,9 +8,9 @@ interface WelcomeProps {
 
 export const Welcome: React.FC<WelcomeProps> = ({ name, actionUrl }) => {
   return (
-    <Layout preview="Welcome to DFC Medical" heading="Welcome to DFC Medical!">
+    <Layout preview="Welcome to DFC" heading="Welcome to DFC">
       <p>Hi {name},</p>
-      <p>We are thrilled to have you on board. DFC Medical is committed to providing you with the best healthcare experience.</p>
+      <p>We are thrilled to have you on board. Doctors Foundation for Care is committed to providing you with the best healthcare experience.</p>
       
       <p>You can now:</p>
       <ul>
@@ -20,7 +20,7 @@ export const Welcome: React.FC<WelcomeProps> = ({ name, actionUrl }) => {
       </ul>
 
       <div style={{ textAlign: 'center', margin: '30px 0' }}>
-        <a href={actionUrl} style={{ backgroundColor: '#2563eb', color: '#ffffff', padding: '12px 24px', borderRadius: '5px', textDecoration: 'none', fontWeight: 'bold' }}>
+        <a href={actionUrl} style={{ backgroundColor: '#0D1F3C', color: '#ffffff', padding: '12px 24px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold' }}>
           Go to Dashboard
         </a>
       </div>

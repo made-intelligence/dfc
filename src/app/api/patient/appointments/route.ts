@@ -111,7 +111,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    let updateData: Prisma.AppointmentUpdateInput = {};
+    const updateData: Prisma.AppointmentUpdateInput = {};
 
     // 1. Cancellation
     if (status === AppointmentStatus.CANCELLED) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter } from "@/lib/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -21,6 +21,7 @@ import {
   ExternalLink,
   Download,
   Loader2,
+  Video,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -155,6 +156,14 @@ function formatDateTime(dateStr: string | null | undefined): string {
   });
 }
 
+/** ISO timestamp to the value a datetime-local input expects, in local time. */
+function toLocalInput(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  const offset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+}
+
 function parseDocuments(docs: Document[] | string | null | undefined): Document[] {
   if (!docs) return [];
   if (typeof docs === "string") {
@@ -204,6 +213,16 @@ export default function SecondOpinionCaseDetailPage() {
 
   // Complete action
   const [completing, setCompleting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // Secure link to the printable report
+  const [reportUrl, setReportUrl] = useState<string | null>(null);
+
+  // Video consultation scheduling
+  const [callTime, setCallTime] = useState("");
+  const [callLink, setCallLink] = useState("");
+  const [callSaving, setCallSaving] = useState(false);
+  const [callMessage, setCallMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   /* ---- Fetch case ---- */
   const fetchCase = useCallback(async () => {
@@ -216,6 +235,15 @@ export default function SecondOpinionCaseDetailPage() {
       if (!data.success) throw new Error("Case not found");
       setSoCase(data.case);
       setNotes(data.case.coordinatorNotes ?? "");
+      setCallTime(toLocalInput(data.case.videoCallScheduledAt));
+      setCallLink(data.case.videoCallLink ?? "");
+      if (data.case.reportContent) {
+        const reportRes = await fetch(`/api/member/cases/${caseId}/report`);
+        if (reportRes.ok) {
+          const report = await reportRes.json();
+          setReportUrl(report.reportUrl ?? null);
+        }
+      }
     } catch (err: any) {
       setError(err.message || "An error occurred");
     } finally {
@@ -297,17 +325,23 @@ export default function SecondOpinionCaseDetailPage() {
   async function cancelCase() {
     if (!cancelReason.trim()) return;
     setCancelling(true);
+    setActionError(null);
     try {
-      await fetch(`/api/admin/second-opinion/${caseId}`, {
+      const res = await fetch(`/api/admin/second-opinion/${caseId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "CANCELLED", cancelReason: cancelReason.trim() }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Could not cancel the case");
+      }
       setShowCancelModal(false);
       setCancelReason("");
       await fetchCase();
-    } catch {
-      // silent
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not cancel the case");
+      setShowCancelModal(false);
     } finally {
       setCancelling(false);
     }
@@ -315,17 +349,71 @@ export default function SecondOpinionCaseDetailPage() {
 
   async function markCompleted() {
     setCompleting(true);
+    setActionError(null);
     try {
-      await fetch(`/api/admin/second-opinion/${caseId}`, {
+      const res = await fetch(`/api/admin/second-opinion/${caseId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "COMPLETED" }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Could not complete the case");
+      }
       await fetchCase();
-    } catch {
-      // silent
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not complete the case");
     } finally {
       setCompleting(false);
+    }
+  }
+
+  async function saveVideoCall(clear = false) {
+    if (!clear && !callTime) return;
+    setCallSaving(true);
+    setCallMessage(null);
+    try {
+      const res = await fetch(`/api/admin/second-opinion/${caseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          clear
+            ? { videoCallScheduledAt: null }
+            : {
+                videoCallScheduledAt: new Date(callTime).toISOString(),
+                videoCallLink: callLink.trim(),
+              }
+        ),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || "Could not save the call");
+      setCallMessage({
+        ok: true,
+        text: clear ? "Call cleared." : "Call scheduled. The patient has been emailed.",
+      });
+      await fetchCase();
+    } catch (err) {
+      setCallMessage({ ok: false, text: err instanceof Error ? err.message : "Could not save the call" });
+    } finally {
+      setCallSaving(false);
+    }
+  }
+
+  async function markCallCompleted() {
+    setCallSaving(true);
+    setCallMessage(null);
+    try {
+      const res = await fetch(`/api/admin/second-opinion/${caseId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoCallCompleted: true }),
+      });
+      if (!res.ok) throw new Error("Could not update the call");
+      await fetchCase();
+    } catch (err) {
+      setCallMessage({ ok: false, text: err instanceof Error ? err.message : "Could not update the call" });
+    } finally {
+      setCallSaving(false);
     }
   }
 
@@ -376,10 +464,7 @@ export default function SecondOpinionCaseDetailPage() {
           <ArrowLeft className="h-4 w-4" /> Back to cases
         </Link>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1
-            className="text-2xl font-bold tracking-tight sm:text-3xl"
-            style={{ color: "#0D1F3C" }}
-          >
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">
             {soCase.reference}
           </h1>
           <div className="flex flex-wrap items-center gap-2">
@@ -732,14 +817,15 @@ export default function SecondOpinionCaseDetailPage() {
                   <div className="whitespace-pre-wrap rounded-md bg-gray-50 p-4 text-sm leading-relaxed text-gray-800">
                     {soCase.reportContent}
                   </div>
-                  {soCase.reportPdfUrl && (
+                  {(soCase.reportPdfUrl || reportUrl) && (
                     <a
-                      href={soCase.reportPdfUrl}
+                      href={soCase.reportPdfUrl || reportUrl || undefined}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-md border border-[#0A4A50] px-4 py-2 text-sm font-medium text-[#0A4A50] hover:bg-[#0A4A50]/5"
                     >
-                      <Download className="h-4 w-4" /> Download PDF
+                      <Download className="h-4 w-4" />
+                      {soCase.reportPdfUrl ? "Download PDF" : "Print / Save as PDF"}
                     </a>
                   )}
                   {soCase.reportDeliveredAt && (
@@ -852,11 +938,94 @@ export default function SecondOpinionCaseDetailPage() {
           {/* ========================================================= */}
           {/*  ACTIONS                                                   */}
           {/* ========================================================= */}
+          {/* ========================================================= */}
+          {/*  VIDEO CONSULTATION (COMPLEX / ONCOLOGY)                   */}
+          {/* ========================================================= */}
+          {(soCase.tier === "COMPLEX" || soCase.tier === "ONCOLOGY") && !isCancelled && (
+            <section className="rounded-lg border border-gray-200 bg-white">
+              <div className="flex items-center gap-2 px-5 py-4">
+                <Video className="h-4 w-4 text-[#0A4A50]" />
+                <h2 className="text-sm font-semibold text-gray-900">Video Consultation</h2>
+              </div>
+              <div className="space-y-3 border-t border-gray-100 px-5 py-4">
+                {soCase.videoCallCompletedAt ? (
+                  <p className="text-sm text-green-700">
+                    Call held {formatDateTime(soCase.videoCallCompletedAt)}
+                  </p>
+                ) : (
+                  <>
+                    <div>
+                      <label htmlFor="call-time" className="mb-1 block text-xs font-medium text-gray-600">
+                        Date and time
+                      </label>
+                      <input
+                        id="call-time"
+                        type="datetime-local"
+                        value={callTime}
+                        onChange={(e) => setCallTime(e.target.value)}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#0A4A50] focus:outline-none focus:ring-1 focus:ring-[#0A4A50]"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="call-link" className="mb-1 block text-xs font-medium text-gray-600">
+                        Meeting link
+                      </label>
+                      <input
+                        id="call-link"
+                        type="url"
+                        value={callLink}
+                        onChange={(e) => setCallLink(e.target.value)}
+                        placeholder="https://meet.google.com/..."
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#0A4A50] focus:outline-none focus:ring-1 focus:ring-[#0A4A50]"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => saveVideoCall()}
+                        disabled={callSaving || !callTime}
+                        className="rounded-md bg-[#0A4A50] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                      >
+                        {callSaving ? "Saving..." : soCase.videoCallScheduledAt ? "Reschedule" : "Schedule & email patient"}
+                      </button>
+                      {soCase.videoCallScheduledAt && (
+                        <>
+                          <button
+                            onClick={markCallCompleted}
+                            disabled={callSaving}
+                            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            Mark held
+                          </button>
+                          <button
+                            onClick={() => saveVideoCall(true)}
+                            disabled={callSaving}
+                            className="rounded-md px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            Clear
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
+                {callMessage && (
+                  <p className={`text-xs ${callMessage.ok ? "text-green-600" : "text-red-600"}`}>
+                    {callMessage.text}
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
+
           {!isTerminal && (
             <section className="rounded-lg border border-gray-200 bg-white">
               <div className="px-5 py-4">
                 <h2 className="mb-3 text-sm font-semibold text-gray-900">Actions</h2>
+                {actionError && (
+                  <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</p>
+                )}
                 <div className="flex flex-col gap-2">
+                  {soCase.reportContent && (
                   <button
                     onClick={markCompleted}
                     disabled={completing}
@@ -864,8 +1033,9 @@ export default function SecondOpinionCaseDetailPage() {
                     style={{ backgroundColor: "#0A4A50" }}
                   >
                     <CheckCircle className="h-4 w-4" />
-                    {completing ? "Completing..." : "Mark as Completed"}
+                    {completing ? "Delivering..." : "Complete & deliver report"}
                   </button>
+                  )}
                   <button
                     onClick={() => setShowCancelModal(true)}
                     className="flex w-full items-center justify-center gap-2 rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"

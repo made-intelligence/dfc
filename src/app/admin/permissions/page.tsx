@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
-import { Shield, Plus, Edit, Trash2, Loader2 } from "lucide-react";
+import { Shield, Plus, Edit, Trash2, Loader2, Lock } from "lucide-react";
 import { Loading } from "@/components/ui/loading";
+import { BUILT_IN_PERMISSIONS } from "@/lib/permission-names";
 
 interface Permission {
   id: string;
@@ -30,6 +31,10 @@ export default function PermissionsPage() {
     category: "general"
   });
   const [submitting, setSubmitting] = useState(false);
+  const [editing, setEditing] = useState<Permission | null>(null);
+  const [editForm, setEditForm] = useState({ description: "", category: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -43,7 +48,7 @@ export default function PermissionsPage() {
       const data = await response.json();
       setPermissions(data.permissions);
       setGroupedPermissions(data.groupedPermissions);
-    } catch (error) {
+    } catch {
       addToast({
         type: "error",
         title: "Error",
@@ -83,7 +88,7 @@ export default function PermissionsPage() {
           description: result.error || "Failed to create permission"
         });
       }
-    } catch (error) {
+    } catch {
       addToast({
         type: "error",
         title: "Error",
@@ -91,6 +96,57 @@ export default function PermissionsPage() {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openEdit = (permission: Permission) => {
+    setEditing(permission);
+    setEditForm({ description: permission.description ?? "", category: permission.category });
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editing) return;
+    setSavingEdit(true);
+    try {
+      const response = await fetch(`/api/admin/permissions/${editing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "Failed to update permission");
+      addToast({ type: "success", title: "Permission Updated", description: editing.name });
+      setEditing(null);
+      fetchPermissions();
+    } catch (error) {
+      addToast({
+        type: "error",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update permission",
+      });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDelete = async (permission: Permission) => {
+    if (!confirm(`Delete the "${permission.name}" permission? Any admin who has it will lose it.`)) return;
+    setDeleting(permission.id);
+    try {
+      const response = await fetch(`/api/admin/permissions/${permission.id}`, { method: "DELETE" });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || "Failed to delete permission");
+      addToast({ type: "success", title: "Permission Deleted", description: permission.name });
+      fetchPermissions();
+    } catch (error) {
+      addToast({
+        type: "error",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete permission",
+      });
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -111,10 +167,10 @@ export default function PermissionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Permission Management</h1>
-          <p className="text-gray-600">Manage system permissions and access control</p>
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">Permissions</h1>
+          <p className="mt-1 text-sm text-gray-500">System permissions and access control</p>
         </div>
         <Button onClick={() => setShowAddModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
@@ -128,7 +184,7 @@ export default function PermissionsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                {category.replace('_', ' ').toUpperCase()}
+                {category.replace(/_/g, " ").toUpperCase()}
                 <Badge variant="secondary">{categoryPermissions.length}</Badge>
               </CardTitle>
             </CardHeader>
@@ -142,12 +198,37 @@ export default function PermissionsPage() {
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-medium">{permission.name}</h3>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="sm">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEdit(permission)}
+                          aria-label={`Edit ${permission.name}`}
+                        >
                           <Edit className="h-3 w-3" />
                         </Button>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        {BUILT_IN_PERMISSIONS.has(permission.name) ? (
+                          <span
+                            className="inline-flex h-8 w-8 items-center justify-center text-gray-300"
+                            title="Used by the application; cannot be deleted"
+                          >
+                            <Lock className="h-3 w-3" />
+                          </span>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(permission)}
+                            disabled={deleting === permission.id}
+                            aria-label={`Delete ${permission.name}`}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            {deleting === permission.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 mb-2">{permission.description}</p>
@@ -161,6 +242,43 @@ export default function PermissionsPage() {
           </Card>
         ))}
       </div>
+
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit {editing?.name}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="edit-description">Description</Label>
+              <Input
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-category">Category</Label>
+              <Input
+                id="edit-category"
+                value={editForm.category}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, category: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="flex gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setEditing(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={savingEdit} className="flex-1">
+                {savingEdit && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
         <DialogContent className="sm:max-w-md">

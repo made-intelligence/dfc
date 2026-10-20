@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useToast } from "@/components/ui/toast";
 import { Shield, Plus, Pencil, Trash2, Search, X } from "lucide-react";
 
 interface ExcoMember {
@@ -48,7 +49,12 @@ export default function AdminExcoPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingMember, setEditingMember] = useState<ExcoMember | null>(null);
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const { addToast } = useToast();
+  const notify = useCallback(
+    (type: "success" | "error", message: string) =>
+      addToast({ type, title: type === "success" ? "Success" : "Error", description: message }),
+    [addToast],
+  );
 
   // Modal form state
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,12 +85,6 @@ export default function AdminExcoPage() {
     fetchExco();
   }, [fetchExco]);
 
-  useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [toast]);
 
   async function searchMembers(query: string) {
     if (query.length < 2) {
@@ -148,14 +148,14 @@ export default function AdminExcoPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setToast({ type: "success", message: editingMember ? "EXCO position updated." : "EXCO member added." });
+        notify("success", editingMember ? "EXCO position updated." : "EXCO member added.");
         setShowModal(false);
         fetchExco();
       } else {
-        setToast({ type: "error", message: data.error || "Failed to save." });
+        notify("error", data.error || "Failed to save.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     } finally {
       setSaving(false);
     }
@@ -166,14 +166,14 @@ export default function AdminExcoPage() {
     try {
       const res = await fetch(`/api/admin/exco?id=${memberId}`, { method: "DELETE" });
       if (res.ok) {
-        setToast({ type: "success", message: "EXCO position removed." });
+        notify("success", "EXCO position removed.");
         fetchExco();
       } else {
         const data = await res.json();
-        setToast({ type: "error", message: data.error || "Failed to remove." });
+        notify("error", data.error || "Failed to remove.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     }
   }
 
@@ -184,7 +184,7 @@ export default function AdminExcoPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-48" />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-20 bg-gray-200 rounded" />
@@ -194,11 +194,11 @@ export default function AdminExcoPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Executive Committee</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage elected EXCO positions for DFC members.</p>
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">Executive Committee</h1>
+          <p className="mt-1 text-sm text-gray-500">Manage elected EXCO positions for DFC members.</p>
         </div>
         <button
           onClick={openAddModal}
@@ -209,17 +209,6 @@ export default function AdminExcoPage() {
         </button>
       </div>
 
-      {toast && (
-        <div
-          className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
-            toast.type === "success"
-              ? "bg-green-50 border-green-200 text-green-800"
-              : "bg-red-50 border-red-200 text-red-800"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
 
       {excoMembers.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">

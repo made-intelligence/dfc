@@ -16,7 +16,13 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || "";
     const { page, limit, skip } = parsePagination(searchParams);
 
-    const where = search
+    const statusParam = searchParams.get("status");
+    const activeFilter =
+      statusParam === "active" ? { user: { isActive: true } }
+      : statusParam === "inactive" ? { user: { isActive: false } }
+      : {};
+
+    const searchWhere = search
       ? {
           OR: [
             {
@@ -32,8 +38,9 @@ export async function GET(request: NextRequest) {
           ],
         }
       : {};
+    const where = { ...searchWhere, ...activeFilter };
 
-    const [doctors, totalDoctors, activeDoctors, avgRating, newThisMonth] =
+    const [doctors, matching, totalDoctors, activeDoctors, avgRating, newThisMonth] =
       await Promise.all([
         prisma.doctorProfile.findMany({
           where,
@@ -64,6 +71,7 @@ export async function GET(request: NextRequest) {
             },
           },
         }),
+        prisma.doctorProfile.count({ where }),
         prisma.doctorProfile.count(),
         prisma.doctorProfile.count({ where: { isAvailable: true } }),
         prisma.doctorRating.aggregate({ _avg: { rating: true } }),
@@ -104,8 +112,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         page,
         limit,
-        total: totalDoctors,
-        pages: Math.ceil(totalDoctors / limit),
+        total: matching,
+        pages: Math.ceil(matching / limit),
       },
     });
   } catch (error) {

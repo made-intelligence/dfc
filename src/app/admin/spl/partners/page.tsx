@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { useRouter } from "@/lib/navigation";
 import { Loader2, Building, Plus, ArrowLeft } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -68,9 +67,8 @@ export default function SPLPartnersPage() {
   }, []);
 
   return (
-    <DashboardLayout title="SPL Partners">
-      <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        {/* Header */}
+    <div className="space-y-6">
+      {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <button
@@ -80,10 +78,7 @@ export default function SPLPartnersPage() {
               <ArrowLeft className="mr-1 h-4 w-4" />
               Back to SPL
             </button>
-            <h1
-              className="text-2xl font-bold tracking-tight sm:text-3xl"
-              style={{ color: "#0D1F3C" }}
-            >
+            <h1 className="text-2xl font-bold text-[#0D1F3C]">
               Partners
             </h1>
             <p className="mt-1 text-sm text-gray-500">
@@ -217,6 +212,5 @@ export default function SPLPartnersPage() {
           </>
         )}
       </div>
-    </DashboardLayout>
   );
 }

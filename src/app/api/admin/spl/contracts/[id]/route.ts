@@ -18,6 +18,23 @@ export async function GET(
       where: { id },
       include: {
         partner: true,
+        cases: {
+          orderBy: { submittedAt: "desc" },
+          take: 25,
+          select: {
+            id: true,
+            referenceNumber: true,
+            patientName: true,
+            specialty: true,
+            serviceType: true,
+            status: true,
+            agreedFee: true,
+            submittedAt: true,
+            deliveredAt: true,
+          },
+        },
+        invoices: { orderBy: { createdAt: "desc" } },
+        _count: { select: { cases: true } },
       },
     });
 
@@ -62,6 +79,10 @@ export async function PATCH(
       "endDate",
       "autoRenew",
     ];
+
+    if (body.status !== undefined && !["DRAFT", "UNDER_REVIEW", "ACTIVE", "PAUSED", "EXPIRED", "TERMINATED"].includes(body.status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
 
     const updateData: Record<string, unknown> = {};
     for (const field of allowedFields) {

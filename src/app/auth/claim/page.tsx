@@ -1,11 +1,15 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import Image from "next/image";
+import { useSearchParams, useRouter } from "@/lib/navigation";
 import Link from "next/link";
 import { Loader2, CheckCircle2, AlertCircle, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { getDashboardUrl, getDashboardLabel } from "@/lib/dashboard-url";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthShell, authCardClass } from "@/components/auth/AuthShell";
 
 function ClaimContent() {
   const searchParams = useSearchParams();
@@ -108,204 +112,183 @@ function ClaimContent() {
     }
   }
 
+  const submitting = status === "submitting";
+
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0D1F3C] via-[#0A3454] to-[#0A6E75]" />
+    <AuthShell>
+      <Card className={authCardClass}>
+        {status === "validating" && (
+          <CardContent className="text-center py-12">
+            <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
+            <p className="mt-4 text-sm text-muted-foreground">Checking your invitation…</p>
+          </CardContent>
+        )}
 
-      <div className="relative z-10 w-full max-w-md">
-        <div className="flex justify-center mb-6">
-          <Link href="/">
-            <Image
-              src="/logo.png"
-              alt="Doctors Foundation for Care logo"
-              width={160}
-              height={60}
-              className="h-20 w-auto brightness-0 invert"
-            />
-          </Link>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {status === "validating" && (
-            <div className="text-center py-8">
-              <Loader2 className="w-8 h-8 text-[#0A6E75] animate-spin mx-auto" />
-              <p className="mt-4 text-gray-500">Checking your invitation…</p>
-            </div>
-          )}
-
-          {status === "invalid" && (
-            <div className="text-center py-6">
-              <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
-              <h1 className="mt-4 text-xl font-bold text-[#0D1F3C]">Link not valid</h1>
-              <p className="mt-2 text-gray-600">{error}</p>
-
+        {status === "invalid" && (
+          <>
+            <CardHeader className="space-y-1">
+              <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
+              <CardTitle className="text-2xl font-bold text-center text-[#0D1F3C]">
+                Link Not Valid
+              </CardTitle>
+              <CardDescription className="text-center">{error}</CardDescription>
+            </CardHeader>
+            <CardContent>
               {/* Activation links expire after 30 days. Let members re-issue
                   one themselves instead of writing to the secretariat. */}
               {resendMessage ? (
-                <p className="mt-6 rounded-lg bg-emerald-50 border border-emerald-100 p-4 text-sm text-emerald-800 text-left">
+                <div className="text-sm text-emerald-800 bg-emerald-50 p-3 rounded-md">
                   {resendMessage}
-                </p>
+                </div>
               ) : (
-                <form onSubmit={handleResend} className="mt-6 text-left">
-                  <label
-                    htmlFor="resendEmail"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Send me a new link
-                  </label>
-                  <p className="text-sm text-gray-500 mb-2">
-                    Enter the email address your invitation was sent to.
-                  </p>
-                  <input
-                    id="resendEmail"
-                    type="email"
-                    required
-                    value={resendEmail}
-                    onChange={(e) => setResendEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="w-full rounded-lg border border-gray-200 px-4 py-3 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#0A6E75]/30 focus:border-[#0A6E75]"
-                  />
-                  <button
-                    type="submit"
-                    disabled={resending}
-                    className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#0A6E75] px-6 py-3 text-base font-semibold text-white hover:bg-[#085c62] disabled:opacity-60 transition-colors"
-                  >
+                <form onSubmit={handleResend} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="resendEmail">Send me a new link</Label>
+                    <Input
+                      id="resendEmail"
+                      type="email"
+                      required
+                      value={resendEmail}
+                      onChange={(e) => setResendEmail(e.target.value)}
+                      placeholder="Email your invitation was sent to"
+                      disabled={resending}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={resending}>
                     {resending ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Sending…
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
                       </>
                     ) : (
-                      "Email me a new link"
+                      "Email Me a New Link"
                     )}
-                  </button>
+                  </Button>
                 </form>
               )}
 
-              <Link
-                href="/auth/login"
-                className="mt-6 inline-block text-[#0A6E75] font-medium hover:underline"
-              >
-                Go to sign in
-              </Link>
-            </div>
-          )}
-
-          {status === "done" && (
-            <div className="text-center py-6">
-              <div className="mx-auto w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center">
-                <CheckCircle2 className="w-9 h-9 text-emerald-500" />
+              <div className="flex justify-center pt-4">
+                <p className="text-sm text-primary font-medium">
+                  <Link href="/auth/login" className="hover:underline">
+                    Go to Sign In
+                  </Link>
+                </p>
               </div>
-              <h1 className="mt-5 text-2xl font-bold text-[#0D1F3C]">
-                You&rsquo;re all set
-              </h1>
-              <p className="mt-2 text-gray-600 leading-relaxed">
+            </CardContent>
+          </>
+        )}
+
+        {status === "done" && (
+          <>
+            <CardHeader className="space-y-1">
+              <div className="mx-auto w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-center text-[#0D1F3C]">
+                You&rsquo;re All Set
+              </CardTitle>
+              <CardDescription className="text-center">
                 {member?.name ? `Welcome to DFC, ${member.name.split(" ")[0]}. ` : "Welcome to DFC. "}
                 Your account is active and you are signed in.
-              </p>
-              <p className="mt-4 text-sm text-gray-500">
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-center text-muted-foreground">
                 Sign in from now on with{" "}
                 <span className="font-medium text-gray-700">{member?.email}</span>{" "}
                 and the password you just set.
               </p>
-
               {/* An explicit way through, so nobody is stranded if the
                   automatic redirect does not fire. */}
-              <button
-                onClick={() => router.push(destination?.href ?? "/")}
-                className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#0A6E75] px-6 py-3 text-base font-semibold text-white hover:bg-[#085c62] transition-colors"
-              >
+              <Button className="w-full" onClick={() => router.push(destination?.href ?? "/")}>
                 Go to my {destination?.label ?? "dashboard"}
-                <ArrowRight className="w-4 h-4" />
-              </button>
-              <p className="mt-3 text-xs text-gray-400 flex items-center justify-center gap-1.5">
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 Taking you there automatically…
               </p>
-            </div>
-          )}
+            </CardContent>
+          </>
+        )}
 
-          {(status === "ready" || status === "submitting") && member && (
-            <>
-              <div className="text-center mb-6">
-                <h1 className="text-2xl font-bold text-[#0D1F3C]">Welcome to DFC</h1>
-                <p className="mt-2 text-gray-600">
-                  {member.name}, set a password to activate your account.
-                </p>
-                <p className="mt-1 text-sm text-gray-400">{member.email}</p>
-              </div>
-
+        {(status === "ready" || submitting) && member && (
+          <>
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-2xl font-bold text-center text-[#0D1F3C]">
+                Welcome to DFC
+              </CardTitle>
+              <CardDescription className="text-center">
+                {member.name}, set a password to activate your account
+                <span className="block mt-1">{member.email}</span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                    Create password
-                  </label>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Create Password</Label>
                   <div className="relative">
-                    <input
+                    <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       autoComplete="new-password"
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 pr-11 text-base text-gray-900 focus:border-[#0A6E75] focus:ring-1 focus:ring-[#0A6E75] outline-none"
                       placeholder="At least 8 characters"
+                      disabled={submitting}
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowPassword((s) => !s)}
                       aria-label={showPassword ? "Hide password" : "Show password"}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      disabled={submitting}
                     >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
                   </div>
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="text-xs text-muted-foreground">
                     Use upper and lower case letters and at least one number.
                   </p>
                 </div>
 
-                <div>
-                  <label htmlFor="confirm" className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirm password
-                  </label>
-                  <input
+                <div className="space-y-2">
+                  <Label htmlFor="confirm">Confirm Password</Label>
+                  <Input
                     id="confirm"
                     type={showPassword ? "text" : "password"}
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     required
                     autoComplete="new-password"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base text-gray-900 focus:border-[#0A6E75] focus:ring-1 focus:ring-[#0A6E75] outline-none"
                     placeholder="Re-enter your password"
+                    disabled={submitting}
                   />
                 </div>
 
                 {error && (
-                  <p className="text-sm text-red-600 flex items-start gap-1.5">
-                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                    {error}
-                  </p>
+                  <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</div>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={status === "submitting"}
-                  className="w-full bg-[#0A6E75] text-white font-semibold rounded-lg py-3 min-h-[44px] hover:bg-[#0D1F3C] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-                >
-                  {status === "submitting" && <Loader2 className="w-4 h-4 animate-spin" />}
-                  Activate my account
-                </button>
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Activating...
+                    </>
+                  ) : (
+                    "Activate My Account"
+                  )}
+                </Button>
               </form>
-            </>
-          )}
-        </div>
-
-        <p className="text-white/50 text-xs text-center py-4 font-medium">
-          &copy; {new Date().getFullYear()} Doctors Foundation for Care. All rights reserved.
-        </p>
-      </div>
-    </div>
+            </CardContent>
+          </>
+        )}
+      </Card>
+    </AuthShell>
   );
 }
 

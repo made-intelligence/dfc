@@ -157,8 +157,8 @@ export default function MedicalRecordsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Medical Records</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">Medical Records</h1>
+          <p className="mt-1 text-sm text-gray-500">
             Manage patient medical records and treatment history
           </p>
         </div>

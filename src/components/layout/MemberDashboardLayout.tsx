@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "@/lib/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -20,9 +20,13 @@ import {
   Stethoscope,
   FolderOpen,
   ArrowLeftRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { getCategoryLabel } from "@/lib/utils/member";
+import { useSidebarCollapsed } from "@/lib/sidebar-collapse";
 
 interface MemberDashboardLayoutProps {
   children: React.ReactNode;
@@ -46,9 +50,17 @@ const clinicalItems = [
 
 export function MemberDashboardLayout({ children }: MemberDashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Desktop only: shrink the sidebar to an icon rail.
+  const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  // The main column is the scroll container (so scrolling the sidebar never
+  // moves the page); start each page at the top like a window scroll would.
+  const mainRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [pathname]);
 
   useEffect(() => {
     if (sidebarOpen) {
@@ -74,8 +86,34 @@ export function MemberDashboardLayout({ children }: MemberDashboardLayoutProps) 
 
   const showDuesWarning = user.dfcMember?.goodStanding === false;
 
+  const navButton = (item: { href: string; label: string; icon: LucideIcon }, isActive: boolean, badge?: boolean) => (
+    <Button
+      key={item.href}
+      variant="ghost"
+      title={collapsed ? item.label : undefined}
+      aria-label={item.label}
+      className={`relative w-full justify-start text-white hover:bg-white/10 ${
+        isActive ? "bg-white/10 text-white" : "text-white/70"
+      } ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
+      onClick={() => {
+        router.push(item.href);
+        setSidebarOpen(false);
+      }}
+    >
+      <item.icon className={`mr-3 h-4 w-4 shrink-0 ${collapsed ? "lg:mr-0" : ""}`} />
+      <span className={`truncate ${collapsed ? "lg:hidden" : ""}`}>{item.label}</span>
+      {badge && (
+        <span
+          className={`ml-auto w-2 h-2 rounded-full bg-amber-400 ${
+            collapsed ? "lg:absolute lg:top-1.5 lg:right-1.5 lg:ml-0" : ""
+          }`}
+        />
+      )}
+    </Button>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-dvh overflow-hidden bg-gray-50 flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
@@ -87,19 +125,30 @@ export function MemberDashboardLayout({ children }: MemberDashboardLayoutProps) 
       {/* Sidebar */}
       <div
         className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-[#0D1F3C] shadow-lg transform transition-transform duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 w-64 bg-[#0D1F3C] shadow-lg transform transition-[transform,width] duration-300 ease-in-out
+        flex flex-col
         lg:fixed lg:translate-x-0
+        ${collapsed ? "lg:w-16" : ""}
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}
       >
-        <div className="flex items-center justify-between bg-white h-16 px-6 border-b border-gray-200">
+        <div className={`flex items-center justify-between bg-white h-16 px-6 border-b border-gray-200 shrink-0 ${collapsed ? "lg:px-0 lg:justify-center" : ""}`}>
           <Image
             src="/dfc-logo.png"
             alt="DFC"
             width={120}
             height={44}
-            className="h-10 w-auto"
+            className={`h-10 w-auto ${collapsed ? "lg:hidden" : ""}`}
           />
+          {collapsed && (
+            <Image
+              src="/icon-192x192.png"
+              alt="DFC"
+              width={36}
+              height={36}
+              className="hidden lg:block h-9 w-9"
+            />
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -111,45 +160,29 @@ export function MemberDashboardLayout({ children }: MemberDashboardLayoutProps) 
         </div>
 
         {/* Member info */}
-        <div className="px-4 py-4 border-b border-white/10">
+        <div className={`px-4 py-4 border-b border-white/10 shrink-0 ${collapsed ? "lg:hidden" : ""}`}>
           <p className="text-sm font-medium text-white truncate">{user.name}</p>
           <p className="text-xs text-white/50 mt-0.5">{categoryLabel}</p>
         </div>
 
-        <nav className="mt-4 px-3 flex-1 overflow-y-auto">
+        <nav className={`mt-4 px-3 pb-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain ${collapsed ? "lg:px-2" : ""}`}>
           {/* Member nav */}
-          <p className="px-3 mb-2 text-[10px] uppercase tracking-widest text-white/30 font-semibold">
+          <p className={`px-3 mb-2 text-[10px] uppercase tracking-widest text-white/30 font-semibold ${collapsed ? "lg:hidden" : ""}`}>
             Membership
           </p>
           <div className="space-y-1">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/member" && pathname.startsWith(item.href));
-              return (
-                <Button
-                  key={item.href}
-                  variant="ghost"
-                  className={`w-full justify-start text-white hover:bg-white/10 ${
-                    isActive ? "bg-white/10 text-white" : "text-white/70"
-                  }`}
-                  onClick={() => {
-                    router.push(item.href);
-                    setSidebarOpen(false);
-                  }}
-                >
-                  <item.icon className="mr-3 h-4 w-4" />
-                  {item.label}
-                  {item.href === "/member/dues" && showDuesWarning && (
-                    <span className="ml-auto w-2 h-2 rounded-full bg-amber-400" />
-                  )}
-                </Button>
-              );
-            })}
+            {navItems.map((item) =>
+              navButton(
+                item,
+                pathname === item.href || (item.href !== "/member" && pathname.startsWith(item.href)),
+                item.href === "/member/dues" && showDuesWarning
+              )
+            )}
           </div>
 
           {/* Clinical nav */}
-          <div className="mt-6 mb-2 px-3 flex items-center justify-between">
+          {collapsed && <div className="hidden lg:block mx-2 my-4 border-t border-white/15" />}
+          <div className={`mt-6 mb-2 px-3 flex items-center justify-between ${collapsed ? "lg:hidden" : ""}`}>
             <p className="text-[10px] uppercase tracking-widest text-white/30 font-semibold">
               Clinical
             </p>
@@ -165,43 +198,29 @@ export function MemberDashboardLayout({ children }: MemberDashboardLayoutProps) 
             </button>
           </div>
           <div className="space-y-1">
-            {clinicalItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-              return (
-                <Button
-                  key={item.href}
-                  variant="ghost"
-                  className={`w-full justify-start text-white hover:bg-white/10 ${
-                    isActive ? "bg-white/10 text-white" : "text-white/70"
-                  }`}
-                  onClick={() => {
-                    router.push(item.href);
-                    setSidebarOpen(false);
-                  }}
-                >
-                  <item.icon className="mr-3 h-4 w-4" />
-                  {item.label}
-                </Button>
-              );
-            })}
+            {clinicalItems.map((item) =>
+              navButton(item, pathname === item.href || pathname.startsWith(item.href + "/"))
+            )}
           </div>
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
+        <div className={`shrink-0 p-4 border-t border-white/10 ${collapsed ? "lg:px-2" : ""}`}>
           <Button
             variant="outline"
             size="sm"
-            className="w-full cursor-pointer hover:text-red-800 text-red-700"
+            className={`w-full cursor-pointer hover:text-red-800 text-red-700 ${collapsed ? "lg:px-0" : ""}`}
             onClick={handleLogout}
+            title={collapsed ? "Sign Out" : undefined}
+            aria-label="Sign Out"
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
+            <LogOut className={`mr-2 h-4 w-4 ${collapsed ? "lg:mr-0" : ""}`} />
+            <span className={collapsed ? "lg:hidden" : ""}>Sign Out</span>
           </Button>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 lg:ml-64">
+      <div ref={mainRef} className={`flex-1 min-w-0 h-dvh overflow-y-auto transition-[margin] duration-300 ${collapsed ? "lg:ml-16" : "lg:ml-64"}`}>
         {/* Top bar */}
         <div className="sticky top-0 z-10 bg-white shadow-sm border-b">
           <div className="flex items-center justify-between h-16 px-6">
@@ -212,6 +231,16 @@ export function MemberDashboardLayout({ children }: MemberDashboardLayoutProps) 
               onClick={() => setSidebarOpen(true)}
             >
               <Menu className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden lg:inline-flex mr-2 text-gray-600"
+              onClick={toggleCollapsed}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </Button>
             <div className="flex-1" />
             <div className="flex items-center space-x-4">

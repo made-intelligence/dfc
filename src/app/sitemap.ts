@@ -1,6 +1,7 @@
 import { MetadataRoute } from "next";
 import { appUrl } from "@/lib/app-url";
 import { prisma } from "@/lib/prisma";
+import { eventPath } from "@/lib/event-url";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = appUrl();
@@ -15,11 +16,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/events", priority: 0.7, changeFrequency: "weekly" as const },
     { path: "/projects", priority: 0.7, changeFrequency: "monthly" as const },
     { path: "/partners", priority: 0.6, changeFrequency: "monthly" as const },
+    { path: "/partners/spl", priority: 0.6, changeFrequency: "monthly" as const },
     { path: "/faq", priority: 0.6, changeFrequency: "monthly" as const },
     { path: "/contact", priority: 0.6, changeFrequency: "monthly" as const },
     { path: "/auth/join", priority: 0.7, changeFrequency: "monthly" as const },
     { path: "/auth/login", priority: 0.4, changeFrequency: "monthly" as const },
-    { path: "/auth/register", priority: 0.4, changeFrequency: "monthly" as const },
     { path: "/privacy-policy", priority: 0.3, changeFrequency: "yearly" as const },
     { path: "/terms", priority: 0.3, changeFrequency: "yearly" as const },
   ].map((route) => ({
@@ -34,20 +35,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let specialistRoutes: MetadataRoute.Sitemap = [];
 
   try {
-    // /book and /specialists are served by different queries, so a slug that
-    // appears on one does not necessarily resolve on the other. Listing every
-    // doctor under both paths published URLs that render empty, which wastes
-    // crawl budget and reads as thin content.
-    // A profile with neither a specialty nor a bio has nothing on it but a
-    // name. Submitting ninety of those is thin content at scale: it suppresses
-    // the domain rather than extending it. They are still crawlable, and they
-    // return here the moment the member fills something in.
-    const worthIndexing = {
-      OR: [{ specialtyId: { not: null } }, { bio: { not: null } }],
-    };
-
     const doctors = await prisma.doctorProfile.findMany({
-      where: { isAvailable: true, user: { isActive: true }, ...worthIndexing },
+      where: { isAvailable: true, user: { isActive: true } },
       select: { slug: true, updatedAt: true },
     });
 
@@ -58,19 +47,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-    // Mirrors /api/public/specialists: active members only.
-    const specialists = await prisma.doctorProfile.findMany({
-      where: {
-        slug: { not: undefined },
-        user: { isActive: true, dfcMember: { status: "ACTIVE" } },
-        ...worthIndexing,
-      },
-      select: { slug: true, updatedAt: true },
-    });
-
-    specialistRoutes = specialists.map((specialist) => ({
-      url: `${baseUrl}/specialists/${specialist.slug}`,
-      lastModified: specialist.updatedAt,
+    specialistRoutes = doctors.map((doctor) => ({
+      url: `${baseUrl}/specialists/${doctor.slug}`,
+      lastModified: doctor.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.8,
     }));
@@ -78,5 +57,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Database unavailable at build time — static routes only
   }
 
-  return [...staticRoutes, ...doctorRoutes, ...specialistRoutes];
+  // Dynamic: published event pages
+  let eventRoutes: MetadataRoute.Sitemap = [];
+  try {
+    const events = await prisma.dFCEvent.findMany({
+      where: { isPublished: true },
+      select: { slug: true, updatedAt: true },
+    });
+    eventRoutes = events.map((event) => ({
+      url: `${baseUrl}${eventPath(event)}`,
+      lastModified: event.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
+  } catch {
+    // Database unavailable at build time — skip events
+  }
+
+  return [...staticRoutes, ...doctorRoutes, ...specialistRoutes, ...eventRoutes];
 }

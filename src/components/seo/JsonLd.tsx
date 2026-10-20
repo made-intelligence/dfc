@@ -159,3 +159,70 @@ export function DoctorJsonLd({
     />
   );
 }
+
+export function EventJsonLd({
+  name,
+  description,
+  url,
+  image,
+  startDate,
+  endDate,
+  isInPerson,
+  isVirtual,
+  venue,
+  city,
+  registrationUrl,
+}: {
+  name: string;
+  description: string | null;
+  url: string;
+  image: string | null;
+  startDate: string;
+  endDate: string | null;
+  isInPerson: boolean;
+  isVirtual: boolean;
+  venue: string | null;
+  city: string | null;
+  registrationUrl: string | null;
+}) {
+  const place = {
+    "@type": "Place",
+    name: venue || city || "Venue to be confirmed",
+    address: { "@type": "PostalAddress", addressLocality: city || undefined },
+  };
+  const online = { "@type": "VirtualLocation", url };
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name,
+    description: description || undefined,
+    url,
+    image: image ? [image] : undefined,
+    startDate,
+    endDate: endDate || startDate,
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode:
+      isInPerson && isVirtual
+        ? "https://schema.org/MixedEventAttendanceMode"
+        : isVirtual
+          ? "https://schema.org/OnlineEventAttendanceMode"
+          : "https://schema.org/OfflineEventAttendanceMode",
+    location: isInPerson && isVirtual ? [place, online] : isVirtual ? online : place,
+    organizer: {
+      "@type": "Organization",
+      name: "Doctors Foundation For Care (DFC)",
+      url: "https://dfcare.org",
+    },
+    offers: registrationUrl
+      ? { "@type": "Offer", url: registrationUrl, availability: "https://schema.org/InStock" }
+      : undefined,
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
+    />
+  );
+}

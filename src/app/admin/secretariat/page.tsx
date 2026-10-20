@@ -7,6 +7,8 @@ interface Ticket {
   reference?: string;
   fromName: string;
   fromPhone?: string;
+  fromEmail?: string | null;
+  user?: { name: string; email: string } | null;
   requestType: string;
   intent?: string;
   status: "OPEN" | "IN_PROGRESS" | "AWAITING_MEMBER" | "COMPLETED" | "CLOSED";
@@ -58,6 +60,7 @@ export default function SecretariatPage() {
   const [editStatus, setEditStatus] = useState<Record<string, string>>({});
   const [classifyResult, setClassifyResult] = useState<Record<string, string>>({});
   const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [replyError, setReplyError] = useState<Record<string, string>>({});
   const [showReply, setShowReply] = useState<Record<string, boolean>>({});
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
@@ -132,30 +135,38 @@ export default function SecretariatPage() {
     const text = replyText[ticket.id];
     if (!text) return;
     setActionLoading((p) => ({ ...p, [ticket.id + "_reply"]: true }));
+    setReplyError((p) => ({ ...p, [ticket.id]: "" }));
     try {
-      await fetch("/api/admin/secretariat/reply", {
+      const res = await fetch("/api/admin/secretariat/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticketId: ticket.id, message: text, phone: ticket.fromPhone }),
+        body: JSON.stringify({ ticketId: ticket.id, message: text }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Reply could not be sent");
+      }
       setReplyText((p) => ({ ...p, [ticket.id]: "" }));
       setShowReply((p) => ({ ...p, [ticket.id]: false }));
-    } catch {
-      console.error("Failed to send reply");
+      fetchTickets();
+    } catch (err) {
+      setReplyError((p) => ({
+        ...p,
+        [ticket.id]: err instanceof Error ? err.message : "Reply could not be sent",
+      }));
     } finally {
       setActionLoading((p) => ({ ...p, [ticket.id + "_reply"]: false }));
     }
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <h1 className="mb-2 text-3xl font-bold tracking-tight text-gray-900">
-          Secretariat Dashboard
-        </h1>
-        <p className="mb-8 text-base text-gray-500" style={{ fontSize: "16px" }}>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-[#0D1F3C]">Secretariat Dashboard</h1>
+        <p className="mt-1 text-sm text-gray-500">
           Manage incoming requests and tickets.
         </p>
+      </div>
 
         {/* Status filter tabs */}
         <div className="mb-4 flex flex-wrap gap-1 border-b border-gray-200">
@@ -333,8 +344,8 @@ export default function SecretariatPage() {
                         )}
                       </div>
 
-                      {/* WhatsApp reply */}
-                      {ticket.fromPhone && (
+                      {/* Reply: WhatsApp when there is a number, otherwise email */}
+                      {(ticket.fromPhone || ticket.fromEmail || ticket.user?.email) && (
                         <div>
                           {!showReply[ticket.id] ? (
                             <button
@@ -343,7 +354,9 @@ export default function SecretariatPage() {
                               }
                               className="rounded-md border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
                             >
-                              Reply via WhatsApp
+                              {ticket.fromPhone
+                                ? "Reply via WhatsApp"
+                                : `Reply by email (${ticket.fromEmail || ticket.user?.email})`}
                             </button>
                           ) : (
                             <div className="space-y-2">
@@ -354,8 +367,11 @@ export default function SecretariatPage() {
                                   setReplyText((p) => ({ ...p, [ticket.id]: e.target.value }))
                                 }
                                 placeholder="Type your reply..."
-                                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#0A6E75] focus:outline-none focus:ring-1 focus:ring-[#0A6E75]"
                               />
+                              {replyError[ticket.id] && (
+                                <p className="text-sm text-red-600">{replyError[ticket.id]}</p>
+                              )}
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => sendReply(ticket)}
@@ -387,6 +403,5 @@ export default function SecretariatPage() {
           </div>
         )}
       </div>
-    </div>
   );
 }

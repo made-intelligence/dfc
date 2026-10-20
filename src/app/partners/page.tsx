@@ -119,12 +119,18 @@ export default function PartnersPage() {
               will discuss how we can work together based on your needs and
               location.
             </p>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 href="/contact"
                 className="inline-flex items-center justify-center h-12 px-8 rounded-xl bg-white text-[#0D1F3C] font-semibold text-base hover:bg-gray-50 transition-colors"
               >
                 Contact the secretariat
+              </Link>
+              <Link
+                href="/partners/spl"
+                className="inline-flex items-center justify-center h-12 px-8 rounded-xl border border-white/30 text-white font-semibold text-base hover:bg-white/10 transition-colors"
+              >
+                HMOs &amp; insurers: Specialist Partners
               </Link>
             </div>
           </div>

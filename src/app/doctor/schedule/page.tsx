@@ -29,6 +29,8 @@ interface Schedule {
   scheduleType: 'AVAILABLE' | 'BLOCKED' | 'HOLIDAY' | 'EMERGENCY';
   isRecurring: boolean;
   maxBookingsPerSlot: number;
+  validFrom?: string | null;
+  validUntil?: string | null;
   consultationMode: 'VIDEO' | 'IN_PERSON' | 'BOTH';
   location?: string;
   notes?: string;
@@ -51,6 +53,23 @@ const DAYS = [
   "Saturday",
 ];
 
+/** "2026-12-25" -> "Fri, 25 Dec 2026" */
+const formatYmd = (ymd: string) =>
+  new Date(`${ymd.slice(0, 10)}T00:00:00Z`).toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
+const dateRangeLabel = (s: Schedule) => {
+  if (!s.validFrom) return "";
+  const from = s.validFrom.slice(0, 10);
+  const until = s.validUntil?.slice(0, 10);
+  return until && until !== from ? `${formatYmd(from)} – ${formatYmd(until)}` : formatYmd(from);
+};
+
 export default function SchedulePage() {
   const { user } = useAuth();
   const { addToast } = useToast();
@@ -67,9 +86,11 @@ export default function SchedulePage() {
     endTime: "17:00",
     slotDuration: 30,
     bufferTime: 0,
-    scheduleType: 'AVAILABLE' as const,
+    scheduleType: 'AVAILABLE' as Schedule['scheduleType'],
     isRecurring: true,
     maxBookingsPerSlot: 1,
+    validFrom: "",
+    validUntil: "",
     consultationMode: 'VIDEO' as 'VIDEO' | 'IN_PERSON' | 'BOTH',
     location: "",
     notes: "",
@@ -129,7 +150,11 @@ export default function SchedulePage() {
       const response = await fetch("/api/doctor/schedule", {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(schedule),
+        body: JSON.stringify({
+          ...schedule,
+          validFrom: schedule.validFrom ? schedule.validFrom.slice(0, 10) : null,
+          validUntil: schedule.validUntil ? schedule.validUntil.slice(0, 10) : null,
+        }),
       });
 
       if (response.ok) {
@@ -143,9 +168,11 @@ export default function SchedulePage() {
             endTime: "17:00",
             slotDuration: 30,
             bufferTime: 0,
-            scheduleType: 'AVAILABLE' as const,
+            scheduleType: 'AVAILABLE' as Schedule['scheduleType'],
             isRecurring: true,
             maxBookingsPerSlot: 1,
+    validFrom: "",
+    validUntil: "",
             consultationMode: 'VIDEO' as 'VIDEO' | 'IN_PERSON' | 'BOTH',
             location: "",
             notes: "",
@@ -158,9 +185,10 @@ export default function SchedulePage() {
           type: "success",
         });
       } else {
+        const data = await response.json().catch(() => ({}));
         addToast({
-          title: "Error",
-          description: "Failed to save schedule. Please try again.",
+          title: "Couldn't save schedule",
+          description: data.error || "Failed to save schedule. Please try again.",
           type: "error",
         });
       }
@@ -175,6 +203,7 @@ export default function SchedulePage() {
   };
 
   const handleDeleteSchedule = async (id: string) => {
+    if (!window.confirm("Delete this schedule block?")) return;
     try {
       const response = await fetch(`/api/doctor/schedule?id=${id}`, {
         method: "DELETE",
@@ -204,6 +233,95 @@ export default function SchedulePage() {
     }
   };
 
+  const datedSchedules = schedules
+    .filter((s) => !s.isRecurring)
+    .sort((a, b) => (a.validFrom || "").localeCompare(b.validFrom || "") || a.startTime.localeCompare(b.startTime));
+
+  const renderRow = (schedule: Schedule) => (
+                        <div
+                          key={schedule.id}
+                          className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
+                        >
+                          {editingId === schedule.id ? (
+                            <EditScheduleForm
+                              schedule={schedule}
+                              onSave={handleSaveSchedule}
+                              onCancel={() => setEditingId(null)}
+                            />
+                          ) : (
+                            <>
+                              <div className="flex flex-wrap items-center gap-4">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: schedule.color || '#3B82F6' }}
+                                />
+                                <div>
+                                  <div className="font-medium">
+                                    {schedule.title || `${schedule.startTime} - ${schedule.endTime}`}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {schedule.startTime} - {schedule.endTime}
+                                  </div>
+                                </div>
+                                <Badge variant="outline">
+                                  {schedule.slotDuration}min
+                                </Badge>
+                                {schedule.bufferTime > 0 && (
+                                  <Badge variant="outline">+{schedule.bufferTime}min buffer</Badge>
+                                )}
+                                {schedule.maxBookingsPerSlot > 1 && (
+                                  <Badge variant="outline">{schedule.maxBookingsPerSlot} per slot</Badge>
+                                )}
+                                {!schedule.isRecurring && schedule.validFrom && (
+                                  <Badge variant="outline">{dateRangeLabel(schedule)}</Badge>
+                                )}
+                                <Badge
+                                  variant={
+                                    schedule.scheduleType === 'AVAILABLE' ? "default" :
+                                    schedule.scheduleType === 'BLOCKED' ? "secondary" :
+                                    schedule.scheduleType === 'HOLIDAY' ? "destructive" : "outline"
+                                  }
+                                >
+                                  {schedule.scheduleType.toLowerCase()}
+                                </Badge>
+                                {schedule.consultationMode && (
+                                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${MODE_LABELS[schedule.consultationMode]?.color || "bg-gray-50 text-gray-700 border-gray-200"}`}>
+                                    {schedule.consultationMode === 'VIDEO' && <Video className="w-3 h-3" />}
+                                    {schedule.consultationMode === 'IN_PERSON' && <MapPin className="w-3 h-3" />}
+                                    {schedule.consultationMode === 'BOTH' && <Users2 className="w-3 h-3" />}
+                                    {MODE_LABELS[schedule.consultationMode]?.label || schedule.consultationMode}
+                                  </span>
+                                )}
+                                {schedule.location && (
+                                  <span className="text-xs text-gray-500 flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {schedule.location}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setEditingId(schedule.id)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleDeleteSchedule(schedule.id)
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+  );
+
   if (loading) {
     return <Loading />;
   }
@@ -212,8 +330,8 @@ export default function SchedulePage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Schedule Management</h1>
-          <p className="text-gray-600">
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">Schedule Management</h1>
+          <p className="mt-1 text-sm text-gray-500">
             Create flexible schedule blocks. Use different types: Available (bookable), Blocked (lunch/breaks), Holiday, or Emergency slots.
           </p>
         </div>
@@ -289,22 +407,16 @@ export default function SchedulePage() {
                 />
               </div>
               <div>
-                <Label>Day</Label>
+                <Label>Repeats</Label>
                 <select
                   className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-base"
-                  value={newSchedule.dayOfWeek}
+                  value={newSchedule.isRecurring ? "weekly" : "dates"}
                   onChange={(e) =>
-                    setNewSchedule({
-                      ...newSchedule,
-                      dayOfWeek: parseInt(e.target.value),
-                    })
+                    setNewSchedule({ ...newSchedule, isRecurring: e.target.value === "weekly" })
                   }
                 >
-                  {DAYS.map((day, index) => (
-                    <option key={index} value={index}>
-                      {day}
-                    </option>
-                  ))}
+                  <option value="weekly">Every week</option>
+                  <option value="dates">Specific date(s) only</option>
                 </select>
               </div>
               <div>
@@ -323,8 +435,55 @@ export default function SchedulePage() {
                 </select>
               </div>
             </div>
+
+            {newSchedule.isRecurring ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label>Day</Label>
+                  <select
+                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-base"
+                    value={newSchedule.dayOfWeek}
+                    onChange={(e) =>
+                      setNewSchedule({
+                        ...newSchedule,
+                        dayOfWeek: parseInt(e.target.value),
+                      })
+                    }
+                  >
+                    {DAYS.map((day, index) => (
+                      <option key={index} value={index}>
+                        {day}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label>From date</Label>
+                  <Input
+                    type="date"
+                    value={newSchedule.validFrom}
+                    onChange={(e) => setNewSchedule({ ...newSchedule, validFrom: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>To date (optional)</Label>
+                  <Input
+                    type="date"
+                    min={newSchedule.validFrom || undefined}
+                    value={newSchedule.validUntil}
+                    onChange={(e) => setNewSchedule({ ...newSchedule, validUntil: e.target.value })}
+                  />
+                </div>
+                <p className="text-sm text-gray-500 md:self-end md:pb-2">
+                  For a whole day off, use type Holiday with 00:00 – 23:59.
+                </p>
+              </div>
+            )}
             
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <Label>Start Time</Label>
                 <Input
@@ -374,6 +533,18 @@ export default function SchedulePage() {
                   <option value={10}>10 min</option>
                   <option value={15}>15 min</option>
                 </select>
+              </div>
+              <div>
+                <Label>Patients per slot</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={newSchedule.maxBookingsPerSlot}
+                  onChange={(e) =>
+                    setNewSchedule({ ...newSchedule, maxBookingsPerSlot: parseInt(e.target.value) || 1 })
+                  }
+                />
               </div>
             </div>
 
@@ -431,7 +602,7 @@ export default function SchedulePage() {
           <div className="space-y-4">
             {DAYS.map((day, dayIndex) => {
               const daySchedules = schedules.filter(
-                (s) => s.dayOfWeek === dayIndex,
+                (s) => s.isRecurring && s.dayOfWeek === dayIndex,
               );
 
               return (
@@ -442,87 +613,32 @@ export default function SchedulePage() {
                     <p className="text-gray-500 text-sm">No schedule set</p>
                   ) : (
                     <div className="space-y-2">
-                      {daySchedules.map((schedule) => (
-                        <div
-                          key={schedule.id}
-                          className="flex items-center justify-between bg-gray-50 p-3 rounded-md"
-                        >
-                          {editingId === schedule.id ? (
-                            <EditScheduleForm
-                              schedule={schedule}
-                              onSave={handleSaveSchedule}
-                              onCancel={() => setEditingId(null)}
-                            />
-                          ) : (
-                            <>
-                              <div className="flex flex-wrap items-center gap-4">
-                                <div
-                                  className="w-3 h-3 rounded-full"
-                                  style={{ backgroundColor: schedule.color || '#3B82F6' }}
-                                />
-                                <div>
-                                  <div className="font-medium">
-                                    {schedule.title || `${schedule.startTime} - ${schedule.endTime}`}
-                                  </div>
-                                  <div className="text-sm text-gray-500">
-                                    {schedule.startTime} - {schedule.endTime}
-                                  </div>
-                                </div>
-                                <Badge variant="outline">
-                                  {schedule.slotDuration}min
-                                </Badge>
-                                <Badge
-                                  variant={
-                                    schedule.scheduleType === 'AVAILABLE' ? "default" :
-                                    schedule.scheduleType === 'BLOCKED' ? "secondary" :
-                                    schedule.scheduleType === 'HOLIDAY' ? "destructive" : "outline"
-                                  }
-                                >
-                                  {schedule.scheduleType.toLowerCase()}
-                                </Badge>
-                                {schedule.consultationMode && (
-                                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border ${MODE_LABELS[schedule.consultationMode]?.color || "bg-gray-50 text-gray-700 border-gray-200"}`}>
-                                    {schedule.consultationMode === 'VIDEO' && <Video className="w-3 h-3" />}
-                                    {schedule.consultationMode === 'IN_PERSON' && <MapPin className="w-3 h-3" />}
-                                    {schedule.consultationMode === 'BOTH' && <Users2 className="w-3 h-3" />}
-                                    {MODE_LABELS[schedule.consultationMode]?.label || schedule.consultationMode}
-                                  </span>
-                                )}
-                                {schedule.location && (
-                                  <span className="text-xs text-gray-500 flex items-center gap-1">
-                                    <MapPin className="w-3 h-3" />
-                                    {schedule.location}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setEditingId(schedule.id)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    handleDeleteSchedule(schedule.id)
-                                  }
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      ))}
+                      {daySchedules.map(renderRow)}
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Specific Dates
+          </CardTitle>
+          <CardDescription>
+            One-off changes such as days off, leave or an extra clinic. These override your weekly schedule on those dates.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {datedSchedules.length === 0 ? (
+            <p className="text-gray-500 text-sm">No date-specific blocks</p>
+          ) : (
+            <div className="space-y-2">{datedSchedules.map(renderRow)}</div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -542,7 +658,39 @@ function EditScheduleForm({
 
   return (
     <div className="space-y-2 w-full">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {editData.isRecurring ? (
+        <select
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          value={editData.dayOfWeek}
+          onChange={(e) =>
+            setEditData({ ...editData, dayOfWeek: parseInt(e.target.value) })
+          }
+        >
+          {DAYS.map((day, index) => (
+            <option key={index} value={index}>
+              {day}
+            </option>
+          ))}
+        </select>
+        ) : (
+          <>
+            <Input
+              type="date"
+              value={editData.validFrom?.slice(0, 10) || ""}
+              onChange={(e) => setEditData({ ...editData, validFrom: e.target.value })}
+              className="w-40"
+            />
+            <span>to</span>
+            <Input
+              type="date"
+              min={editData.validFrom?.slice(0, 10) || undefined}
+              value={editData.validUntil?.slice(0, 10) || ""}
+              onChange={(e) => setEditData({ ...editData, validUntil: e.target.value })}
+              className="w-40"
+            />
+          </>
+        )}
         <Input
           placeholder="Title"
           value={editData.title || ''}
@@ -592,6 +740,28 @@ function EditScheduleForm({
           <option value={45}>45min</option>
           <option value={60}>60min</option>
         </select>
+        <select
+          className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          value={editData.bufferTime}
+          onChange={(e) =>
+            setEditData({ ...editData, bufferTime: parseInt(e.target.value) })
+          }
+        >
+          <option value={0}>No buffer</option>
+          <option value={5}>5min buffer</option>
+          <option value={10}>10min buffer</option>
+          <option value={15}>15min buffer</option>
+        </select>
+        <Input
+          type="number"
+          min={1}
+          max={20}
+          title="Patients per slot"
+          value={editData.maxBookingsPerSlot}
+          onChange={(e) => setEditData({ ...editData, maxBookingsPerSlot: parseInt(e.target.value) || 1 })}
+          className="w-20"
+        />
+        <span className="text-sm text-gray-500">per slot</span>
       </div>
       <div className="flex items-center gap-2">
         <select

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useToast } from "@/components/ui/toast";
 import {
   Plus,
   Pencil,
@@ -86,7 +87,12 @@ export default function AdminLeadershipPage() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const { addToast } = useToast();
+  const notify = useCallback(
+    (type: "success" | "error", message: string) =>
+      addToast({ type, title: type === "success" ? "Success" : "Error", description: message }),
+    [addToast],
+  );
 
   const fetchProfiles = useCallback(async () => {
     try {
@@ -94,22 +100,16 @@ export default function AdminLeadershipPage() {
       const data = await res.json();
       if (data.profiles) setProfiles(data.profiles);
     } catch {
-      setToast({ type: "error", message: "Failed to load leadership profiles." });
+      notify("error", "Failed to load leadership profiles.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [notify]);
 
   useEffect(() => {
     fetchProfiles();
   }, [fetchProfiles]);
 
-  useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [toast]);
 
   function openAdd(group: string) {
     const count = profiles.filter((p) => p.group === group).length;
@@ -137,7 +137,7 @@ export default function AdminLeadershipPage() {
 
   async function handleSave() {
     if (!form.name.trim() || !form.title.trim() || !form.group) {
-      setToast({ type: "error", message: "Name, title, and group are required." });
+      notify("error", "Name, title, and group are required.");
       return;
     }
     setSaving(true);
@@ -162,14 +162,14 @@ export default function AdminLeadershipPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setToast({ type: "success", message: form.id ? "Profile updated." : "Profile added." });
+        notify("success", form.id ? "Profile updated." : "Profile added.");
         setShowModal(false);
         fetchProfiles();
       } else {
-        setToast({ type: "error", message: data.error || "Failed to save profile." });
+        notify("error", data.error || "Failed to save profile.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     } finally {
       setSaving(false);
     }
@@ -183,16 +183,13 @@ export default function AdminLeadershipPage() {
         body: JSON.stringify({ id: p.id, isActive: !p.isActive }),
       });
       if (res.ok) {
-        setToast({
-          type: "success",
-          message: !p.isActive ? "Profile is now visible." : "Profile hidden from the public page.",
-        });
+        notify("success", !p.isActive ? "Profile is now visible." : "Profile hidden from the public page.",);
         fetchProfiles();
       } else {
-        setToast({ type: "error", message: "Failed to update visibility." });
+        notify("error", "Failed to update visibility.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     }
   }
 
@@ -203,20 +200,20 @@ export default function AdminLeadershipPage() {
         method: "DELETE",
       });
       if (res.ok) {
-        setToast({ type: "success", message: "Profile deleted." });
+        notify("success", "Profile deleted.");
         fetchProfiles();
       } else {
         const data = await res.json();
-        setToast({ type: "error", message: data.error || "Failed to delete." });
+        notify("error", data.error || "Failed to delete.");
       }
     } catch {
-      setToast({ type: "error", message: "Network error." });
+      notify("error", "Network error.");
     }
   }
 
   if (loading) {
     return (
-      <div className="p-6 space-y-4 animate-pulse">
+      <div className="space-y-4 animate-pulse">
         <div className="h-8 bg-gray-200 rounded w-64" />
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-24 bg-gray-200 rounded" />
@@ -226,10 +223,10 @@ export default function AdminLeadershipPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Leadership Profiles</h1>
-        <p className="text-sm text-gray-600 mt-1">
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-[#0D1F3C]">Leadership Profiles</h1>
+        <p className="mt-1 text-sm text-gray-500">
           Manage the Founder, Executive Committee, and Board of Trustees shown on the public{" "}
           <a href="/about" target="_blank" rel="noopener noreferrer" className="text-[#0A6E75] hover:underline">
             About page
@@ -238,17 +235,6 @@ export default function AdminLeadershipPage() {
         </p>
       </div>
 
-      {toast && (
-        <div
-          className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
-            toast.type === "success"
-              ? "bg-green-50 border-green-200 text-green-800"
-              : "bg-red-50 border-red-200 text-red-800"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
 
       <div className="space-y-8">
         {GROUPS.map((group) => {
