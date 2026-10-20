@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/toast";
-import { SPECIALTIES } from "@/lib/specialties";
+import { SPECIALTIES, subSpecialtiesFor } from "@/lib/specialties";
 import {
   Camera,
   User,
@@ -195,7 +195,7 @@ function getStatusIcon(status: string) {
     case "REJECTED":
       return <XCircle className="h-4 w-4 text-red-500" />;
     default:
-      return <AlertCircle className="h-4 w-4 text-gray-400" />;
+      return <AlertCircle className="h-4 w-4 text-gray-500" />;
   }
 }
 
@@ -271,13 +271,13 @@ function FormInput({
 } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">
+      <label htmlFor={id} className="block text-base font-medium text-gray-800 mb-1.5">
         {label}
-        {optional && <span className="text-gray-400 font-normal ml-1">(optional)</span>}
+        {optional && <span className="text-gray-500 font-normal ml-1">(optional)</span>}
       </label>
       <input
         id={id}
-        className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A6E75]/40 focus:border-[#0A6E75] transition-colors"
+        className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#0A6E75]/40 focus:border-[#0A6E75] transition-colors"
         {...props}
       />
     </div>
@@ -300,13 +300,13 @@ function FormSelect({
 } & React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">
+      <label htmlFor={id} className="block text-base font-medium text-gray-800 mb-1.5">
         {label}
-        {optional && <span className="text-gray-400 font-normal ml-1">(optional)</span>}
+        {optional && <span className="text-gray-500 font-normal ml-1">(optional)</span>}
       </label>
       <select
         id={id}
-        className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A6E75]/40 focus:border-[#0A6E75] transition-colors"
+        className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#0A6E75]/40 focus:border-[#0A6E75] transition-colors"
         {...props}
       >
         <option value="">{placeholder}</option>
@@ -341,7 +341,7 @@ function SectionCard({
           <span className="text-[#0A6E75]">{icon}</span>
           <div>
             <h2 className="text-base font-semibold text-[#0D1F3C]">{title}</h2>
-            <p className="text-xs text-gray-500">{subtitle}</p>
+            <p className="text-sm text-gray-600">{subtitle}</p>
           </div>
         </div>
       </div>
@@ -728,7 +728,7 @@ export default function MemberProfilePage() {
                   {profile.subSpecialty ? ` — ${profile.subSpecialty}` : ""}
                 </p>
               )}
-              <p className="text-xs text-gray-500 mt-0.5">{profile.email}</p>
+              <p className="text-sm text-gray-600 mt-0.5">{profile.email}</p>
             </div>
 
             {/* Credential summary */}
@@ -771,7 +771,7 @@ export default function MemberProfilePage() {
             {missingItems.map((item) => (
               <span
                 key={item}
-                className="inline-flex items-center gap-1 text-xs text-gray-500 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full"
+                className="inline-flex items-center gap-1 text-sm text-gray-600 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full"
               >
                 <AlertCircle className="h-3 w-3" />
                 {item}
@@ -831,14 +831,14 @@ export default function MemberProfilePage() {
               placeholder="+234..."
             />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <label className="block text-base font-medium text-gray-800 mb-1.5">Email</label>
               <input
                 type="email"
                 value={profile.email}
                 disabled
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-500 cursor-not-allowed"
+                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-500 cursor-not-allowed"
               />
-              <p className="text-xs text-gray-400 mt-1">Contact support to change your email</p>
+              <p className="text-sm text-gray-600 mt-1">Contact support to change your email</p>
             </div>
           </div>
         </SectionCard>
@@ -868,8 +868,16 @@ export default function MemberProfilePage() {
               value={profile.subSpecialty}
               onChange={handleChange}
               optional
+              list="subSpecialtyOptions"
               placeholder="e.g. Paediatric Cardiology"
             />
+            {/* Suggestions only. The field stays free text, so a specialty we
+                have no list for never blocks anyone. */}
+            <datalist id="subSpecialtyOptions">
+              {subSpecialtiesFor(profile.specialty).map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
             <FormInput
               label="Institution"
               id="institution"
@@ -929,7 +937,7 @@ export default function MemberProfilePage() {
         >
           <div className="space-y-5">
             <div>
-              <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label htmlFor="bio" className="block text-base font-medium text-gray-800 mb-1.5">
                 Professional bio
               </label>
               <textarea
@@ -938,10 +946,10 @@ export default function MemberProfilePage() {
                 rows={4}
                 value={profile.bio}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A6E75]/40 focus:border-[#0A6E75] transition-colors resize-vertical"
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#0A6E75]/40 focus:border-[#0A6E75] transition-colors resize-vertical"
                 placeholder="Write a brief summary of your professional background, interests, and areas of expertise..."
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-sm text-gray-600 mt-1">
                 {profile.bio.length}/500 characters
                 {profile.bio.length > 0 && profile.bio.length < 50 && (
                   <span className="text-amber-500 ml-2">Minimum 50 characters recommended</span>
@@ -962,7 +970,7 @@ export default function MemberProfilePage() {
                 <label htmlFor="whatsappOptIn" className="text-sm font-medium text-gray-700">
                   WhatsApp notifications
                 </label>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-sm text-gray-600 mt-0.5">
                   Receive DFC updates and reminders via WhatsApp
                 </p>
               </div>
@@ -972,7 +980,7 @@ export default function MemberProfilePage() {
 
         {/* Save button */}
         <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-6 py-4 sticky bottom-4 shadow-sm">
-          <p className="text-xs text-gray-400 hidden sm:block">
+          <p className="text-sm text-gray-600 hidden sm:block">
             Changes are saved to your member and doctor profiles
           </p>
           <button
@@ -1018,7 +1026,7 @@ export default function MemberProfilePage() {
           <div className="text-center py-8">
             <Shield className="h-10 w-10 text-gray-300 mx-auto mb-3" />
             <p className="text-sm font-medium text-gray-600">No credentials added yet</p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-sm text-gray-600 mt-1">
               Add your medical registrations to verify your membership
             </p>
           </div>
@@ -1050,14 +1058,14 @@ export default function MemberProfilePage() {
                           {badge.label}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-sm text-gray-600 truncate">
                         {cred.registrationNumber} &middot; {cred.issuingBody}
                       </p>
                     </div>
                     {isExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" />
+                      <ChevronUp className="h-4 w-4 text-gray-500 shrink-0" />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+                      <ChevronDown className="h-4 w-4 text-gray-500 shrink-0" />
                     )}
                   </button>
 
@@ -1065,11 +1073,11 @@ export default function MemberProfilePage() {
                     <div className="px-4 pb-4 pt-0 border-t border-gray-100">
                       <div className="grid grid-cols-2 gap-3 text-xs mt-3">
                         <div>
-                          <span className="text-gray-400 block mb-0.5">Country</span>
+                          <span className="text-gray-500 block mb-0.5">Country</span>
                           <span className="text-gray-700">{cred.country || "—"}</span>
                         </div>
                         <div>
-                          <span className="text-gray-400 block mb-0.5">Added</span>
+                          <span className="text-gray-500 block mb-0.5">Added</span>
                           <span className="text-gray-700">
                             {new Date(cred.createdAt).toLocaleDateString("en-GB", {
                               day: "numeric",
@@ -1080,7 +1088,7 @@ export default function MemberProfilePage() {
                         </div>
                         {cred.issueDate && (
                           <div>
-                            <span className="text-gray-400 block mb-0.5">Issued</span>
+                            <span className="text-gray-500 block mb-0.5">Issued</span>
                             <span className="text-gray-700">
                               {new Date(cred.issueDate).toLocaleDateString("en-GB", {
                                 day: "numeric",
@@ -1092,7 +1100,7 @@ export default function MemberProfilePage() {
                         )}
                         {cred.expiryDate && (
                           <div>
-                            <span className="text-gray-400 block mb-0.5">Expires</span>
+                            <span className="text-gray-500 block mb-0.5">Expires</span>
                             <span className="text-gray-700">
                               {new Date(cred.expiryDate).toLocaleDateString("en-GB", {
                                 day: "numeric",
@@ -1104,7 +1112,7 @@ export default function MemberProfilePage() {
                         )}
                         {cred.status === "VERIFIED" && cred.verifiedAt && (
                           <div>
-                            <span className="text-gray-400 block mb-0.5">Verified on</span>
+                            <span className="text-gray-500 block mb-0.5">Verified on</span>
                             <span className="text-green-700">
                               {new Date(cred.verifiedAt).toLocaleDateString("en-GB", {
                                 day: "numeric",
@@ -1116,7 +1124,7 @@ export default function MemberProfilePage() {
                         )}
                         {cred.status === "REJECTED" && cred.rejectionReason && (
                           <div className="col-span-2">
-                            <span className="text-gray-400 block mb-0.5">Rejection reason</span>
+                            <span className="text-gray-500 block mb-0.5">Rejection reason</span>
                             <span className="text-red-600">{cred.rejectionReason}</span>
                           </div>
                         )}
@@ -1187,7 +1195,7 @@ export default function MemberProfilePage() {
                   setShowAddForm(false);
                   setNewCredential(defaultNewCredential);
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-500 hover:text-gray-600"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1195,7 +1203,7 @@ export default function MemberProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="cred-type" className="block text-sm font-medium text-gray-700 mb-1.5">
+                <label htmlFor="cred-type" className="block text-base font-medium text-gray-800 mb-1.5">
                   Credential type
                 </label>
                 <select
@@ -1203,7 +1211,7 @@ export default function MemberProfilePage() {
                   name="type"
                   value={newCredential.type}
                   onChange={handleCredentialChange}
-                  className="w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A6E75]/40 focus:border-[#0A6E75]"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#0A6E75]/40 focus:border-[#0A6E75]"
                 >
                   <option value="">Select type</option>
                   {CREDENTIAL_TYPES.map((t) => (
@@ -1265,8 +1273,8 @@ export default function MemberProfilePage() {
 
             {/* Document upload */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Supporting document <span className="text-gray-400 font-normal">(optional)</span>
+              <label className="block text-base font-medium text-gray-800 mb-1.5">
+                Supporting document <span className="text-gray-500 font-normal">(optional)</span>
               </label>
               {newCredential.documentUrl ? (
                 <div className="flex items-center gap-2 text-sm">

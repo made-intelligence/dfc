@@ -26,6 +26,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Loading } from "@/components/ui/loading";
 import { SPECIALTIES, normalizeSpecialtyName } from "@/lib/specialties";
+import { formatDisplayName } from "@/lib/display-name";
 import { usePlatformStats } from "@/lib/usePlatformStats";
 
 interface Specialty {
@@ -40,7 +41,7 @@ interface Doctor {
   slug: string;
   name: string;
   profileImage: string | null;
-  specialty: string;
+  specialty: string | null;
   specialtyId: string | null;
   consultationFee: number | string;
   currency: string;
@@ -53,6 +54,7 @@ interface Doctor {
   city?: string;
   hasVideo?: boolean;
   hasInPerson?: boolean;
+  acceptingBookings?: boolean;
   clinicLocation?: string | null;
 }
 
@@ -586,10 +588,17 @@ function BookPageContent() {
                       <div className="p-5 pt-4">
                         {/* Specialty + rating row */}
                         <div className="flex items-center justify-between mb-4">
-                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-gray-50 text-gray-600 border-gray-200">
-                            <Stethoscope className="w-3 h-3" />
-                            {doctor.specialty}
-                          </span>
+                          {doctor.specialty ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg border bg-gray-50 text-gray-600 border-gray-200">
+                              <Stethoscope className="w-3 h-3" />
+                              {doctor.specialty}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border border-dashed border-gray-200 text-gray-400">
+                              <Stethoscope className="w-3 h-3" />
+                              Specialty not yet listed
+                            </span>
+                          )}
                           {doctor.rating > 0 && (
                             <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600">
                               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
@@ -603,7 +612,7 @@ function BookPageContent() {
                         <div className="flex items-center gap-3.5 mb-3">
                           <div className="relative w-14 h-14 rounded-xl overflow-hidden ring-2 ring-gray-200 shrink-0">
                             {doctor.profileImage ? (
-                              <Image src={doctor.profileImage} alt={doctor.name} fill className="object-cover" />
+                              <Image src={doctor.profileImage} alt={formatDisplayName(doctor.name)} fill className="object-cover" />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-[#0A3454] to-[#0A6E75] flex items-center justify-center">
                                 <User className="w-6 h-6 text-white/90" />
@@ -612,7 +621,7 @@ function BookPageContent() {
                           </div>
                           <div className="min-w-0">
                             <h3 className="text-base font-bold text-[#0D1F3C] truncate group-hover:text-[#0A6E75] transition-colors">
-                              {doctor.name}
+                              {formatDisplayName(doctor.name)}
                             </h3>
                             <div className="flex items-center gap-2 mt-0.5 text-sm text-gray-500">
                               {doctor.experience > 0 && (
@@ -663,6 +672,12 @@ function BookPageContent() {
                             <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-100">
                               <MapPin className="w-3 h-3" />
                               In-Person
+                            </span>
+                          )}
+                          {!doctor.acceptingBookings && (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-100">
+                              <Clock className="w-3 h-3" />
+                              Not yet open for booking
                             </span>
                           )}
                         </div>

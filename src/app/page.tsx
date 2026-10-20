@@ -16,7 +16,7 @@ import { MedicalWebPageJsonLd } from "@/components/seo/JsonLd";
 export const metadata: Metadata = {
   title: "DFC | Doctors Foundation For Care — Nigerian Diaspora Medical Experts",
   description:
-    "Turning brain drain into brain gain. Book consultations with Nigerian diaspora doctors, get expert second opinions, or find a specialist — all from world-trained physicians practising in the UK, US, and beyond.",
+    "Book a consultation, request an expert second opinion, or find a specialist. DFC physicians are verified and practise in Nigeria, the UK, the US and beyond.",
   alternates: { canonical: "/" },
   openGraph: {
     title: "DFC | Doctors Foundation For Care — Nigerian Diaspora Medical Experts",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
       "Book consultations with Nigerian diaspora doctors. Get expert second opinions. Find world-trained specialists.",
     images: [
       {
-        url: "/hero.jpg",
+        url: "/og-image.jpg",
         width: 1200,
         height: 630,
         alt: "DFC — Doctors Foundation For Care. Nigerian diaspora doctors reconnecting with patients at home.",
@@ -38,7 +38,7 @@ export default function HomePage() {
     <>
       <MedicalWebPageJsonLd
         name="DFC — Doctors Foundation For Care"
-        description="Turning brain drain into brain gain. A global healthcare movement reconnecting Nigerian diaspora doctors with patients at home."
+        description="A professional network of verified Nigerian physicians, practising in Nigeria and internationally, connecting patients with the right specialist."
         url="https://dfcare.org"
       />
       <UserRedirect />

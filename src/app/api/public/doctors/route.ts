@@ -87,8 +87,16 @@ export async function GET(request: NextRequest) {
       where.consultationFee = feeFilter;
     }
 
-    // Sort
-    let orderBy: Prisma.DoctorProfileOrderByWithRelationInput = { createdAt: "desc" };
+    // Sort. The default leads with the profiles worth reading: members
+    // backfilled from the register are the newest rows, so plain
+    // newest-first buried every complete profile behind ~85 empty ones.
+    let orderBy:
+      | Prisma.DoctorProfileOrderByWithRelationInput
+      | Prisma.DoctorProfileOrderByWithRelationInput[] = [
+      { specialtyId: { sort: "asc", nulls: "last" } },
+      { bio: { sort: "asc", nulls: "last" } },
+      { createdAt: "desc" },
+    ];
     if (sortBy === "experience") orderBy = { experience: "desc" };
     if (sortBy === "fee_low") orderBy = { consultationFee: "asc" };
     if (sortBy === "fee_high") orderBy = { consultationFee: "desc" };
@@ -150,7 +158,9 @@ export async function GET(request: NextRequest) {
         slug: doctor.slug,
         name: doctor.user.name,
         profileImage: doctor.user.profileImage,
-        specialty: doctor.specialty?.name || "General",
+        // Null, not "General": an unset specialty is unknown, and
+        // "General" reads as General Practice, which is a real specialty.
+        specialty: doctor.specialty?.name ?? null,
         specialtyId: doctor.specialtyId,
         consultationFee: doctor.consultationFee,
         currency: doctor.currency,
@@ -169,8 +179,12 @@ export async function GET(request: NextRequest) {
               )
             : 0,
         totalRatings: doctor.ratings.length,
-        hasVideo: modes.has('VIDEO') || modes.size === 0, // default to video if no schedules
+        // Only claim a consultation mode the doctor has actually scheduled.
+        // This used to default to video whenever there were no schedules, so
+        // every card advertised video while the booking page had no slots.
+        hasVideo: modes.has('VIDEO'),
         hasInPerson: modes.has('IN_PERSON'),
+        acceptingBookings: doctor.schedules.length > 0,
         clinicLocation,
       };
     });

@@ -2,6 +2,7 @@ import { Metadata, ResolvingMetadata } from "next";
 import { appUrl } from "@/lib/app-url";
 import DoctorProfileClient from "@/components/booking/DoctorProfileClient";
 import { DoctorJsonLd } from "@/components/seo/JsonLd";
+import { notFound } from "next/navigation";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -31,23 +32,40 @@ export async function generateMetadata(
   const doctor = await getDoctor(slug);
 
   if (!doctor) {
+    // Unknown slugs used to render a "Doctor Not Found" body under HTTP 200,
+    // which is a soft 404. Google treats those worse than thin pages.
     return {
       title: "Doctor Not Found | DFC",
+      robots: { index: false, follow: false },
     };
   }
 
   const previousImages = (await parent).openGraph?.images || [];
 
+  // Most members were created from the register and have not filled anything
+  // in yet. A page carrying only a name is thin content: indexing ninety of
+  // them drags the whole domain down and spends crawl budget on nothing.
+  // Keep them reachable and let link equity flow, but leave them out of the
+  // index until the member has given us something to show.
+  const hasSubstance = Boolean(doctor.specialty) || Boolean(doctor.bio);
+
   const description = doctor.bio
     ? doctor.bio.substring(0, 160)
-    : `Book a consultation with ${doctor.name}, a specialist in ${doctor.specialty}. World-trained Nigerian diaspora doctor available via DFC.`;
+    : doctor.specialty
+      ? `Book a consultation with ${doctor.name}, a specialist in ${doctor.specialty}. World-trained Nigerian diaspora doctor available via DFC.`
+      : `${doctor.name} is a member of the Doctors Foundation for Care.`;
 
   return {
-    title: `${doctor.name} — ${doctor.specialty} Specialist`,
+    robots: hasSubstance ? undefined : { index: false, follow: true },
+    title: doctor.specialty
+      ? `${doctor.name} — ${doctor.specialty} Specialist`
+      : `${doctor.name} | DFC`,
     description,
     alternates: { canonical: `/book/${slug}` },
     openGraph: {
-      title: `${doctor.name} — ${doctor.specialty} | Book Consultation`,
+      title: doctor.specialty
+        ? `${doctor.name} — ${doctor.specialty} | Book Consultation`
+        : `${doctor.name} | Doctors Foundation for Care`,
       description,
       images: doctor.profileImage
         ? [{ url: doctor.profileImage, width: 600, height: 600, alt: doctor.name }, ...previousImages]
@@ -59,6 +77,11 @@ export async function generateMetadata(
 export default async function DoctorProfilePage({ params }: Props) {
   const { slug } = await params;
   const doctor = await getDoctor(slug);
+
+  // A real 404, not a 200 carrying the words "Doctor Not Found". Soft 404s
+  // get indexed and then counted against the domain.
+  if (!doctor) notFound();
+
   const baseUrl = appUrl();
 
   return (

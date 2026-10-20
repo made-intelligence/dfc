@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
-import { SPECIALTIES } from '@/lib/specialties';
+import { SPECIALTIES, subSpecialtiesFor } from '@/lib/specialties';
 
 const COUNTRIES = [
   'United Kingdom',
@@ -378,7 +378,13 @@ export function JoinDFCForm() {
             value={form.subSpecialty}
             onChange={(e) => update('subSpecialty', e.target.value)}
             className={inputClass}
+            list="joinSubSpecialtyOptions"
           />
+          <datalist id="joinSubSpecialtyOptions">
+            {subSpecialtiesFor(form.primarySpecialty).map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
         </div>
 
         {/* Licence number */}

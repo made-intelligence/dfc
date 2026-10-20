@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     description:
       "Independent medical review from diaspora-trained Nigerian specialists. Written report within 72 hours. No travel, no waiting list.",
     type: "website",
-    images: [{ url: "/hero.jpg", width: 1200, height: 630, alt: "DFC Second Opinion Service" }],
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "DFC Second Opinion Service" }],
   },
   keywords: [
     "medical second opinion Nigeria",

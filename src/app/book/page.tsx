@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     title: "Book a Consultation — DFC Diaspora Doctors",
     description:
       "Search by specialty and book online consultations with verified Nigerian diaspora physicians practising in the UK, US, and beyond.",
-    images: [{ url: "/hero.jpg", width: 1200, height: 630, alt: "Book a consultation with DFC doctors" }],
+    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Book a consultation with DFC doctors" }],
   },
 };
 
