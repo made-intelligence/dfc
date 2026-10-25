@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       auditAuth.loginFailed(email, request);
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: "No account found with this email address" },
         { status: 401 },
       );
     }
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
         );
       }
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: "Incorrect password" },
         { status: 401 },
       );
     }
