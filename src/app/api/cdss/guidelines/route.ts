@@ -4,6 +4,7 @@ import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { checkRecordAccess } from '@/lib/emr/access';
 import { getGuidelineReminders } from '@/lib/ai/cdss';
+import { recordUnavailableCheck } from '@/lib/ai/cdss-alerts';
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,12 +61,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Doctor profile not found' }, { status: 404 });
     }
 
-    const reminders = await getGuidelineReminders(diagnosis, {
+    const { reminders, unavailable } = await getGuidelineReminders(diagnosis, {
       age: patientAge,
       gender: patient?.gender || undefined,
       problems: problems.map((p) => p.problem),
       medications: medications.map((m) => m.drugName),
     });
+
+    if (unavailable) {
+      await recordUnavailableCheck({
+        patientId,
+        encounterId,
+        generatedForId: doctorProfile.id,
+        category: 'GUIDELINE',
+        title: 'Guideline reminders could not be loaded',
+        body: `The automatic guideline check for "${diagnosis}" did not complete. Apply the usual investigations, monitoring and follow-up for this diagnosis without relying on reminders here.`,
+        sourceData: { diagnosis },
+      });
+    }
 
     // Batch-create alerts for all reminders
     if (reminders.length > 0) {
@@ -83,7 +96,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ reminders });
+    return NextResponse.json({ reminders, unavailable });
   } catch (error) {
     logger.error('CDSS:Guidelines', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

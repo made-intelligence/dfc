@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 });
     }
 
-    await sendReplacementPassword(email);
+    await sendReplacementPassword(email, request);
     return NextResponse.json({
       success: true,
       message: 'If an account exists for this email, a new password is on its way.',

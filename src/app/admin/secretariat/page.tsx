@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useFeatures } from "@/lib/useFeatures";
 
 interface Ticket {
   id: string;
@@ -49,6 +50,7 @@ const SOURCE_TABS = [
 
 export default function SecretariatPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const { whatsapp: whatsappEnabled } = useFeatures();
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
@@ -344,8 +346,13 @@ export default function SecretariatPage() {
                         )}
                       </div>
 
-                      {/* Reply: WhatsApp when there is a number, otherwise email */}
-                      {(ticket.fromPhone || ticket.fromEmail || ticket.user?.email) && (
+                      {/* Reply: WhatsApp when it is on and there is a number, otherwise email */}
+                      {!(whatsappEnabled && ticket.fromPhone) && !(ticket.fromEmail || ticket.user?.email) && ticket.fromPhone && (
+                        <p className="text-sm text-gray-500">
+                          No email on this ticket and WhatsApp is turned off. Reply to {ticket.fromPhone} by phone or SMS.
+                        </p>
+                      )}
+                      {((whatsappEnabled && ticket.fromPhone) || ticket.fromEmail || ticket.user?.email) && (
                         <div>
                           {!showReply[ticket.id] ? (
                             <button
@@ -354,7 +361,7 @@ export default function SecretariatPage() {
                               }
                               className="rounded-md border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
                             >
-                              {ticket.fromPhone
+                              {whatsappEnabled && ticket.fromPhone
                                 ? "Reply via WhatsApp"
                                 : `Reply by email (${ticket.fromEmail || ticket.user?.email})`}
                             </button>

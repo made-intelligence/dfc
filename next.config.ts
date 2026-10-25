@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import withPWA from "next-pwa";
+import { appUrl } from "./src/lib/app-url";
 
 const securityHeaders = [
   {
@@ -24,19 +25,31 @@ const securityHeaders = [
   },
   {
     key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://*.cloudinary.com",
-      "font-src 'self' data:",
-      "connect-src 'self' https://*.paystack.co https://api.anthropic.com",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join("; "),
+    value: contentSecurityPolicy(),
   },
 ];
+
+function contentSecurityPolicy(opts: { video?: boolean } = {}) {
+  // Daily.co (teleconsult video): daily-js loads its call engine from c.daily.co
+  // and signals over *.daily.co / *.pluot.blue. Media itself flows over WebRTC,
+  // which CSP does not govern.
+  const daily = opts.video ? " https://*.daily.co" : "";
+  const dailyConnect = opts.video
+    ? " https://*.daily.co wss://*.daily.co https://*.pluot.blue wss://*.pluot.blue"
+    : "";
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval'${daily}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://*.cloudinary.com",
+    "font-src 'self' data:",
+    `connect-src 'self' https://*.paystack.co https://api.anthropic.com${dailyConnect}`,
+    ...(opts.video ? ["worker-src 'self' blob:", "media-src 'self' blob:"] : []),
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+}
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -59,14 +72,25 @@ const nextConfig: NextConfig = {
     // Same-origin app requests don't rely on this header; it only governs
     // cross-origin browser access. Pin it to the canonical production origin
     // (never "*" alongside Allow-Credentials, which browsers reject anyway).
-    const allowedOrigins = process.env.NODE_ENV === "production"
-      ? (process.env.NEXT_PUBLIC_APP_URL || "https://www.dfcare.org")
-      : "http://localhost:3000";
+    const allowedOrigins = appUrl();
 
     return [
       {
         source: "/(.*)",
         headers: securityHeaders,
+      },
+      {
+        // The consultation room is the only page that may use the camera,
+        // microphone and location, and the only one that talks to Daily.
+        // Listed after the catch-all so these values replace its defaults.
+        source: "/room/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(self), geolocation=(self), display-capture=(self)",
+          },
+          { key: "Content-Security-Policy", value: contentSecurityPolicy({ video: true }) },
+        ],
       },
       {
         source: "/api/(.*)",

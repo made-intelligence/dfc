@@ -1,7 +1,40 @@
 import 'server-only';
+import Anthropic from '@anthropic-ai/sdk';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import * as z from 'zod/v4';
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = 'claude-sonnet-5-5';
+
+// Thinking can't be turned off on this model and counts toward max_tokens, so
+// leave room for it as well as the answer; only tokens actually used are billed.
+const MAX_TOKENS = 16000;
+
+/**
+ * low: classification, routing and drafting. medium: clinical safety checks,
+ * where a little reasoning is worth the extra latency.
+ */
+export type Effort = 'low' | 'medium';
+
+/** Claude gave no usable answer: no key, an API error, a refusal, or a cut-off reply. */
+export class AIUnavailableError extends Error {}
+
+let client: Anthropic | null = null;
+function getClient(): Anthropic {
+  if (!process.env.ANTHROPIC_API_KEY) throw new AIUnavailableError('ANTHROPIC_API_KEY is not configured');
+  // The SDK retries rate limits, overloads and network errors itself.
+  client ??= new Anthropic({ maxRetries: 2, timeout: 60_000 });
+  return client;
+}
+
+/** A refusal or a reply cut off at max_tokens is not an answer. */
+function assertComplete(message: Anthropic.Message): void {
+  if (message.stop_reason === 'refusal') {
+    throw new AIUnavailableError(`Claude declined the request (${message.stop_details?.category ?? 'no category'})`);
+  }
+  if (message.stop_reason === 'max_tokens') {
+    throw new AIUnavailableError('Claude reply was cut off at max_tokens');
+  }
+}
 
 const PROMPT_INJECTION_GUARD = `
 SECURITY: You are a medical AI assistant operating within a healthcare platform.
@@ -19,31 +52,65 @@ function sanitizeUserInput(input: string): string {
     .slice(0, 10000);  // Hard limit on input length
 }
 
-export async function callClaude(system: string, user: string, maxTokens = 1000): Promise<string> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not configured');
-
-  const hardenedSystem = `${PROMPT_INJECTION_GUARD}\n\n${system}`;
-  const sanitizedUser = sanitizeUserInput(user);
-
-  const res = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
+/**
+ * A plain-text answer. Throws AIUnavailableError when there is no usable
+ * answer, so callers can fall back to something that says so.
+ */
+export async function callClaude(system: string, user: string, effort: Effort = 'low'): Promise<string> {
+  let message: Anthropic.Message;
+  try {
+    message = await getClient().messages.create({
       model: MODEL,
-      max_tokens: maxTokens,
-      system: hardenedSystem,
-      messages: [{ role: 'user', content: sanitizedUser }],
-    }),
-  });
+      max_tokens: MAX_TOKENS,
+      output_config: { effort },
+      system: `${PROMPT_INJECTION_GUARD}\n\n${system}`,
+      messages: [{ role: 'user', content: sanitizeUserInput(user) }],
+    });
+  } catch (error) {
+    if (error instanceof AIUnavailableError) throw error;
+    throw new AIUnavailableError(
+      error instanceof Anthropic.APIError ? `Anthropic API error ${error.status}: ${error.message}` : String(error),
+    );
+  }
+  assertComplete(message);
 
-  if (!res.ok) throw new Error(`Anthropic API error: ${res.status}`);
-  const data = await res.json();
-  return data.content?.[0]?.text || '';
+  // Read by block type: the reply can start with a (hidden) thinking block.
+  const text = message.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('')
+    .trim();
+  if (!text) throw new AIUnavailableError('Claude returned no text');
+  return text;
+}
+
+/**
+ * An answer guaranteed to match `schema` (structured outputs), so no JSON is
+ * parsed by hand. Throws AIUnavailableError when there is no usable answer.
+ */
+export async function callClaudeJSON<Schema extends z.ZodType>(
+  system: string,
+  user: string,
+  schema: Schema,
+  effort: Effort = 'low',
+): Promise<z.infer<Schema>> {
+  try {
+    const message = await getClient().messages.parse({
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      output_config: { effort, format: zodOutputFormat(schema) },
+      system: `${PROMPT_INJECTION_GUARD}\n\n${system}`,
+      messages: [{ role: 'user', content: sanitizeUserInput(user) }],
+    });
+    assertComplete(message);
+    if (message.parsed_output == null) throw new AIUnavailableError('Claude reply did not match the schema');
+    return message.parsed_output as z.infer<Schema>;
+  } catch (error) {
+    if (error instanceof AIUnavailableError) throw error;
+    throw new AIUnavailableError(
+      error instanceof Anthropic.APIError ? `Anthropic API error ${error.status}: ${error.message}` : String(error),
+    );
+  }
 }
 
 export const SPECIALTIES = [
@@ -71,12 +138,18 @@ export const SPECIALTIES = [
   'Emergency Medicine',
 ] as const;
 
+const SpecialtyRouting = z.object({
+  primary: z.enum(SPECIALTIES),
+  secondary: z.enum(SPECIALTIES).nullable(),
+  confidence: z.enum(['high', 'medium', 'low']),
+  reasoning: z.string().describe('One sentence'),
+});
+
 export async function routeSpecialty(description: string) {
-  const system = `You are a clinical triage assistant. Given a patient's description, identify the most appropriate medical specialty. Available specialties: ${SPECIALTIES.join(', ')}. Respond ONLY with valid JSON, no markdown.`;
-  const prompt = `Patient description: "${description}"\n\nReturn: { "primary": "<specialty>", "secondary": "<specialty or null>", "confidence": "high|medium|low", "reasoning": "<one sentence>" }`;
+  const system = `You are a clinical triage assistant. Given a patient's description, identify the most appropriate medical specialty, and a second one if another is also relevant. Explain your choice in one sentence.`;
+  const prompt = `Patient description: "${description}"`;
   try {
-    const raw = await callClaude(system, prompt, 300);
-    return JSON.parse(raw.replace(/```json|```/g, '').trim());
+    return await callClaudeJSON(system, prompt, SpecialtyRouting, 'low');
   } catch {
     return {
       primary: 'General Surgery',
@@ -99,7 +172,7 @@ export interface CaseData {
 export async function summariseCaseForSpecialist(data: CaseData): Promise<string> {
   const system = `You are a clinical case preparation assistant. Write a structured clinical brief for a specialist second opinion. Be accurate and concise. Do not diagnose. Do not invent clinical details.`;
   const prompt = `Prepare a brief for a ${data.specialty} specialist.\n\nPatient: ${data.patientName}${data.dob ? `, DOB: ${data.dob}` : ''}\nDiagnosis: ${data.diagnosis}\nProposed treatment: ${data.proposedTreatment || 'Not specified'}\nPatient questions: ${data.specificQuestions || 'None'}\n\nStructure: 1. CASE SUMMARY 2. CLINICAL QUESTION 3. PATIENT QUESTIONS 4. NOTES FOR SPECIALIST`;
-  return callClaude(system, prompt, 1000);
+  return callClaude(system, prompt, 'low');
 }
 
 export async function generateClinicalSummary(data: {
@@ -125,17 +198,31 @@ Recent encounters: ${data.recentEncounters.map(e => `${e.date}: ${e.chiefComplai
 
 Format: 1-2 paragraph clinical overview suitable for a handover or referral letter header.`;
 
-  return callClaude(system, prompt, 600);
+  return callClaude(system, prompt, 'low');
 }
 
+const SecretariatClassification = z.object({
+  type: z.enum([
+    'LICENCE_RENEWAL',
+    'LETTER_GOOD_STANDING',
+    'MEMBERSHIP_CERTIFICATE',
+    'RECOMMENDATION_LETTER',
+    'DUES_QUERY',
+    'MEMBERSHIP_QUERY',
+    'SECOND_OPINION_QUERY',
+    'APPOINTMENT_QUERY',
+    'GENERAL_ENQUIRY',
+  ]),
+  priority: z.enum(['HIGH', 'NORMAL', 'LOW']),
+  suggestedAction: z.string().describe('One sentence for the secretariat'),
+  draftReply: z.string().describe('A 2-3 sentence acknowledgement to the sender'),
+});
+
 export async function classifySecretariatRequest(message: string) {
-  const types =
-    'LICENCE_RENEWAL|LETTER_GOOD_STANDING|MEMBERSHIP_CERTIFICATE|RECOMMENDATION_LETTER|DUES_QUERY|MEMBERSHIP_QUERY|SECOND_OPINION_QUERY|APPOINTMENT_QUERY|GENERAL_ENQUIRY';
-  const system = `You are a classification assistant for the DFC Secretariat. Respond ONLY with valid JSON, no markdown.`;
-  const prompt = `Message: "${message}"\n\nReturn: { "type": "<${types}>", "priority": "HIGH|NORMAL|LOW", "suggestedAction": "<one sentence>", "draftReply": "<2-3 sentence acknowledgement>" }`;
+  const system = `You are a classification assistant for the DFC Secretariat. Classify the message, set its priority, suggest the secretariat's next step, and draft a short acknowledgement to the sender.`;
+  const prompt = `Message: "${message}"`;
   try {
-    const raw = await callClaude(system, prompt, 400);
-    return JSON.parse(raw.replace(/```json|```/g, '').trim());
+    return await callClaudeJSON(system, prompt, SecretariatClassification, 'low');
   } catch {
     return {
       type: 'GENERAL_ENQUIRY',

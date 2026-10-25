@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { audit } from "@/lib/audit";
 import { uploadRateLimit } from "@/lib/rate-limit";
 import { uploadImage, ImageValidationError } from "@/lib/cloudinary";
 
@@ -28,6 +29,12 @@ export async function POST(request: NextRequest) {
     }
 
     const url = await uploadImage(file);
+    await audit({
+      userId: payload.userId,
+      action: "FILE_UPLOAD",
+      resource: "image",
+      details: { url, name: file.name, size: file.size, type: file.type },
+    }, request);
     return NextResponse.json({ url });
   } catch (error) {
     if (error instanceof ImageValidationError) {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "@/lib/navigation";
 import Link from "next/link";
+import { formatInstantWat } from "@/lib/wat";
 import {
   ArrowLeft,
   User,
@@ -147,21 +148,13 @@ function formatDate(dateStr: string | null | undefined): string {
 
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return "--";
-  return new Date(dateStr).toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatInstantWat(dateStr);
 }
 
-/** ISO timestamp to the value a datetime-local input expects, in local time. */
+/** ISO timestamp to a datetime-local value on the WAT clock (UTC+1). */
 function toLocalInput(dateStr: string | null | undefined): string {
   if (!dateStr) return "";
-  const d = new Date(dateStr);
-  const offset = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+  return new Date(new Date(dateStr).getTime() + 60 * 60 * 1000).toISOString().slice(0, 16);
 }
 
 function parseDocuments(docs: Document[] | string | null | undefined): Document[] {
@@ -380,7 +373,8 @@ export default function SecondOpinionCaseDetailPage() {
           clear
             ? { videoCallScheduledAt: null }
             : {
-                videoCallScheduledAt: new Date(callTime).toISOString(),
+                // The input is WAT, whatever this browser's own zone is.
+                videoCallScheduledAt: new Date(`${callTime}:00+01:00`).toISOString(),
                 videoCallLink: callLink.trim(),
               }
         ),
@@ -956,7 +950,7 @@ export default function SecondOpinionCaseDetailPage() {
                   <>
                     <div>
                       <label htmlFor="call-time" className="mb-1 block text-xs font-medium text-gray-600">
-                        Date and time
+                        Date and time (WAT)
                       </label>
                       <input
                         id="call-time"

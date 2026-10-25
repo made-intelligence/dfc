@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { notifySecondOpinion } from '@/lib/second-opinion-report';
+import { audit } from '@/lib/audit';
 
 // Verify Paystack payment for second opinion
 export async function POST(request: NextRequest) {
@@ -48,6 +49,14 @@ export async function POST(request: NextRequest) {
         authenticatedUser: payload.userId,
         caseUserId: soCase.userId,
       });
+      await audit({
+        userId: payload.userId,
+        action: 'PAYMENT_VERIFY',
+        resource: 'payment',
+        resourceId: reference,
+        details: { outcome: 'payer_mismatch', caseId: soCase.id },
+        severity: 'CRITICAL',
+      }, request);
       return NextResponse.json({ error: 'Case does not belong to authenticated user' }, { status: 403 });
     }
 
@@ -65,6 +74,14 @@ export async function POST(request: NextRequest) {
         paid: data.data.amount,
         expected: soCase.amountKobo,
       });
+      await audit({
+        userId: payload?.userId ?? soCase.userId,
+        action: 'PAYMENT_VERIFY',
+        resource: 'payment',
+        resourceId: reference,
+        details: { outcome: 'amount_mismatch', caseId: soCase.id, paidKobo: data.data.amount, expectedKobo: soCase.amountKobo },
+        severity: 'CRITICAL',
+      }, request);
       return NextResponse.json({ error: 'Payment amount does not match this request' }, { status: 400 });
     }
 
@@ -103,6 +120,13 @@ export async function POST(request: NextRequest) {
     });
 
     await notifySecondOpinion(soCase.id, 'PAID');
+    await audit({
+      userId: payload?.userId ?? soCase.userId,
+      action: 'PAYMENT_VERIFY',
+      resource: 'payment',
+      resourceId: reference,
+      details: { outcome: 'paid', type: 'SECOND_OPINION', amount: soCase.amountKobo / 100, caseId: soCase.id, caseReference: soCase.reference },
+    }, request);
 
     return NextResponse.json({
       success: true,

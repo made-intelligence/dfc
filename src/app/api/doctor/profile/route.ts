@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { auditAccount } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -175,6 +176,13 @@ export async function PUT(request: NextRequest) {
       ratings: undefined,
     };
 
+    await auditAccount.profileUpdate(user.id, "doctor_profile", updatedProfile.id, {
+      fields: Object.entries({ name, phone, specialtyId, experience, bio, consultationFee, isAvailable })
+        .filter(([, v]) => v !== undefined)
+        .map(([k]) => k),
+      consultationFee,
+      isAvailable,
+    }, request);
     return NextResponse.json(responseData);
   } catch (error) {
     logger.error('DoctorProfile', error);

@@ -4,6 +4,7 @@ import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { checkRecordAccess } from '@/lib/emr/access';
 import { checkDrugInteractions } from '@/lib/ai/cdss';
+import { recordUnavailableCheck } from '@/lib/ai/cdss-alerts';
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Doctor profile not found' }, { status: 404 });
     }
 
-    const interactions = await checkDrugInteractions(
+    const { interactions, unavailable } = await checkDrugInteractions(
       newDrug,
       medications.map((m) => ({
         drugName: m.drugName,
@@ -65,6 +66,18 @@ export async function POST(request: NextRequest) {
       })),
       patientAge,
     );
+
+    if (unavailable) {
+      await recordUnavailableCheck({
+        patientId,
+        encounterId,
+        generatedForId: doctorProfile.id,
+        category: 'DRUG_INTERACTION',
+        title: `Interaction check for ${newDrug} could not run`,
+        body: `The automatic drug interaction check did not complete. Check ${newDrug} against the patient's current medications (${medications.map((m) => m.drugName).join(', ')}) manually before prescribing.`,
+        sourceData: { newDrug },
+      });
+    }
 
     // Batch-create alerts for CRITICAL and MODERATE interactions
     const alertableInteractions = interactions.filter(
@@ -85,7 +98,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ interactions });
+    return NextResponse.json({ interactions, unavailable });
   } catch (error) {
     logger.error('CDSS:DrugInteractions', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

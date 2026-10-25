@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminAuth, isAuthError } from "@/lib/auth";
+import { withAudit } from "@/lib/audit-route";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminAuth(request);
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ profiles });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const auth = await requireAdminAuth(req);
   if (isAuthError(auth)) return auth;
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ profile }, { status: 201 });
 }
 
-export async function PUT(req: NextRequest) {
+async function handlePUT(req: NextRequest) {
   const auth = await requireAdminAuth(req);
   if (isAuthError(auth)) return auth;
 
@@ -68,7 +69,7 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({ profile });
 }
 
-export async function DELETE(req: NextRequest) {
+async function handleDELETE(req: NextRequest) {
   const auth = await requireAdminAuth(req);
   if (isAuthError(auth)) return auth;
 
@@ -82,3 +83,7 @@ export async function DELETE(req: NextRequest) {
   await prisma.leadershipProfile.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }
+
+export const POST = withAudit("leadership_profile", handlePOST);
+export const PUT = withAudit("leadership_profile", handlePUT);
+export const DELETE = withAudit("leadership_profile", handleDELETE);

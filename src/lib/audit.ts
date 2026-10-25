@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { NextRequest } from "next/server";
+import { headers } from "next/headers";
 
 export type AuditAction =
   | "AUTH_LOGIN"
@@ -26,7 +27,18 @@ export type AuditAction =
   | "MEMBER_STATUS_CHANGE"
   | "SECOND_OPINION_CREATE"
   | "SECOND_OPINION_ASSIGN"
-  | "FILE_UPLOAD";
+  | "FILE_UPLOAD"
+  | "ACCOUNT_CREATE"
+  | "ACCOUNT_CLAIM"
+  | "PASSWORD_RESET_REQUEST"
+  | "PROFILE_UPDATE"
+  | "RECORD_SHARE"
+  | "APPOINTMENT_BOOK"
+  | "APPOINTMENT_CANCEL"
+  | "APPOINTMENT_RESCHEDULE"
+  | "APPOINTMENT_UPDATE"
+  | "SCHEDULE_UPDATE"
+  | "PRESCRIPTION_DISPENSE";
 
 export type AuditSeverity = "INFO" | "WARN" | "CRITICAL";
 
@@ -39,14 +51,26 @@ interface AuditEntry {
   severity?: AuditSeverity;
 }
 
-function extractClientInfo(request?: NextRequest) {
-  if (!request) return { ipAddress: null, userAgent: null };
+/**
+ * The caller's IP and browser. Without a request, reads the headers of the
+ * request being handled (next/headers), so helpers called deep inside a route
+ * (e.g. the EMR access check) still record them. Outside any request, such
+ * as a background job, both are null.
+ */
+export async function clientInfo(
+  request?: NextRequest
+): Promise<{ ipAddress: string | null; userAgent: string | null }> {
+  let h: Headers | null = request?.headers ?? null;
+  if (!h) {
+    try {
+      h = await headers();
+    } catch {
+      return { ipAddress: null, userAgent: null };
+    }
+  }
   return {
-    ipAddress:
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      null,
-    userAgent: request.headers.get("user-agent")?.slice(0, 500) || null,
+    ipAddress: h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null,
+    userAgent: h.get("user-agent")?.slice(0, 500) || null,
   };
 }
 
@@ -58,7 +82,7 @@ export async function audit(
   request?: NextRequest
 ): Promise<void> {
   try {
-    const { ipAddress, userAgent } = extractClientInfo(request);
+    const { ipAddress, userAgent } = await clientInfo(request);
 
     await prisma.auditLog.create({
       data: {
@@ -133,3 +157,67 @@ export const auditData = {
   download: (userId: string, resourceType: string, resourceId: string, req?: NextRequest) =>
     audit({ userId, action: "DATA_DOWNLOAD", resource: resourceType, resourceId }, req),
 };
+
+type Details = Record<string, unknown>;
+
+/** Patient consent and record sharing. Changes who may see clinical data. */
+export const auditConsent = {
+  grant: (userId: string, resource: string, resourceId: string, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "CONSENT_GRANT", resource, resourceId, details, severity: "WARN" }, req),
+
+  revoke: (userId: string, resource: string, resourceId: string, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "CONSENT_REVOKE", resource, resourceId, details, severity: "WARN" }, req),
+
+  share: (userId: string, resource: string, resourceId: string, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "RECORD_SHARE", resource, resourceId, details, severity: "WARN" }, req),
+};
+
+/** Sign-up, account claims and password resets: the account-takeover surface. */
+export const auditAccount = {
+  create: (userId: string, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "ACCOUNT_CREATE", resource: "user", resourceId: userId, details }, req),
+
+  claim: (userId: string, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "ACCOUNT_CLAIM", resource: "user", resourceId: userId, details, severity: "WARN" }, req),
+
+  /** userId is null when the email matched no account; the attempt is still worth seeing. */
+  passwordResetRequest: (userId: string | null, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "PASSWORD_RESET_REQUEST", resource: "user", resourceId: userId ?? undefined, details, severity: "WARN" }, req),
+
+  profileUpdate: (userId: string, resource: string, resourceId: string, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "PROFILE_UPDATE", resource, resourceId, details }, req),
+};
+
+/** Appointment lifecycle, whoever acts (patient, doctor or secretariat). */
+export const auditAppointment = {
+  book: (userId: string | null, appointmentId: string, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "APPOINTMENT_BOOK", resource: "appointment", resourceId: appointmentId, details }, req),
+
+  cancel: (userId: string, appointmentId: string, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "APPOINTMENT_CANCEL", resource: "appointment", resourceId: appointmentId, details }, req),
+
+  reschedule: (userId: string, appointmentId: string, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "APPOINTMENT_RESCHEDULE", resource: "appointment", resourceId: appointmentId, details }, req),
+
+  update: (userId: string, appointmentId: string, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "APPOINTMENT_UPDATE", resource: "appointment", resourceId: appointmentId, details }, req),
+
+  /** A doctor's availability or fee; resourceId is the doctor's user id. */
+  schedule: (userId: string, doctorUserId: string, details: Details, req?: NextRequest) =>
+    audit({ userId, action: "SCHEDULE_UPDATE", resource: "doctor_schedule", resourceId: doctorUserId, details }, req),
+};
+
+/**
+ * Any other change an admin makes. `resource` names the record type (e.g.
+ * "committee"), and details.change says what happened (e.g. "create").
+ */
+export function auditAdminChange(
+  userId: string | null,
+  resource: string,
+  resourceId: string | undefined,
+  details: Details,
+  req?: NextRequest,
+  severity: AuditSeverity = "INFO",
+) {
+  return audit({ userId, action: "ADMIN_ACTION", resource, resourceId, details, severity }, req);
+}

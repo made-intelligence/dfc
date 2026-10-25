@@ -132,7 +132,7 @@ export default function CDSSPanel({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ patientId, encounterId, diagnosisText }),
+          body: JSON.stringify({ patientId, encounterId, diagnosis: diagnosisText }),
         });
         fetchAlerts();
       } catch {
@@ -153,17 +153,18 @@ export default function CDSSPanel({
     (async () => {
       try {
         setLoading(true);
-        await fetch("/api/cdss/alerts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            patientId,
-            encounterId,
-            checkType: "DRUG",
-            drug: newDrugAdded,
-          }),
-        });
+        // Both checks save their findings (or a "could not run" warning) as alerts.
+        const body = JSON.stringify({ patientId, encounterId, newDrug: newDrugAdded });
+        await Promise.allSettled(
+          ["/api/cdss/drug-allergy", "/api/cdss/drug-interactions"].map((url) =>
+            fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body,
+            }),
+          ),
+        );
         await fetchAlerts();
       } catch {
         /* non-blocking */
@@ -228,7 +229,7 @@ export default function CDSSPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ patientId, encounterId, diagnosisText }),
+        body: JSON.stringify({ patientId, encounterId, diagnosis: diagnosisText }),
       });
       await fetchAlerts();
     } catch {

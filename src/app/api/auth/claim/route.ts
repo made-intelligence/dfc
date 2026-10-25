@@ -8,6 +8,7 @@ import {
   JWTPayload,
 } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { auditAccount } from '@/lib/audit';
 import { authRateLimit } from '@/lib/rate-limit';
 
 /**
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
         claimTokenExpiresAt: null,
       },
     });
+    await auditAccount.claim(updatedUser.id, { via: 'claim_link', role: updatedUser.role }, request);
 
     const tokenPayload: JWTPayload = {
       userId: updatedUser.id,

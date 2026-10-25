@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromCookies, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { audit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -154,6 +155,13 @@ export async function POST(request: NextRequest) {
         specialistFee,
       },
     });
+    await audit({
+      userId: payload.userId,
+      action: "SECOND_OPINION_CREATE",
+      resource: "spl_case",
+      resourceId: splCase.id,
+      details: { referenceNumber, partnerId: splAdmin.partnerId, serviceType, specialty, agreedFee },
+    }, request);
 
     return NextResponse.json(
       {

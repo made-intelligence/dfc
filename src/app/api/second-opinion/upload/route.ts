@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
+import { audit } from '@/lib/audit';
 import { uploadRateLimit } from '@/lib/rate-limit';
 import { uploadPrivateObject, getPrivateObjectUrl, SECOND_OPINION_BUCKET } from '@/lib/s3';
 import crypto from 'crypto';
@@ -116,6 +117,13 @@ export async function POST(request: NextRequest) {
     // Short-lived preview URL so the uploader can confirm the upload succeeded.
     // Documents are re-signed on every authorized read of the case afterwards.
     const previewUrl = await getPrivateObjectUrl(SECOND_OPINION_BUCKET, key);
+    await audit({
+      userId: payload?.userId ?? null,
+      action: 'FILE_UPLOAD',
+      resource: 'second_opinion_document',
+      resourceId: caseId ?? undefined,
+      details: { key, size: file.size, type: file.type },
+    }, request);
 
     return NextResponse.json({
       success: true,

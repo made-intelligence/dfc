@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword, createToken, createAuthCookie, JWTPayload } from '@/lib/auth';
 import { UserRole } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { auditAccount } from '@/lib/audit';
 import { authRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
 
       return user;
     });
+    await auditAccount.claim(result.id, { via: 'legacy_claim', legacyMemberId: legacy.id }, request);
 
     const tokenPayload: JWTPayload = {
       userId: result.id,

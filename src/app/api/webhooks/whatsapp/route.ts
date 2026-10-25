@@ -2,14 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { classifySecretariatRequest } from '@/lib/ai/service';
-import { sendTextMessage } from '@/lib/whatsapp/service';
+import { isWhatsAppEnabled, sendTextMessage } from '@/lib/whatsapp/service';
 import type { WhatsAppWebhookEntry } from '@/lib/whatsapp/types';
 import { logger } from '@/lib/logger';
 
 import crypto from 'crypto';
 
-const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'dfc_webhook_verify_secret';
+const VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || '';
 const APP_SECRET = process.env.WHATSAPP_APP_SECRET || '';
+
+/**
+ * The webhook only exists while WhatsApp is on, and then only with its own
+ * secrets: the verify token Meta checks on registration and the app secret
+ * that signs every call. Without them it answers 404 like any unknown route.
+ */
+function webhookOff(): NextResponse | null {
+  if (isWhatsAppEnabled() && VERIFY_TOKEN && APP_SECRET) return null;
+  return NextResponse.json({ error: 'Not found' }, { status: 404 });
+}
 
 function timingSafeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
@@ -20,6 +30,9 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 // Webhook verification (GET)
 export async function GET(request: NextRequest) {
+  const off = webhookOff();
+  if (off) return off;
+
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get('hub.mode');
   const token = searchParams.get('hub.verify_token');
@@ -33,24 +46,20 @@ export async function GET(request: NextRequest) {
 
 // Incoming messages + status updates (POST)
 export async function POST(request: NextRequest) {
+  const off = webhookOff();
+  if (off) return off;
+
   try {
     // Verify Meta's payload signature (HMAC-SHA256 of the raw body with the app
     // secret) before processing anything. Without this, anyone could forge
     // inbound messages -> spoofed tickets, billable AI calls, and outbound sends.
     const raw = await request.text();
-    if (APP_SECRET) {
-      const signature = request.headers.get('x-hub-signature-256') || '';
-      const expected =
-        'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(raw).digest('hex');
-      if (!signature || !timingSafeEqual(signature, expected)) {
-        logger.error('WhatsAppWebhook', 'Invalid or missing x-hub-signature-256');
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
-      }
-    } else {
-      logger.error(
-        'WhatsAppWebhook',
-        'WHATSAPP_APP_SECRET is not set — inbound payload signature is NOT being verified. Set it to enable enforcement.',
-      );
+    const signature = request.headers.get('x-hub-signature-256') || '';
+    const expected =
+      'sha256=' + crypto.createHmac('sha256', APP_SECRET).update(raw).digest('hex');
+    if (!signature || !timingSafeEqual(signature, expected)) {
+      logger.error('WhatsAppWebhook', 'Invalid or missing x-hub-signature-256');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
     }
 
     const body = JSON.parse(raw);

@@ -5,9 +5,12 @@ import { useParams, useRouter } from "@/lib/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CalendarCog, CalendarPlus } from "lucide-react";
 import { Loading } from "@/components/ui/loading";
 import Image from "next/image";
+import { formatApptDate, formatWatRange } from "@/lib/wat";
+
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export default function DoctorDetailsPage() {
   const params = useParams();
@@ -41,6 +44,11 @@ export default function DoctorDetailsPage() {
   if (!doctor) {
     return <div>Doctor not found</div>;
   }
+
+  type Block = { id: string; dayOfWeek: number; startTime: string; endTime: string; isRecurring: boolean; scheduleType: string };
+  const weeklyBlocks = ((doctor.schedules ?? []) as Block[])
+    .filter((s) => s.isRecurring && s.scheduleType === "AVAILABLE")
+    .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.startTime.localeCompare(b.startTime));
 
   return (
     <div className="space-y-6">
@@ -101,26 +109,41 @@ export default function DoctorDetailsPage() {
             </CardContent>
           </Card>
 
-          {doctor.schedule?.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Weekly Schedule</CardTitle>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle>Schedule &amp; Bookings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {weeklyBlocks.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {doctor.schedule.map((day: any) => (
+                  {weeklyBlocks.map((block) => (
                     <div
-                      key={day.dayOfWeek}
+                      key={block.id}
                       className="flex flex-col sm:flex-row sm:justify-between gap-1 p-3 bg-gray-50 rounded-lg"
                     >
-                      <span className="font-medium text-sm sm:text-base">{day.dayOfWeek}</span>
-                      <span className="text-sm sm:text-base">{day.startTime} - {day.endTime}</span>
+                      <span className="font-medium text-sm sm:text-base">{DAYS[block.dayOfWeek]}</span>
+                      <span className="text-sm sm:text-base">{formatWatRange(block.startTime, block.endTime)}</span>
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <p className="text-sm text-gray-500">No weekly availability set, so patients cannot book this doctor yet.</p>
+              )}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button onClick={() => router.push(`/admin/doctors/${params.id}/schedule`)}>
+                  <CalendarCog className="h-4 w-4 mr-2" />
+                  Manage schedule
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push(`/admin/appointments?book=${params.id}`)}
+                >
+                  <CalendarPlus className="h-4 w-4 mr-2" />
+                  Book a patient
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-4 lg:space-y-6">
@@ -160,7 +183,7 @@ export default function DoctorDetailsPage() {
                     >
                       <span className="font-medium text-sm sm:text-base">{apt.patient}</span>
                       <span className="text-xs sm:text-sm text-gray-600 sm:text-right">
-                        {new Date(apt.date).toLocaleDateString()}
+                        {formatApptDate(apt.date)}
                       </span>
                     </div>
                   ))}

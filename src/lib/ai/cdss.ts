@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { callClaude } from './service';
+import * as z from 'zod/v4';
+import { callClaude, callClaudeJSON } from './service';
 
 // ============================================
 // CONSTANTS
@@ -24,49 +25,72 @@ export const NIGERIA_CONTEXT = `Nigerian Epidemiological Context:
 // TYPES
 // ============================================
 
-export interface DrugAllergyResult {
-  hasInteraction: boolean;
-  level: 'CRITICAL' | 'WARNING' | 'INFO';
-  title: string;
-  explanation: string;
-  suggestion: string;
+// The AI-backed checks set `unavailable` when they could not run (no API key,
+// an outage, a refusal), so an empty result is never mistaken for "all clear".
+
+const DrugAllergySchema = z.object({
+  hasInteraction: z.boolean(),
+  level: z.enum(['CRITICAL', 'WARNING', 'INFO']),
+  title: z.string().describe('Short title'),
+  explanation: z.string().describe('Clinical explanation'),
+  suggestion: z.string().describe('What the physician should do'),
+});
+
+export type DrugAllergyResult = z.infer<typeof DrugAllergySchema> & { unavailable?: boolean };
+
+const DrugInteractionSchema = z.object({
+  severity: z.enum(['CRITICAL', 'MODERATE', 'MINOR']),
+  withDrug: z.string().describe('Name of the interacting current medication'),
+  mechanism: z.string().describe('Pharmacological mechanism'),
+  clinicalEffect: z.string().describe('What may happen clinically'),
+  recommendation: z.string().describe('Action for the physician'),
+});
+
+export type DrugInteraction = z.infer<typeof DrugInteractionSchema>;
+
+export interface DrugInteractionCheck {
+  interactions: DrugInteraction[];
+  unavailable: boolean;
 }
 
-export interface DrugInteraction {
-  severity: 'CRITICAL' | 'MODERATE' | 'MINOR';
-  withDrug: string;
-  mechanism: string;
-  clinicalEffect: string;
-  recommendation: string;
-}
+const DifferentialSchema = z.object({
+  diagnosis: z.string(),
+  probability: z.enum(['HIGH', 'MODERATE', 'LOW']),
+  supportingFeatures: z.array(z.string()),
+  keyInvestigations: z.array(z.string()),
+});
 
-export interface Differential {
-  diagnosis: string;
-  probability: 'HIGH' | 'MODERATE' | 'LOW';
-  supportingFeatures: string[];
-  keyInvestigations: string[];
-}
+export type Differential = z.infer<typeof DifferentialSchema>;
 
 export interface DifferentialResult {
   differentials: Differential[];
   redFlags: string[];
   disclaimer: string;
+  unavailable?: boolean;
 }
 
-export interface GuidelineReminder {
-  category: string;
-  reminder: string;
-  priority: 'HIGH' | 'NORMAL' | 'LOW';
+const GuidelineReminderSchema = z.object({
+  category: z.enum(['SCREENING', 'INVESTIGATION', 'MEDICATION', 'MONITORING', 'REFERRAL', 'LIFESTYLE', 'FOLLOW_UP']),
+  reminder: z.string().describe('The guideline reminder text'),
+  priority: z.enum(['HIGH', 'NORMAL', 'LOW']),
+});
+
+export type GuidelineReminder = z.infer<typeof GuidelineReminderSchema>;
+
+export interface GuidelineCheck {
+  reminders: GuidelineReminder[];
+  unavailable: boolean;
 }
 
-export interface LabInterpretation {
-  summary: string;
-  criticalFindings: string[];
-  possibleCauses: string[];
-  recommendedActions: string[];
-  urgency: 'CRITICAL' | 'URGENT' | 'ROUTINE';
-  disclaimer: string;
-}
+const LabInterpretationSchema = z.object({
+  summary: z.string().describe('Brief overall interpretation'),
+  criticalFindings: z.array(z.string()).describe('Critically abnormal values requiring immediate action'),
+  possibleCauses: z.array(z.string()).describe('Possible aetiologies for the abnormal results'),
+  recommendedActions: z.array(z.string()).describe('Suggested next steps'),
+  urgency: z.enum(['CRITICAL', 'URGENT', 'ROUTINE']),
+});
+
+export type LabInterpretation = z.infer<typeof LabInterpretationSchema> & { disclaimer: string };
 
 export interface RiskScore {
   scoreName: string;
@@ -76,30 +100,26 @@ export interface RiskScore {
   level: 'CRITICAL' | 'WARNING' | 'INFO';
 }
 
-export interface SOAPReviewResult {
-  isComplete: boolean;
-  gaps: string[];
-  warnings: string[];
-  suggestions: string[];
-}
+const SOAPReviewSchema = z.object({
+  isComplete: z.boolean(),
+  gaps: z.array(z.string()).describe('Missing elements that should be documented'),
+  warnings: z.array(z.string()).describe('Potential safety or medicolegal concerns'),
+  suggestions: z.array(z.string()).describe('Improvement suggestions'),
+});
 
-export interface FormularyResult {
-  availabilityStatus: 'AVAILABLE' | 'LIMITED' | 'UNAVAILABLE' | 'UNKNOWN';
-  notes: string;
-  alternatives: string[];
-}
+export type SOAPReviewResult = z.infer<typeof SOAPReviewSchema> & { unavailable?: boolean };
+
+const FormularySchema = z.object({
+  availabilityStatus: z.enum(['AVAILABLE', 'LIMITED', 'UNAVAILABLE', 'UNKNOWN']),
+  notes: z.string().describe('Availability details, brand names available in Nigeria, typical cost range if known'),
+  alternatives: z.array(z.string()).describe('NAFDAC-approved alternatives if limited or unavailable'),
+});
+
+export type FormularyResult = z.infer<typeof FormularySchema>;
 
 // ============================================
 // AI FUNCTIONS
 // ============================================
-
-function parseJSON<T>(raw: string, fallback: T): T {
-  try {
-    return JSON.parse(raw.replace(/```json|```/g, '').trim()) as T;
-  } catch {
-    return fallback;
-  }
-}
 
 /**
  * Checks a new drug against patient allergies for contraindications/cross-reactivity.
@@ -111,10 +131,11 @@ export async function checkDrugAllergy(
 ): Promise<DrugAllergyResult> {
   const fallback: DrugAllergyResult = {
     hasInteraction: false,
-    level: 'INFO',
+    level: 'WARNING',
     title: 'Unable to assess drug-allergy interaction',
     explanation: 'The system could not complete the allergy check. Please verify manually.',
     suggestion: 'Review patient allergy list before prescribing.',
+    unavailable: true,
   };
 
   if (!allergies.length) {
@@ -130,16 +151,7 @@ export async function checkDrugAllergy(
   try {
     const system = `You are a clinical pharmacology decision support system. Assess drug-allergy interactions and cross-reactivity. ${NIGERIA_CONTEXT}
 
-Respond ONLY with valid JSON, no markdown wrapping. Use this exact schema:
-{
-  "hasInteraction": boolean,
-  "level": "CRITICAL" | "WARNING" | "INFO",
-  "title": "short title",
-  "explanation": "clinical explanation",
-  "suggestion": "what the physician should do"
-}
-
-Rules:
+Levels:
 - CRITICAL: known allergy to this drug or high cross-reactivity (e.g., penicillin allergy + amoxicillin)
 - WARNING: moderate cross-reactivity or same drug class with uncertain cross-reactivity
 - INFO: low cross-reactivity risk but worth noting`;
@@ -151,8 +163,7 @@ ${allergies.map((a, i) => `${i + 1}. Allergen: ${a.allergen} | Type: ${a.allergy
 
 Assess the interaction risk.`;
 
-    const raw = await callClaude(system, prompt, 500);
-    return parseJSON(raw, fallback);
+    return await callClaudeJSON(system, prompt, DrugAllergySchema, 'medium');
   } catch {
     return fallback;
   }
@@ -165,26 +176,16 @@ export async function checkDrugInteractions(
   newDrug: string,
   currentMedications: Array<{ drugName: string; dose: string; frequency: string }>,
   patientAge?: number,
-): Promise<DrugInteraction[]> {
-  const fallback: DrugInteraction[] = [];
-
+): Promise<DrugInteractionCheck> {
+  // Nothing to interact with: a real, checked "none".
   if (!currentMedications.length) {
-    return fallback;
+    return { interactions: [], unavailable: false };
   }
 
   try {
     const system = `You are a clinical pharmacology decision support system specialising in drug-drug interactions. ${NIGERIA_CONTEXT}
 
-Respond ONLY with valid JSON array, no markdown wrapping. Each element:
-{
-  "severity": "CRITICAL" | "MODERATE" | "MINOR",
-  "withDrug": "name of the interacting current medication",
-  "mechanism": "pharmacological mechanism",
-  "clinicalEffect": "what may happen clinically",
-  "recommendation": "action for physician"
-}
-
-Return an empty array [] if no interactions found.
+List every clinically significant interaction between the new drug and the current medications; leave the list empty only if there are none.
 
 Key interactions to always check:
 - QT prolongation combinations
@@ -202,11 +203,16 @@ ${currentMedications.map((m, i) => `${i + 1}. ${m.drugName} ${m.dose} ${m.freque
 
 Identify all clinically significant drug-drug interactions.`;
 
-    const raw = await callClaude(system, prompt, 1200);
-    const parsed = parseJSON<DrugInteraction[]>(raw, fallback);
-    return Array.isArray(parsed) ? parsed : fallback;
+    const { interactions } = await callClaudeJSON(
+      system,
+      prompt,
+      z.object({ interactions: z.array(DrugInteractionSchema) }),
+      'medium',
+    );
+    return { interactions, unavailable: false };
   } catch {
-    return fallback;
+    // Never an empty list here: that would read as "no interactions".
+    return { interactions: [], unavailable: true };
   }
 }
 
@@ -228,25 +234,13 @@ export async function generateDifferentials(
     differentials: [],
     redFlags: [],
     disclaimer: CDSS_DISCLAIMER,
+    unavailable: true,
   };
 
   try {
     const system = `You are a clinical decision support system assisting physicians with differential diagnosis generation. ${NIGERIA_CONTEXT}
 
-IMPORTANT: You are NOT diagnosing the patient. You are generating a list of differentials for the physician to consider. The physician makes all diagnostic decisions.
-
-Respond ONLY with valid JSON, no markdown wrapping:
-{
-  "differentials": [
-    {
-      "diagnosis": "name",
-      "probability": "HIGH" | "MODERATE" | "LOW",
-      "supportingFeatures": ["feature1", "feature2"],
-      "keyInvestigations": ["investigation1", "investigation2"]
-    }
-  ],
-  "redFlags": ["any red flags requiring immediate attention"]
-}
+IMPORTANT: You are NOT diagnosing the patient. You are generating a list of differentials for the physician to consider. The physician makes all diagnostic decisions. Also list any red flags requiring immediate attention.
 
 Always consider tropical/endemic diseases relevant to Nigeria alongside standard differentials. Return 3-7 differentials ordered by probability.`;
 
@@ -260,13 +254,13 @@ ${patientContext.vitals ? `Vitals: ${JSON.stringify(patientContext.vitals)}` : '
 
 Generate differential diagnoses for physician consideration.`;
 
-    const raw = await callClaude(system, prompt, 1500);
-    const parsed = parseJSON<Omit<DifferentialResult, 'disclaimer'>>(raw, { differentials: [], redFlags: [] });
-    return {
-      differentials: Array.isArray(parsed.differentials) ? parsed.differentials : [],
-      redFlags: Array.isArray(parsed.redFlags) ? parsed.redFlags : [],
-      disclaimer: CDSS_DISCLAIMER,
-    };
+    const parsed = await callClaudeJSON(
+      system,
+      prompt,
+      z.object({ differentials: z.array(DifferentialSchema), redFlags: z.array(z.string()) }),
+      'medium',
+    );
+    return { ...parsed, disclaimer: CDSS_DISCLAIMER };
   } catch {
     return fallback;
   }
@@ -283,20 +277,11 @@ export async function getGuidelineReminders(
     problems?: string[];
     medications?: string[];
   },
-): Promise<GuidelineReminder[]> {
-  const fallback: GuidelineReminder[] = [];
-
+): Promise<GuidelineCheck> {
   try {
     const system = `You are a clinical guidelines decision support system. Provide contextual reminders based on current Nigerian and international clinical guidelines (WHO, NICE, AHA/ACC, FMOH Nigeria).
 
 ${NIGERIA_CONTEXT}
-
-Respond ONLY with valid JSON array, no markdown wrapping. Each element:
-{
-  "category": "SCREENING" | "INVESTIGATION" | "MEDICATION" | "MONITORING" | "REFERRAL" | "LIFESTYLE" | "FOLLOW_UP",
-  "reminder": "the guideline reminder text",
-  "priority": "HIGH" | "NORMAL" | "LOW"
-}
 
 Focus on:
 - Mandatory investigations for the diagnosis
@@ -314,11 +299,15 @@ ${patientContext.medications?.length ? `Current medications: ${patientContext.me
 
 Provide relevant clinical guideline reminders.`;
 
-    const raw = await callClaude(system, prompt, 1200);
-    const parsed = parseJSON<GuidelineReminder[]>(raw, fallback);
-    return Array.isArray(parsed) ? parsed : fallback;
+    const { reminders } = await callClaudeJSON(
+      system,
+      prompt,
+      z.object({ reminders: z.array(GuidelineReminderSchema) }),
+      'medium',
+    );
+    return { reminders, unavailable: false };
   } catch {
-    return fallback;
+    return { reminders: [], unavailable: true };
   }
 }
 
@@ -353,15 +342,7 @@ export async function interpretAbnormalLab(
 
 IMPORTANT: You are providing interpretive support — the physician makes all clinical decisions.
 
-Respond ONLY with valid JSON, no markdown wrapping:
-{
-  "summary": "brief overall interpretation",
-  "criticalFindings": ["any critically abnormal values requiring immediate action"],
-  "possibleCauses": ["possible aetiologies for the abnormal results"],
-  "recommendedActions": ["suggested next steps"],
-  "urgency": "CRITICAL" | "URGENT" | "ROUTINE"
-}
-
+Urgency:
 CRITICAL: values incompatible with life or requiring immediate intervention
 URGENT: significantly abnormal, needs attention within hours
 ROUTINE: mildly abnormal, routine follow-up`;
@@ -379,14 +360,7 @@ ${patientContext.medications?.length ? `Medications: ${patientContext.medication
 
 Interpret these abnormal results.`;
 
-    const raw = await callClaude(system, prompt, 1000);
-    const parsed = parseJSON<Omit<LabInterpretation, 'disclaimer'>>(raw, {
-      summary: fallback.summary,
-      criticalFindings: [],
-      possibleCauses: [],
-      recommendedActions: fallback.recommendedActions,
-      urgency: 'ROUTINE' as const,
-    });
+    const parsed = await callClaudeJSON(system, prompt, LabInterpretationSchema, 'medium');
     return { ...parsed, disclaimer: CDSS_DISCLAIMER };
   } catch {
     return fallback;
@@ -608,23 +582,17 @@ export async function reviewSOAPNoteQuality(
     plan: string;
   },
 ): Promise<SOAPReviewResult> {
+  // Not "complete": a review that didn't run must not read as a passed one.
   const fallback: SOAPReviewResult = {
-    isComplete: true,
+    isComplete: false,
     gaps: [],
-    warnings: [],
+    warnings: ['The automatic note review could not run. Check the note manually before signing.'],
     suggestions: [],
+    unavailable: true,
   };
 
   try {
     const system = `You are a clinical documentation quality reviewer. Assess SOAP note completeness and quality. Focus on patient safety and medicolegal adequacy.
-
-Respond ONLY with valid JSON, no markdown wrapping:
-{
-  "isComplete": boolean,
-  "gaps": ["missing elements that should be documented"],
-  "warnings": ["potential safety/medicolegal concerns"],
-  "suggestions": ["improvement suggestions"]
-}
 
 Check for:
 - Subjective: HPI elements (onset, character, location, duration, severity, aggravating/relieving, associated symptoms), relevant ROS
@@ -649,8 +617,7 @@ ${soapNote.plan || '[EMPTY]'}
 
 Review this note for completeness and quality.`;
 
-    const raw = await callClaude(system, prompt, 800);
-    return parseJSON(raw, fallback);
+    return await callClaudeJSON(system, prompt, SOAPReviewSchema, 'low');
   } catch {
     return fallback;
   }
@@ -673,13 +640,6 @@ export async function checkNigerianFormulary(
 
 ${NIGERIA_CONTEXT}
 
-Respond ONLY with valid JSON, no markdown wrapping:
-{
-  "availabilityStatus": "AVAILABLE" | "LIMITED" | "UNAVAILABLE" | "UNKNOWN",
-  "notes": "availability details, brand names available in Nigeria, typical cost range if known",
-  "alternatives": ["NAFDAC-approved alternatives if limited/unavailable"]
-}
-
 AVAILABLE: widely available in Nigerian pharmacies
 LIMITED: available but may require specialist pharmacy or import
 UNAVAILABLE: not registered/marketed in Nigeria
@@ -689,8 +649,7 @@ UNKNOWN: insufficient data`;
 
 Assess availability in Nigerian market and suggest alternatives if needed.`;
 
-    const raw = await callClaude(system, prompt, 600);
-    return parseJSON(raw, fallback);
+    return await callClaudeJSON(system, prompt, FormularySchema, 'low');
   } catch {
     return fallback;
   }
@@ -756,7 +715,7 @@ ${data.medications.map((m) => `- ${m.drugName} ${m.dose} ${m.frequency}${m.durat
 
 Follow-up: ${data.followUp}`;
 
-    return await callClaude(system, prompt, 2000);
+    return await callClaude(system, prompt, 'low');
   } catch {
     return fallback;
   }

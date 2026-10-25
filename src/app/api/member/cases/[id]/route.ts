@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { verifyToken, getTokenFromCookies, JWTPayload } from '@/lib/auth';
 import { signCaseDocuments } from '@/lib/second-opinion-documents';
 import { deliverSecondOpinionReport } from '@/lib/second-opinion-report';
+import { audit } from '@/lib/audit';
 
 async function getSpecialistId(payload: JWTPayload): Promise<string | null> {
   const doctor = await prisma.doctorProfile.findUnique({
@@ -130,5 +131,18 @@ export async function PATCH(
     await deliverSecondOpinionReport(id, payload.userId);
   }
 
+  await audit({
+    userId: payload.userId,
+    action: 'EMR_UPDATE',
+    resource: 'second_opinion',
+    resourceId: id,
+    details: {
+      change: body.action ?? 'save_draft',
+      fields: Object.keys(updateData),
+      fromStatus: soCase.status,
+      toStatus: updated.status,
+      byAdmin: isAdmin,
+    },
+  }, request);
   return NextResponse.json({ success: true, case: updated });
 }

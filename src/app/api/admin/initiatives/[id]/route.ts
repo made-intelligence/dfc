@@ -9,7 +9,7 @@ async function requireAdmin(request: NextRequest) {
   const payload = await verifyToken(token);
   if (!payload) return null;
   const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-  if (!user || (user.role !== "SUPERADMIN" && user.role !== "SECRETARIAT")) return null;
+  if (!user || !user.isActive || (user.role !== "SUPERADMIN" && user.role !== "SECRETARIAT")) return null;
   return user;
 }
 

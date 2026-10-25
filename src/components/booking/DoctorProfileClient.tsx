@@ -1,4 +1,5 @@
 "use client";
+import { formatWatRange } from "@/lib/wat";
 
 import {
   Star,
@@ -388,7 +389,7 @@ export default function DoctorProfileClient({
                                   ) : (
                                     <Video className="w-3 h-3" />
                                   )}
-                                  {schedule.startTime} - {schedule.endTime}
+                                  {formatWatRange(schedule.startTime, schedule.endTime)}
                                 </span>
                               ))}
                             </div>

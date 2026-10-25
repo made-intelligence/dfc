@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { withAudit } from "@/lib/audit-route";
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const token = getTokenFromCookies(request.headers.get('cookie'));
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -213,3 +214,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export const POST = withAudit("endorsement", handlePOST, {action: "PROFILE_UPDATE"});

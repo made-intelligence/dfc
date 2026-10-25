@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Search,
   Calendar,
+  CalendarPlus,
   Clock,
   CheckCircle,
   XCircle,
@@ -14,6 +16,8 @@ import {
 } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/loading";
 import { FilterChips, ListPager } from "@/components/admin/ListControls";
+import BookAppointmentModal from "@/components/admin/BookAppointmentModal";
+import { formatApptDate, formatWatRange } from "@/lib/wat";
 
 interface AppointmentData {
   id: string;
@@ -81,6 +85,17 @@ export default function AppointmentsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingDoctorId, setBookingDoctorId] = useState<string>();
+
+  // /admin/appointments?book=<doctor user id> opens the booking form for that doctor.
+  useEffect(() => {
+    const doctorId = new URLSearchParams(window.location.search).get("book");
+    if (doctorId) {
+      setBookingDoctorId(doctorId);
+      setBookingOpen(true);
+    }
+  }, []);
 
   const fetchAppointments = useCallback(async () => {
     try {
@@ -115,13 +130,35 @@ export default function AppointmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#0D1F3C]">Appointments</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Consultations booked across the platform. Patients book and pay from a doctor&apos;s
-          profile.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#0D1F3C]">Appointments</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Consultations booked across the platform. Patients book and pay from a doctor&apos;s
+            profile; the secretariat can also book on a patient&apos;s behalf.
+          </p>
+        </div>
+        <Button
+          className="w-full sm:w-auto"
+          onClick={() => {
+            setBookingDoctorId(undefined);
+            setBookingOpen(true);
+          }}
+        >
+          <CalendarPlus className="mr-2 h-4 w-4" />
+          Book appointment
+        </Button>
       </div>
+
+      <BookAppointmentModal
+        isOpen={bookingOpen}
+        initialDoctorId={bookingDoctorId}
+        onClose={() => setBookingOpen(false)}
+        onSuccess={() => {
+          setBookingOpen(false);
+          fetchAppointments();
+        }}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -191,11 +228,11 @@ export default function AppointmentsPage() {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {appointment.date}
+                        {formatApptDate(appointment.date)}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {appointment.startTime} - {appointment.endTime}
+                        {formatWatRange(appointment.startTime, appointment.endTime)}
                       </span>
                       <span className="flex items-center gap-1">
                         {getStatusIcon(appointment.status)}

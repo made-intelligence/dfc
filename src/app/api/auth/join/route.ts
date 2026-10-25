@@ -11,8 +11,10 @@ import {
 import { generateDoctorSlug } from '@/lib/utils/slug';
 import { UserRole, DFCMemberCategory, DFCMemberStatus } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { auditAccount } from '@/lib/audit';
 import { authRateLimit } from '@/lib/rate-limit';
 import { screenSignup, normalizeEmailForDedupe } from '@/lib/signup-guard';
+import { isWhatsAppEnabled } from '@/lib/whatsapp/service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -169,7 +171,8 @@ export async function POST(request: NextRequest) {
           status: statusMap[path],
           goodStanding: false,
           path,
-          whatsappOptIn: whatsappOptIn ?? true,
+          // Off, the form doesn't offer it, so there is no consent to record.
+          whatsappOptIn: isWhatsAppEnabled() ? (whatsappOptIn ?? true) : false,
         },
       });
 
@@ -190,6 +193,12 @@ export async function POST(request: NextRequest) {
 
       return { user, dfcMember };
     });
+    await auditAccount.create(result.user.id, {
+      via: 'membership_application',
+      role: result.user.role,
+      category: result.dfcMember.category,
+      status: result.dfcMember.status,
+    }, request);
 
     // Create JWT
     const tokenPayload: JWTPayload = {
@@ -228,7 +237,7 @@ export async function POST(request: NextRequest) {
     response.headers.set('Set-Cookie', createAuthCookie(token));
 
     // Non-blocking: send welcome WhatsApp if opted in
-    if (phone && whatsappOptIn) {
+    if (phone && whatsappOptIn && isWhatsAppEnabled()) {
       import('@/lib/whatsapp/service').then(({ sendWelcomeMessage }) => {
         sendWelcomeMessage(phone, name, result.user.id).catch((err) => logger.error('JoinWelcomeWhatsApp', err));
       });

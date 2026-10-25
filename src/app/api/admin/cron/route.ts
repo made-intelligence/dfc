@@ -6,6 +6,8 @@ import { runMonthlySettlement } from "@/lib/jobs/monthly-settlement";
 import { runQuarterlyVolumeTracking } from "@/lib/jobs/hmo-volume-tracking";
 import { runAdherenceMonitoring } from "@/lib/jobs/adherence-monitoring";
 import { runRenewalNotifications } from "@/lib/jobs/renewal-notifications";
+import { runAppointmentReminders } from "@/lib/jobs/appointment-reminders";
+import { withAudit } from "@/lib/audit-route";
 
 /**
  * POST /api/admin/cron
@@ -21,7 +23,7 @@ import { runRenewalNotifications } from "@/lib/jobs/renewal-notifications";
  * - quarterly: HMO volume tracking
  * - retention: data cleanup (weekly)
  */
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     // Auth via shared secret (not cookie auth — cron jobs are server-to-server)
     const cronSecret = request.headers.get("x-cron-secret");
@@ -44,6 +46,7 @@ export async function POST(request: NextRequest) {
     if (job === "daily" || job === "all") {
       results.adherence = await runAdherenceMonitoring();
       results.renewal = await runRenewalNotifications();
+      results.appointmentReminders = await runAppointmentReminders();
     }
 
     if (job === "monthly" || job === "all") {
@@ -69,3 +72,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withAudit("cron_job", handlePOST, {severity: "WARN"});

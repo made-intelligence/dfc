@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { generateDoctorSlug } from "@/lib/utils/slug";
 import { requireAdminAuth, isAuthError } from "@/lib/auth";
+import { withAudit } from "@/lib/audit-route";
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const auth = await requireAdminAuth(request);
     if (isAuthError(auth)) return auth;
@@ -156,3 +157,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withAudit("doctor_import", handlePOST, {severity: "WARN"});

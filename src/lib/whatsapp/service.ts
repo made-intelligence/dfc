@@ -11,6 +11,17 @@ function getConfig(): WhatsAppConfig {
   };
 }
 
+/**
+ * WhatsApp is on only once the Meta credentials are set. While it is off,
+ * nothing is sent, the webhook refuses calls, and the UI hides WhatsApp
+ * options; filling in WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID
+ * turns it all back on.
+ */
+export function isWhatsAppEnabled(): boolean {
+  const config = getConfig();
+  return !!(config.accessToken && config.phoneNumberId);
+}
+
 function getBaseUrl(config: WhatsAppConfig): string {
   return `https://graph.facebook.com/${config.apiVersion}/${config.phoneNumberId}/messages`;
 }
@@ -33,9 +44,8 @@ async function sendMessage(
   userId?: string
 ): Promise<SendMessageResult> {
   const config = getConfig();
-  if (!config.accessToken) {
-    console.warn('WhatsApp not configured — skipping send');
-    return { success: false, error: 'WhatsApp not configured' };
+  if (!isWhatsAppEnabled()) {
+    return { success: false, disabled: true, error: 'WhatsApp is turned off' };
   }
 
   const phone = normalisePhone(to);

@@ -8,6 +8,8 @@ import { sendEmail } from '@/lib/email/service';
 import { TemporaryPasswordEmail } from '@/emails/TemporaryPassword';
 import { screenSignup, normalizeEmailForDedupe } from '@/lib/signup-guard';
 import { logger } from '@/lib/logger';
+import { audit, auditAccount } from '@/lib/audit';
+import type { NextRequest } from 'next/server';
 
 /**
  * Emailed passwords. A new booking account gets one instead of a sign-up
@@ -84,7 +86,10 @@ async function issue(user: { id: string; email: string; name: string }, kind: 'w
  * Booking step: an existing account just needs its password. A new email
  * gets a patient account and an emailed password.
  */
-export async function startBookingAccount(input: { email: string; name: string; phone?: string }) {
+export async function startBookingAccount(
+  input: { email: string; name: string; phone?: string; createdBy?: string },
+  req?: NextRequest
+) {
   const email = normalizeEmail(input.email);
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (existing) return { accountExists: true as const };
@@ -125,16 +130,28 @@ export async function startBookingAccount(input: { email: string; name: string; 
     throw error;
   }
 
+  await auditAccount.create(
+    user.id,
+    { via: input.createdBy ? 'secretariat_booking' : 'booking', email, createdBy: input.createdBy },
+    req
+  );
   await issue(user, 'welcome');
   return { accountExists: false as const };
 }
 
 /** Forgot password: email a new one if the account exists. */
-export async function sendReplacementPassword(rawEmail: string) {
+export async function sendReplacementPassword(rawEmail: string, req?: NextRequest) {
+  const email = normalizeEmail(rawEmail);
   const user = await prisma.user.findUnique({
-    where: { email: normalizeEmail(rawEmail) },
+    where: { email },
     select: { id: true, email: true, name: true, isActive: true },
   });
+  // Logged even for unknown emails: a run of them is someone probing for accounts.
+  await auditAccount.passwordResetRequest(
+    user?.id ?? null,
+    { email, outcome: !user ? 'unknown_email' : !user.isActive ? 'inactive_account' : 'sent' },
+    req
+  );
   if (!user || !user.isActive) return; // say nothing about unknown emails
   await issue(user, 'reset');
 }
@@ -143,7 +160,11 @@ export async function sendReplacementPassword(rawEmail: string) {
  * Called by login when the account password doesn't match. A valid emailed
  * password becomes the account password (and settles any pending invite).
  */
-export async function redeemTemporaryPassword(userId: string, password: string): Promise<boolean> {
+export async function redeemTemporaryPassword(
+  userId: string,
+  password: string,
+  req?: NextRequest
+): Promise<boolean> {
   const candidates = await prisma.temporaryPassword.findMany({
     where: { userId, consumedAt: null, expiresAt: { gt: new Date() } },
     orderBy: { createdAt: 'desc' },
@@ -168,5 +189,16 @@ export async function redeemTemporaryPassword(userId: string, password: string):
       data: { provider: 'local' },
     }),
   ]);
+  await audit(
+    {
+      userId,
+      action: 'AUTH_PASSWORD_CHANGE',
+      resource: 'user',
+      resourceId: userId,
+      details: { via: 'emailed_password' },
+      severity: 'WARN',
+    },
+    req
+  );
   return true;
 }

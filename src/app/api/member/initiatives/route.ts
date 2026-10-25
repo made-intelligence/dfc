@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { withAudit } from "@/lib/audit-route";
 
 export async function GET(request: NextRequest) {
   try {
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const token = getTokenFromCookies(request.headers.get("cookie"));
     if (!token) {
@@ -263,3 +264,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withAudit("initiative_member", handlePOST, {action: "PROFILE_UPDATE"});

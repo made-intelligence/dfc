@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromCookies, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { withAudit } from "@/lib/audit-route";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   try {
     const token = getTokenFromCookies(request.headers.get("cookie"));
     if (!token)
@@ -72,3 +73,5 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+
+export const PATCH = withAudit("spl_settings", handlePATCH, {action: "SETTINGS_UPDATE"});

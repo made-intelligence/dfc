@@ -4,6 +4,7 @@ import { UserRole } from '@prisma/client';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { checkRecordAccess } from '@/lib/emr/access';
 import { logger } from '@/lib/logger';
+import { auditConsent } from '@/lib/audit';
 
 export async function GET(request: NextRequest) {
   try {
@@ -88,6 +89,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await auditConsent.grant(payload.userId, 'record_access_grant', grant.id, {
+      patientProfileId: patientProfile.id,
+      grantedToDoctorProfileId: grantedToId,
+      scope: grant.scope,
+      expiresAt: grant.expiresAt,
+      reason,
+    }, request);
     return NextResponse.json(grant, { status: 201 });
   } catch (error) {
     logger.error('EMR:AccessGrant', error);

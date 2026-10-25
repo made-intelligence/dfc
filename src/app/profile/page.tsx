@@ -25,6 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, User, Heart, FileText, Edit, Save, X, Camera, Upload, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
+import { formatApptDate } from "@/lib/wat";
 import Topbar from "@/components/layout/Topbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/toast";
@@ -219,7 +220,7 @@ export default function ProfilePage() {
       if (response.ok) {
         const data = await response.json();
         setProfileImage(data.url);
-        
+
         // Update profile with new image
         const updateResponse = await fetch("/api/patient/profile", {
           method: "PUT",
@@ -630,10 +631,7 @@ export default function ProfilePage() {
                           </p>
                         </div>
                         <Badge variant="outline">
-                          {format(
-                            new Date(record.appointment.appointmentDate),
-                            "MMM dd, yyyy"
-                          )}
+                          {formatApptDate(record.appointment.appointmentDate)}
                         </Badge>
                       </div>
                       {record.symptoms && (

@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { uploadImage, deleteImageByUrl, ImageValidationError } from "@/lib/cloudinary";
 import { uniqueEventSlug } from "@/lib/event-slug";
 import { emptyEventStats, type EventInteractionKind, type EventStats } from "@/lib/event-tracking-kinds";
+import { withAudit } from "@/lib/audit-route";
 
 const EVENTS_FOLDER = "dfc/events";
 
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
   });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const auth = await requireAdminAuth(req);
   if (isAuthError(auth)) return auth;
 
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function PUT(req: NextRequest) {
+async function handlePUT(req: NextRequest) {
   const auth = await requireAdminAuth(req);
   if (isAuthError(auth)) return auth;
 
@@ -187,7 +188,7 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-export async function DELETE(req: NextRequest) {
+async function handleDELETE(req: NextRequest) {
   const auth = await requireAdminAuth(req);
   if (isAuthError(auth)) return auth;
 
@@ -202,3 +203,7 @@ export async function DELETE(req: NextRequest) {
   await deleteImageByUrl(event.imageUrl);
   return NextResponse.json({ success: true });
 }
+
+export const POST = withAudit("event", handlePOST);
+export const PUT = withAudit("event", handlePUT);
+export const DELETE = withAudit("event", handleDELETE);

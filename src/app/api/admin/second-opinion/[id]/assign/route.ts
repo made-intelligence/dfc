@@ -9,6 +9,8 @@ async function requireAdmin(request: NextRequest): Promise<JWTPayload | null> {
   if (!token) return null;
   const payload = await verifyToken(token) as JWTPayload;
   if (!payload || !['SUPERADMIN', 'SECRETARIAT'].includes(payload.role)) return null;
+  const user = await prisma.user.findUnique({ where: { id: payload.userId }, select: { isActive: true } });
+  if (!user?.isActive) return null;
   return payload;
 }
 

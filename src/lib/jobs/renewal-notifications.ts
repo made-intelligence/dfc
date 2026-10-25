@@ -15,7 +15,12 @@ import { logger } from "@/lib/logger";
  * Day +7:  Grace period ending (WhatsApp)
  * Day +30: Membership suspended
  *
- * Intended to run daily via cron.
+ * Runs daily (src/app/api/cron/daily). Each stage's window spans a few days
+ * so a missed run does not skip it, and each notice is sent once per stage.
+ *
+ * Suspension only applies as a member passes 30 days lapsed (days 30-37).
+ * Members who lapsed long before this job was first scheduled are left for
+ * the secretariat to review, rather than suspended in one batch.
  */
 
 interface RenewalNotificationResult {
@@ -133,8 +138,8 @@ export async function runRenewalNotifications(): Promise<RenewalNotificationResu
         result.gracePeriodEnding++;
       }
 
-      // Day +30: Suspend membership
-      if (daysUntilExpiry <= -30 && member.status === "ACTIVE") {
+      // Day +30: Suspend membership (only as the member newly passes 30 days)
+      if (daysUntilExpiry <= -30 && daysUntilExpiry >= -37 && member.status === "ACTIVE") {
         await prisma.dFCMember.update({
           where: { id: member.id },
           data: {
@@ -171,6 +176,13 @@ async function createRenewalNotification(
   message: string,
   link: string
 ): Promise<void> {
+  // Stage windows span several days; send each stage once.
+  const recent = await prisma.notification.findFirst({
+    where: { userId, title, createdAt: { gte: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000) } },
+    select: { id: true },
+  });
+  if (recent) return;
+
   await prisma.notification.create({
     data: { userId, title, message, type: "warning", link },
   });

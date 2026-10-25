@@ -16,7 +16,6 @@ import {
   Settings,
   LogOut,
   User,
-  CreditCard,
   Clock,
   Activity,
   Shield,
@@ -33,12 +32,16 @@ import {
   Lightbulb,
   UserCog,
   KeyRound,
+  Pill,
+  ScrollText,
   PanelLeftClose,
   PanelLeftOpen,
+  ChevronDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { useSidebarCollapsed } from "@/lib/sidebar-collapse";
+import { useClosedSidebarSections } from "@/lib/sidebar-sections";
 
 type NavItem = {
   name: string;
@@ -57,6 +60,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Desktop only: shrink the sidebar to an icon rail.
   const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
+  const { closed: closedSections, toggle: toggleSection } = useClosedSidebarSections();
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -128,6 +132,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       items.push({ section: "Clinical", name: "Second Opinion", href: "/admin/second-opinion", icon: FileText });
       items.push({ section: "Clinical", name: "Clinical Governance", href: "/admin/clinical", icon: Shield });
       items.push({ section: "Clinical", name: "Appointments", href: "/admin/appointments", icon: Calendar });
+      items.push({ section: "Clinical", name: "Pharmacies", href: "/admin/pharmacies", icon: Pill });
 
       items.push({ section: "Outreach", name: "Events", href: "/admin/events", icon: CalendarDays });
       items.push({ section: "Outreach", name: "SPL Partners", href: "/admin/spl", icon: Building2 });
@@ -145,6 +150,9 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       if (hasPermission('system_settings')) {
         items.push({ section: "System", name: "Settings", href: "/admin/settings", icon: Settings });
       }
+      if (user.role === UserRole.SUPERADMIN) {
+        items.push({ section: "System", name: "Audit Log", href: "/admin/audit-logs", icon: ScrollText });
+      }
       items.push({ section: "System", name: "Beta Feedback", href: "/admin/beta-feedback", icon: MessageSquare });
     } else if (user.role === UserRole.DFC_MEMBER) {
       items.push(
@@ -157,7 +165,6 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
         { section: "Clinical", name: "Appointments", href: "/doctor/appointments", icon: Calendar },
         { section: "Clinical", name: "Schedule", href: "/doctor/schedule", icon: Clock },
 
-        { section: "Account", name: "Subscription", href: "/doctor/subscription", icon: CreditCard },
         { section: "Account", name: "Profile", href: "/doctor/profile", icon: User },
       );
     }
@@ -166,6 +173,18 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   };
 
   const navigationItems = getNavigationItems();
+
+  // Consecutive items sharing a section become one collapsible group.
+  const navigationSections: { section?: string; items: NavItem[] }[] = [];
+  for (const item of navigationItems) {
+    const last = navigationSections[navigationSections.length - 1];
+    if (last && last.section === item.section) last.items.push(item);
+    else navigationSections.push({ section: item.section, items: [item] });
+  }
+
+  const isActiveItem = (item: NavItem) =>
+    pathname === item.href ||
+    (item.href !== "/admin" && item.href !== "/doctor" && pathname.startsWith(item.href + "/"));
 
   return (
     <div className="h-dvh overflow-hidden bg-gray-50 flex">
@@ -219,41 +238,63 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
 
         <nav className={`mt-6 px-3 pb-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain ${collapsed ? "lg:px-2" : ""}`}>
           <div className="space-y-1">
-            {navigationItems.map((item, index) => {
-              const isActive = pathname === item.href ||
-                (item.href !== "/admin" && item.href !== "/doctor" && pathname.startsWith(item.href + "/"));
-              const startsSection =
-                !!item.section && item.section !== navigationItems[index - 1]?.section;
+            {navigationSections.map((group, groupIndex) => {
+              const isClosed = !!group.section && closedSections.includes(group.section);
+              const holdsActive = group.items.some(isActiveItem);
+              const listId = `sidebar-section-${groupIndex}`;
               return (
-                <div key={item.href}>
-                  {startsSection && (
-                    <p
-                      className={`px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/30 ${
-                        index === 0 ? "pt-1" : "pt-4"
+                <div key={group.section ?? groupIndex}>
+                  {group.section && (
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(group.section!)}
+                      aria-expanded={!isClosed}
+                      aria-controls={listId}
+                      className={`group flex w-full items-center justify-between rounded px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/30 hover:text-white/60 ${
+                        groupIndex === 0 ? "pt-1" : "pt-4"
                       } ${collapsed ? "lg:hidden" : ""}`}
                     >
-                      {item.section}
-                    </p>
+                      <span className="flex items-center gap-2">
+                        {group.section}
+                        {/* The page you're on is tucked inside a closed section. */}
+                        {isClosed && holdsActive && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-white/70" aria-hidden />
+                        )}
+                      </span>
+                      <ChevronDown
+                        className={`h-3 w-3 transition-transform ${isClosed ? "-rotate-90" : ""}`}
+                        aria-hidden
+                      />
+                    </button>
                   )}
                   {/* Collapsed: a thin rule stands in for the section heading. */}
-                  {startsSection && collapsed && index > 0 && (
+                  {group.section && collapsed && groupIndex > 0 && (
                     <div className="hidden lg:block mx-2 my-3 border-t border-white/15" />
                   )}
-                  <Button
-                    variant="ghost"
-                    title={collapsed ? item.name : undefined}
-                    aria-label={item.name}
-                    className={`w-full justify-start hover:bg-white/10 hover:text-white ${
-                      isActive ? "bg-white/10 text-white" : "text-white/70"
-                    } ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
-                    onClick={() => {
-                      router.push(item.href);
-                      setSidebarOpen(false);
-                    }}
+                  {/* The icon rail has no headings to reopen a section from, so it always lists everything. */}
+                  <div
+                    id={listId}
+                    className={`space-y-1 ${isClosed ? (collapsed ? "hidden lg:block" : "hidden") : ""}`}
                   >
-                    <item.icon className={`mr-3 h-5 w-5 shrink-0 ${collapsed ? "lg:mr-0" : ""}`} />
-                    <span className={`truncate ${collapsed ? "lg:hidden" : ""}`}>{item.name}</span>
-                  </Button>
+                    {group.items.map((item) => (
+                      <Button
+                        key={item.href}
+                        variant="ghost"
+                        title={collapsed ? item.name : undefined}
+                        aria-label={item.name}
+                        className={`w-full justify-start hover:bg-white/10 hover:text-white ${
+                          isActiveItem(item) ? "bg-white/10 text-white" : "text-white/70"
+                        } ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
+                        onClick={() => {
+                          router.push(item.href);
+                          setSidebarOpen(false);
+                        }}
+                      >
+                        <item.icon className={`mr-3 h-5 w-5 shrink-0 ${collapsed ? "lg:mr-0" : ""}`} />
+                        <span className={`truncate ${collapsed ? "lg:hidden" : ""}`}>{item.name}</span>
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               );
             })}

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { appUrl } from '@/lib/app-url';
+import { audit } from '@/lib/audit';
 
 // Initialize Paystack payment for a second opinion case
 export async function POST(request: NextRequest) {
@@ -80,6 +81,13 @@ export async function POST(request: NextRequest) {
       where: { id: caseId },
       data: { paymentReference: reference },
     });
+    await audit({
+      userId: payload?.userId ?? soCase.userId,
+      action: 'PAYMENT_INIT',
+      resource: 'payment',
+      resourceId: reference,
+      details: { type: 'SECOND_OPINION', caseId, amount: soCase.amountKobo / 100 },
+    }, request);
 
     return NextResponse.json({
       success: true,

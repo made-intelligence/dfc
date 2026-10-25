@@ -9,8 +9,18 @@ import { logger } from "@/lib/logger";
  * 2. Prescriptions not yet dispensed after 7 days — notify physician
  * 3. Medications past their end date — mark as COMPLETED
  *
- * Intended to run daily via cron.
+ * Runs daily (src/app/api/cron/daily). Each alert is sent once per
+ * prescription, however many daily runs fall inside its window.
  */
+
+/** True if this user already has a notification with this title about this prescription. */
+async function alreadyNotified(userId: string, title: string, rxNumber: string): Promise<boolean> {
+  const existing = await prisma.notification.findFirst({
+    where: { userId, title, message: { contains: rxNumber } },
+    select: { id: true },
+  });
+  return !!existing;
+}
 export async function runAdherenceMonitoring(): Promise<{
   expiryWarnings: number;
   undispensedAlerts: number;
@@ -40,19 +50,23 @@ export async function runAdherenceMonitoring(): Promise<{
       },
     });
 
+    let expiryWarnings = 0;
     for (const rx of expiringPrescriptions) {
       const patientUserId = rx.encounter.patient.userId;
       const doctorName = rx.encounter.doctor.user.name;
+      const title = "Prescription expiring soon";
+      if (await alreadyNotified(patientUserId, title, rx.rxNumber)) continue;
 
       await prisma.notification.create({
         data: {
           userId: patientUserId,
-          title: "Prescription expiring soon",
-          message: `Your prescription ${rx.rxNumber} from Dr. ${doctorName} expires in 3 days. Please collect your medication.`,
+          title,
+          message: `Your prescription ${rx.rxNumber} from Dr. ${doctorName} expires within 3 days. Please collect your medication.`,
           type: "warning",
-          link: `/prescriptions/${rx.id}`,
+          link: "/profile",
         },
       });
+      expiryWarnings++;
     }
 
     // 2. Prescriptions not dispensed after 7 days — notify physician
@@ -69,24 +83,28 @@ export async function runAdherenceMonitoring(): Promise<{
         prescribedById: true,
         encounter: {
           select: {
-            patient: { select: { user: { select: { name: true } } } },
+            patient: { select: { id: true, user: { select: { name: true } } } },
           },
         },
       },
     });
 
+    let undispensedAlerts = 0;
     for (const rx of undispensedPrescriptions) {
       const patientName = rx.encounter.patient.user.name;
+      const title = "Undispensed prescription";
+      if (await alreadyNotified(rx.prescribedById, title, rx.rxNumber)) continue;
 
       await prisma.notification.create({
         data: {
           userId: rx.prescribedById,
-          title: "Undispensed prescription",
+          title,
           message: `Prescription ${rx.rxNumber} for ${patientName} has not been collected after 7 days.`,
           type: "info",
-          link: `/emr/prescriptions/${rx.id}`,
+          link: `/doctor/emr/${rx.encounter.patient.id}`,
         },
       });
+      undispensedAlerts++;
     }
 
     // 3. Medications past end date — mark as COMPLETED
@@ -102,12 +120,12 @@ export async function runAdherenceMonitoring(): Promise<{
 
     logger.info(
       "Adherence",
-      `Daily adherence: ${expiringPrescriptions.length} expiry warnings, ${undispensedPrescriptions.length} undispensed alerts, ${completedResult.count} medications completed`
+      `Daily adherence: ${expiryWarnings} expiry warnings, ${undispensedAlerts} undispensed alerts, ${completedResult.count} medications completed`
     );
 
     return {
-      expiryWarnings: expiringPrescriptions.length,
-      undispensedAlerts: undispensedPrescriptions.length,
+      expiryWarnings,
+      undispensedAlerts,
       completedMedications: completedResult.count,
     };
   } catch (error) {

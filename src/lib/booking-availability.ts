@@ -19,6 +19,18 @@ export async function getBookedSlots(doctorUserId: string, dateIso: string): Pro
   });
 }
 
+/** Every slot the doctor still has free on that day (WAT times). */
+export async function getOpenSlots(doctorUserId: string, dateIso: string): Promise<Slot[]> {
+  const profile = await prisma.doctorProfile.findUnique({
+    where: { userId: doctorUserId },
+    select: { schedules: true },
+  });
+  if (!profile) return [];
+  const blocks = blocksForDate(profile.schedules, ymdOfWizardDate(dateIso));
+  const booked = await getBookedSlots(doctorUserId, dateIso);
+  return generateDaySlots(blocks, booked);
+}
+
 /**
  * The slot starting at `time` on that day if the doctor's schedule offers it
  * and it still has room; null otherwise.
@@ -28,12 +40,6 @@ export async function findOpenSlot(
   dateIso: string,
   time: string
 ): Promise<Slot | null> {
-  const profile = await prisma.doctorProfile.findUnique({
-    where: { userId: doctorUserId },
-    select: { schedules: true },
-  });
-  if (!profile) return null;
-  const blocks = blocksForDate(profile.schedules, ymdOfWizardDate(dateIso));
-  const booked = await getBookedSlots(doctorUserId, dateIso);
-  return generateDaySlots(blocks, booked).find((s) => s.startTime === time) ?? null;
+  const open = await getOpenSlots(doctorUserId, dateIso);
+  return open.find((s) => s.startTime === time) ?? null;
 }

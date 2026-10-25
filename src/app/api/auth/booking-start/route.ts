@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       email,
       name,
       phone: typeof phone === 'string' ? phone.slice(0, 20) : undefined,
-    });
+    }, request);
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof TemporaryPasswordError) {

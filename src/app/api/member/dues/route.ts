@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { audit } from '@/lib/audit';
 
 const ANNUAL_DUES_KOBO = 15000000; // ₦150,000 in kobo
 import { appUrl } from "@/lib/app-url";
@@ -94,6 +95,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      await audit({
+        userId: payload.userId,
+        action: 'PAYMENT_INIT',
+        resource: 'payment',
+        resourceId: paystackData.data.reference,
+        details: { type: 'ANNUAL_DUES', amount: ANNUAL_DUES_KOBO / 100 },
+      }, request);
       return NextResponse.json({
         success: true,
         authorization_url: paystackData.data.authorization_url,
@@ -140,6 +148,14 @@ export async function POST(request: NextRequest) {
           expected: ANNUAL_DUES_KOBO,
           currency: verifyData.data.currency,
         });
+        await audit({
+          userId: payload.userId,
+          action: 'PAYMENT_VERIFY',
+          resource: 'payment',
+          resourceId: reference,
+          details: { outcome: 'amount_mismatch', type: 'ANNUAL_DUES', amount: verifyData.data.amount, expectedKobo: ANNUAL_DUES_KOBO, currency: verifyData.data.currency },
+          severity: 'CRITICAL',
+        }, request);
         return NextResponse.json(
           { error: 'Payment amount does not match the annual dues.' },
           { status: 400 }
@@ -148,6 +164,14 @@ export async function POST(request: NextRequest) {
       const paidBy = verifyData.data.metadata?.userId;
       if (paidBy && paidBy !== payload.userId) {
         logger.error('MemberDues', 'Dues payer mismatch', { reference, paidBy, caller: payload.userId });
+        await audit({
+          userId: payload.userId,
+          action: 'PAYMENT_VERIFY',
+          resource: 'payment',
+          resourceId: reference,
+          details: { outcome: 'payer_mismatch', type: 'ANNUAL_DUES', paidBy },
+          severity: 'CRITICAL',
+        }, request);
         return NextResponse.json(
           { error: 'This payment does not belong to your account.' },
           { status: 403 }
@@ -196,6 +220,13 @@ export async function POST(request: NextRequest) {
         });
       });
 
+      await audit({
+        userId: payload.userId,
+        action: 'PAYMENT_VERIFY',
+        resource: 'payment',
+        resourceId: reference,
+        details: { outcome: 'paid', type: 'ANNUAL_DUES', amount: ANNUAL_DUES_KOBO / 100, duesExpiresAt: expiresAt.toISOString() },
+      }, request);
       return NextResponse.json({
         success: true,
         message: 'Dues payment confirmed',

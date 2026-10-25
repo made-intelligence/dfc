@@ -33,6 +33,10 @@ interface Subscription {
   createdAt: string;
 }
 
+// Switched off until there is a real payment flow; the API refuses new
+// subscriptions too (api/doctor/subscription).
+const SUBSCRIPTIONS_ENABLED = false;
+
 const SUBSCRIPTION_PLANS = [
   {
     name: "Basic",
@@ -237,7 +241,20 @@ export default function SubscriptionPage() {
         </Card>
       )}
 
+      {!SUBSCRIPTIONS_ENABLED && (
+        <Card>
+          <CardContent className="flex items-start gap-3 p-6">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-gray-400" />
+            <p className="text-sm text-gray-600">
+              Doctor subscriptions aren&apos;t available. Your DFC membership is covered by your
+              annual dues, and there is nothing to pay here.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Subscription Plans */}
+      {SUBSCRIPTIONS_ENABLED && (
       <div>
         <h2 className="text-xl font-semibold mb-4">Available Plans</h2>
         <div className="grid md:grid-cols-3 gap-6">
@@ -282,6 +299,7 @@ export default function SubscriptionPage() {
           ))}
         </div>
       </div>
+      )}
 
       {/* Subscription History */}
       {subscriptionHistory.length > 0 && (
