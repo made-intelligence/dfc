@@ -31,6 +31,7 @@ import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/toast";
 import { Loading } from "@/components/ui/loading";
 import HealthRecord from "@/components/profile/HealthRecord";
+import { ChangePasswordCard } from "@/components/account/ChangePasswordCard";
 
 interface MedicalRecord {
   id: string;
@@ -693,6 +694,8 @@ export default function ProfilePage() {
               )}
             </CardContent>
           </Card>
+
+          <ChangePasswordCard />
         </div>
 
         {/* Stats Sidebar */}

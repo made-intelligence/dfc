@@ -14,10 +14,10 @@ import {
   ShieldCheck,
   FileText,
   Settings,
-  LogOut,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
+import { AccountMenu } from "./AccountMenu";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { useSidebarCollapsed } from "@/lib/sidebar-collapse";
 
@@ -184,33 +184,6 @@ export function HospitalDashboardLayout({
             })}
           </div>
         </nav>
-
-        <div className={`shrink-0 p-4 border-t border-[#1a3258] ${collapsed ? "lg:px-2" : ""}`}>
-          <div className={`flex items-center mb-4 ${collapsed ? "lg:justify-center" : ""}`}>
-            <div className="flex-shrink-0" title={collapsed ? `${user.name} (Hospital Admin)` : undefined}>
-              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                <span className="text-[#0D1F3C] text-sm font-medium">
-                  {user.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            </div>
-            <div className={`ml-3 min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
-              <p className="text-sm font-medium text-white truncate">{user.name}</p>
-              <p className="text-xs text-gray-400">Hospital Admin</p>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className={`w-full cursor-pointer hover:text-red-800 text-red-700 ${collapsed ? "lg:px-0" : ""}`}
-            onClick={handleLogout}
-            title={collapsed ? "Sign Out" : undefined}
-            aria-label="Sign Out"
-          >
-            <LogOut className={`mr-2 h-4 w-4 ${collapsed ? "lg:mr-0" : ""}`} />
-            <span className={collapsed ? "lg:hidden" : ""}>Sign Out</span>
-          </Button>
-        </div>
       </div>
 
       {/* Main content */}
@@ -244,9 +217,14 @@ export function HospitalDashboardLayout({
 
             <div className="flex items-center space-x-4">
               <NotificationsDropdown />
-              <div className="text-sm text-gray-600">
-                Welcome, {user.name}
-              </div>
+              <AccountMenu
+                name={user.name}
+                email={user.email}
+                subtitle="Hospital Admin"
+                profileHref="/hospital/settings"
+                profileLabel="Settings"
+                onSignOut={handleLogout}
+              />
             </div>
           </div>
         </div>

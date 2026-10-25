@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Loader2, Save, Building2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { ChangePasswordCard } from "@/components/account/ChangePasswordCard";
 
 interface PartnerData {
   id: string;
@@ -258,6 +259,8 @@ export default function SPLSettingsPage() {
           </div>
         </div>
       </div>
+
+      <ChangePasswordCard />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "@/lib/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { AccountMenu } from "./AccountMenu";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { useSidebarCollapsed } from "@/lib/sidebar-collapse";
 import Image from "next/image";
@@ -19,7 +20,6 @@ import {
   Receipt,
   BarChart3,
   Settings,
-  LogOut,
 } from "lucide-react";
 
 interface SPLDashboardLayoutProps {
@@ -241,41 +241,6 @@ export function SPLDashboardLayout({
             })}
           </div>
         </nav>
-
-        {/* User section at bottom */}
-        <div className={`shrink-0 p-4 border-t border-white/10 ${collapsed ? "lg:px-2" : ""}`}>
-          <div className={`flex items-center mb-4 ${collapsed ? "lg:justify-center" : ""}`}>
-            <div className="flex-shrink-0" title={collapsed ? user.name : undefined}>
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: "#0A6E75" }}
-              >
-                <span className="text-white text-sm font-medium">
-                  {user.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            </div>
-            <div className={`ml-3 min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
-              <p className="text-sm font-medium text-white truncate">
-                {user.name}
-              </p>
-              <p className="text-xs text-gray-400 capitalize">
-                {profile?.role?.toLowerCase() || "admin"}
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className={`w-full cursor-pointer hover:text-red-800 text-red-700 border-red-700/30 ${collapsed ? "lg:px-0" : ""}`}
-            onClick={handleLogout}
-            title={collapsed ? "Sign Out" : undefined}
-            aria-label="Sign Out"
-          >
-            <LogOut className={`mr-2 h-4 w-4 ${collapsed ? "lg:mr-0" : ""}`} />
-            <span className={collapsed ? "lg:hidden" : ""}>Sign Out</span>
-          </Button>
-        </div>
       </div>
 
       {/* Main content */}
@@ -309,9 +274,14 @@ export function SPLDashboardLayout({
 
             <div className="flex items-center space-x-4">
               <NotificationsDropdown />
-              <div className="text-sm text-gray-600">
-                Welcome, {user.name}
-              </div>
+              <AccountMenu
+                name={user.name}
+                email={user.email}
+                subtitle={profile?.role?.toLowerCase() || "admin"}
+                profileHref="/spl/settings"
+                profileLabel="Settings"
+                onSignOut={handleLogout}
+              />
             </div>
           </div>
         </div>
