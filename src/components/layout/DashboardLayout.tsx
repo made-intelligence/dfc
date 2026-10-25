@@ -154,6 +154,8 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
         items.push({ section: "System", name: "Audit Log", href: "/admin/audit-logs", icon: ScrollText });
       }
       items.push({ section: "System", name: "Beta Feedback", href: "/admin/beta-feedback", icon: MessageSquare });
+
+      items.push({ section: "Account", name: "My Profile", href: "/admin/profile", icon: User });
     } else if (user.role === UserRole.DFC_MEMBER) {
       items.push(
         { section: "Overview", name: "Dashboard", href: "/doctor", icon: Home },
@@ -185,6 +187,9 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const isActiveItem = (item: NavItem) =>
     pathname === item.href ||
     (item.href !== "/admin" && item.href !== "/doctor" && pathname.startsWith(item.href + "/"));
+
+  const profileHref =
+    user.role === UserRole.DFC_MEMBER ? "/doctor/profile" : "/admin/profile";
 
   return (
     <div className="h-dvh overflow-hidden bg-gray-50 flex">
@@ -302,7 +307,15 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
         </nav>
 
         <div className={`shrink-0 p-4 border-t border-white/10 ${collapsed ? "lg:px-2" : ""}`}>
-          <div className={`flex items-center mb-4 ${collapsed ? "lg:justify-center" : ""}`}>
+          <button
+            type="button"
+            onClick={() => {
+              router.push(profileHref);
+              setSidebarOpen(false);
+            }}
+            aria-label="Profile settings"
+            className={`flex w-full items-center mb-3 rounded-md p-1 text-left cursor-pointer hover:bg-white/10 ${collapsed ? "lg:justify-center" : ""}`}
+          >
             <div className="flex-shrink-0" title={collapsed ? `${user.name} (${user.email})` : undefined}>
               <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
                 <span className="text-[#0D1F3C] text-sm font-medium">
@@ -317,7 +330,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
                 {user.role.toLowerCase()}
               </p>
             </div>
-          </div>
+          </button>
           <Button
             variant="outline"
             size="sm"
