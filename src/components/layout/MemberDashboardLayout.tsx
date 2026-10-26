@@ -13,7 +13,6 @@ import {
   CreditCard,
   FileText,
   Users,
-  LogOut,
   Calendar,
   Clock,
   Activity,
@@ -24,6 +23,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { AccountMenu } from "./AccountMenu";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { getCategoryLabel } from "@/lib/utils/member";
 import { useSidebarCollapsed } from "@/lib/sidebar-collapse";
@@ -159,12 +159,6 @@ export function MemberDashboardLayout({ children }: MemberDashboardLayoutProps) 
           </Button>
         </div>
 
-        {/* Member info */}
-        <div className={`px-4 py-4 border-b border-white/10 shrink-0 ${collapsed ? "lg:hidden" : ""}`}>
-          <p className="text-sm font-medium text-white truncate">{user.name}</p>
-          <p className="text-xs text-white/50 mt-0.5">{categoryLabel}</p>
-        </div>
-
         <nav className={`mt-4 px-3 pb-4 flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain ${collapsed ? "lg:px-2" : ""}`}>
           {/* Member nav */}
           <p className={`px-3 mb-2 text-[10px] uppercase tracking-widest text-white/30 font-semibold ${collapsed ? "lg:hidden" : ""}`}>
@@ -203,20 +197,6 @@ export function MemberDashboardLayout({ children }: MemberDashboardLayoutProps) 
             )}
           </div>
         </nav>
-
-        <div className={`shrink-0 p-4 border-t border-white/10 ${collapsed ? "lg:px-2" : ""}`}>
-          <Button
-            variant="outline"
-            size="sm"
-            className={`w-full cursor-pointer hover:text-red-800 text-red-700 ${collapsed ? "lg:px-0" : ""}`}
-            onClick={handleLogout}
-            title={collapsed ? "Sign Out" : undefined}
-            aria-label="Sign Out"
-          >
-            <LogOut className={`mr-2 h-4 w-4 ${collapsed ? "lg:mr-0" : ""}`} />
-            <span className={collapsed ? "lg:hidden" : ""}>Sign Out</span>
-          </Button>
-        </div>
       </div>
 
       {/* Main content */}
@@ -245,9 +225,13 @@ export function MemberDashboardLayout({ children }: MemberDashboardLayoutProps) 
             <div className="flex-1" />
             <div className="flex items-center space-x-4">
               <NotificationsDropdown />
-              <div className="text-sm text-gray-600 hidden sm:block">
-                {user.name}
-              </div>
+              <AccountMenu
+                name={user.name}
+                email={user.email}
+                subtitle={categoryLabel}
+                profileHref="/member/profile"
+                onSignOut={handleLogout}
+              />
             </div>
           </div>
         </div>

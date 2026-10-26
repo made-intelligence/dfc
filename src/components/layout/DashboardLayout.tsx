@@ -14,7 +14,6 @@ import {
   Calendar,
   FileText,
   Settings,
-  LogOut,
   User,
   Clock,
   Activity,
@@ -39,14 +38,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { AccountMenu } from "./AccountMenu";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { useSidebarCollapsed } from "@/lib/sidebar-collapse";
 import { useClosedSidebarSections } from "@/lib/sidebar-sections";
@@ -344,35 +336,13 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
 
             <div className="flex items-center space-x-4">
               <NotificationsDropdown />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Account menu"
-                    className="flex items-center gap-2 rounded-md px-2 py-1 text-right text-sm leading-tight cursor-pointer hover:bg-gray-100"
-                  >
-                    <div className="min-w-0 max-w-[10rem] sm:max-w-xs">
-                      <div className="text-gray-900 font-medium truncate">{user.name}</div>
-                      <div className="text-gray-500 text-xs truncate">{user.email}</div>
-                    </div>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel className="text-xs font-normal capitalize text-gray-500">
-                    {user.role.toLowerCase()}
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => router.push(profileHref)}>
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={handleLogout} className="text-red-700 focus:text-red-800">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <AccountMenu
+                name={user.name}
+                email={user.email}
+                subtitle={user.role.toLowerCase()}
+                profileHref={profileHref}
+                onSignOut={handleLogout}
+              />
             </div>
           </div>
         </div>

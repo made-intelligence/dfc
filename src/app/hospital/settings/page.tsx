@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { ChangePasswordCard } from "@/components/account/ChangePasswordCard";
 
 interface HospitalData {
   id: string;
@@ -309,6 +310,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </form>
+
+      <ChangePasswordCard />
     </div>
   );
 }

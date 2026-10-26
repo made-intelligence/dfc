@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/toast";
+import { ChangePasswordCard } from "@/components/account/ChangePasswordCard";
 import { SPECIALTIES, subSpecialtiesFor } from "@/lib/specialties";
 import { useFeatures } from "@/lib/useFeatures";
 import {
@@ -1338,6 +1339,10 @@ export default function MemberProfilePage() {
           </form>
         )}
       </SectionCard>
+
+      <div className="mt-6">
+        <ChangePasswordCard />
+      </div>
 
       {/* Bottom spacer */}
       <div className="h-8" />

@@ -34,6 +34,7 @@ import {
 import { Loading } from "@/components/ui/loading";
 import Image from "next/image";
 import { useToast } from "@/components/ui/toast";
+import { ChangePasswordCard } from "@/components/account/ChangePasswordCard";
 
 interface DoctorProfile {
   id: string;
@@ -424,6 +425,8 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      <ChangePasswordCard />
     </div>
   );
 }
