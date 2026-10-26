@@ -6,6 +6,7 @@ import { appUrl } from '@/lib/app-url';
 import { secureEquals } from '@/lib/secure-compare';
 import { sendEmail } from '@/lib/email/service';
 import { logger } from '@/lib/logger';
+import { formatInstantWat } from '@/lib/wat';
 import SecondOpinionUpdate, { type SecondOpinionEvent } from '@/emails/SecondOpinionUpdate';
 
 /**
@@ -188,11 +189,7 @@ export async function notifySecondOpinion(caseId: string, event: SecondOpinionEv
     if (!soCase?.contactEmail) return;
 
     const callTime = soCase.videoCallScheduledAt
-      ? soCase.videoCallScheduledAt.toLocaleString('en-GB', {
-          dateStyle: 'full',
-          timeStyle: 'short',
-          timeZone: 'Africa/Lagos',
-        }) + ' (Lagos time)'
+      ? `${formatInstantWat(soCase.videoCallScheduledAt)} (West Africa Time, GMT+1)`
       : undefined;
 
     const subjects: Record<SecondOpinionEvent, string> = {

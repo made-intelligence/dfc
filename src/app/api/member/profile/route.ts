@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { auditAccount } from '@/lib/audit';
 import { generateDoctorSlug } from '@/lib/utils/slug';
 
 export async function GET(request: NextRequest) {
@@ -156,6 +157,10 @@ export async function PATCH(request: NextRequest) {
       }
     });
 
+    await auditAccount.profileUpdate(payload.userId, 'member_profile', payload.userId, {
+      fields: Object.keys(body).filter((k) => body[k] !== undefined),
+      mdcnNumber,
+    }, request);
     return NextResponse.json({ success: true, message: 'Profile updated' });
   } catch (error) {
     logger.error('MemberProfile', error);

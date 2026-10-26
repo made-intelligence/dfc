@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     // booking account's first one, or a "forgot password" replacement).
     const isValidPassword =
       (!!user.password && (await verifyPassword(password, user.password))) ||
-      (await redeemTemporaryPassword(user.id, password));
+      (await redeemTemporaryPassword(user.id, password, request));
     if (!isValidPassword) {
       auditAuth.loginFailed(email, request);
       // Accounts created by the secretariat have no password until the member

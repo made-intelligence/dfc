@@ -326,6 +326,8 @@ model Appointment {
   
   patientJoinedAt                   DateTime?
   doctorJoinedAt                    DateTime?
+  reminderDaySentAt                 DateTime?               // day-before reminder email
+  reminderHourSentAt                DateTime?               // starting-soon reminder email
 
   patientLocation                   String?
   doctorLocation                    String?
@@ -1998,6 +2000,11 @@ model PartnerPharmacy {
   apiEndpoint     String?                   // for API-connected pharmacies
   paystackSubAccountCode String?
   isActive        Boolean                   @default(true)
+  // Each pharmacy's own API key: only its SHA-256 is stored; the prefix lets
+  // admins tell keys apart. The key itself is shown once, when issued.
+  apiKeyHash      String?                   @unique
+  apiKeyPrefix    String?
+  apiKeyIssuedAt  DateTime?
   dispensingLogs  PharmacyDispensingLog[]
   createdAt       DateTime                  @default(now())
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { watDayRange, watMidnight, watNow } from "@/lib/wat";
 import { UserRole, AppointmentStatus } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
@@ -25,13 +26,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // "Today" is the WAT day, the clock appointments are booked on.
+    const todayYmd = watNow().ymd;
+    const { gte: today, lt: tomorrow } = watDayRange(todayYmd);
 
-    const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const [year, month] = todayYmd.split("-").map(Number);
+    const thisMonth = watMidnight(`${year}-${String(month).padStart(2, "0")}-01`);
+    const nextMonth = watMidnight(
+      month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`
+    );
 
     // Get today's appointments
     const todayAppointments = await prisma.appointment.findMany({

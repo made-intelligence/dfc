@@ -4,6 +4,7 @@ import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { checkRecordAccess } from '@/lib/emr/access';
 import { checkDrugAllergy } from '@/lib/ai/cdss';
+import { recordUnavailableCheck } from '@/lib/ai/cdss-alerts';
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,6 +54,18 @@ export async function POST(request: NextRequest) {
         severity: a.severity,
       })),
     );
+
+    if (result.unavailable) {
+      await recordUnavailableCheck({
+        patientId,
+        encounterId,
+        generatedForId: doctorProfile.id,
+        category: 'DRUG_ALLERGY',
+        title: `Allergy check for ${newDrug} could not run`,
+        body: `${result.explanation}\n\nSuggestion: ${result.suggestion}`,
+        sourceData: { newDrug, newDrugClass },
+      });
+    }
 
     // Create CDSS alert if interaction found
     if (result.hasInteraction) {

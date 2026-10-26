@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { format, startOfDay } from "date-fns";
 import { blocksForDate, generateDaySlots, localYmd, type ScheduleBlock, type Slot } from "@/lib/schedule-slots";
+import { formatApptDate, watMidnightIso, watNow, WAT_LABEL, WAT_LONG_LABEL } from "@/lib/wat";
 
 type WizardBlock = ScheduleBlock & { consultationMode?: string; location?: string | null };
 import { Calendar as CalendarIcon, Clock, CreditCard, CheckCircle, Loader2, Video, MapPin, User, Mail, Phone, Lock, MailCheck } from "lucide-react";
@@ -26,6 +26,7 @@ interface BookingWizardProps {
 export function BookingWizard({ doctor }: BookingWizardProps) {
   const { user, login } = useAuth();
   const [step, setStep] = useState(1);
+  // The calendar works in calendar days; the day picked is a WAT date (see lib/wat).
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<"VIDEO" | "IN_PERSON" | null>(null);
@@ -57,7 +58,7 @@ export function BookingWizard({ doctor }: BookingWizardProps) {
     if (!date) return;
     let active = true;
     setBookedSlots([]);
-    fetch(`/api/public/doctors/booked-slots?doctorId=${doctor.id}&date=${encodeURIComponent(startOfDay(date).toISOString())}`)
+    fetch(`/api/public/doctors/booked-slots?doctorId=${doctor.id}&date=${encodeURIComponent(watMidnightIso(localYmd(date)))}`)
       .then((res) => (res.ok ? res.json() : { booked: [] }))
       .then((data) => {
         if (active) setBookedSlots(data.booked || []);
@@ -108,11 +109,10 @@ export function BookingWizard({ doctor }: BookingWizardProps) {
     if (!date) return [];
     let slots = generateDaySlots(blocksOn(date), bookedSlots).map((slot) => slot.startTime);
 
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    if (isToday) {
-      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      slots = slots.filter(slot => slot > currentTime);
+    // Slots are WAT times, so "already passed" is judged on the WAT clock.
+    const nowWat = watNow();
+    if (localYmd(date) === nowWat.ymd) {
+      slots = slots.filter((slot) => slot > nowWat.hhmm);
     }
 
     return slots;
@@ -198,7 +198,7 @@ export function BookingWizard({ doctor }: BookingWizardProps) {
           metadata: {
             doctorId: doctor.id,
             patientId: user.id,
-            date: startOfDay(date).toISOString(),
+            date: watMidnightIso(localYmd(date)),
             time: selectedTime,
             consultationMode: selectedMode,
             clinicLocation: selectedMode === 'IN_PERSON' ? availableModes.location : null,
@@ -331,15 +331,14 @@ export function BookingWizard({ doctor }: BookingWizardProps) {
                     setSelectedTime(null);
                   }}
                   className="rounded-md border mx-auto"
-                  disabled={(date) => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    return date < today || !isDayAvailable(date);
-                  }}
+                  disabled={(day) => localYmd(day) < watNow().ymd || !isDayAvailable(day)}
                 />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold mb-3">Available Slots</h3>
+                <h3 className="font-semibold">Available Slots</h3>
+                <p className="mb-3 text-xs text-gray-500">
+                  All times are {WAT_LONG_LABEL}.
+                </p>
                 {timeSlots.length > 0 ? (
                   <div className="grid grid-cols-3 gap-2 max-h-80 overflow-y-auto">
                     {timeSlots.map(slot => (
@@ -538,11 +537,11 @@ export function BookingWizard({ doctor }: BookingWizardProps) {
               <div className="border-t border-gray-200 my-1" />
               <div className="flex justify-between">
                 <span className="text-gray-600">Date</span>
-                <span className="font-semibold">{date ? format(date, "PPP") : ""}</span>
+                <span className="font-semibold">{date ? formatApptDate(watMidnightIso(localYmd(date)), "long") : ""}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Time</span>
-                <span className="font-semibold">{selectedTime}</span>
+                <span className="font-semibold">{selectedTime ? `${selectedTime} ${WAT_LABEL}` : ""}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Consultation Type</span>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
-import { getDefaultPermissionsByRole } from "@/lib/permissions";
+import { getDefaultPermissionsByRole, requirePermission } from "@/lib/permissions";
 import { requireAdminAuth, isAuthError } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { parsePagination } from "@/lib/pagination";
@@ -22,9 +22,21 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireAdminAuth(request);
     if (isAuthError(auth)) return auth;
+    const forbidden = await requirePermission(auth, "manage_admins");
+    if (forbidden) return forbidden;
 
     const body = await request.json();
     const { name, email, phone, role, permissionIds } = body;
+
+    if (role !== UserRole.SECRETARIAT && role !== UserRole.SUPERADMIN) {
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+    }
+    if (role === UserRole.SUPERADMIN && auth.role !== UserRole.SUPERADMIN) {
+      return NextResponse.json(
+        { error: "Only a super admin can create a super admin" },
+        { status: 403 }
+      );
+    }
 
     const fieldError = validateFields(body, {
       name: { required: true, maxLength: MAX_LENGTHS.shortText },
@@ -143,6 +155,8 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAdminAuth(request);
     if (isAuthError(auth)) return auth;
+    const forbidden = await requirePermission(auth, "manage_admins");
+    if (forbidden) return forbidden;
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
@@ -173,6 +187,7 @@ export async function GET(request: NextRequest) {
             role: true,
             isActive: true,
             createdAt: true,
+            password: true,
             adminProfile: {
               include: {
                 permissions: {
@@ -205,7 +220,11 @@ export async function GET(request: NextRequest) {
       ]);
 
     return NextResponse.json({
-      admins,
+      // Never send the hash; the client only needs to know whether one is set.
+      admins: admins.map(({ password, ...admin }) => ({
+        ...admin,
+        pendingActivation: !password,
+      })),
       stats: {
         totalAdmins,
         activeAdmins,

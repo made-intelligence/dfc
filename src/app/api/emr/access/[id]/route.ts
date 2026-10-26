@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { UserRole } from '@prisma/client';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { auditConsent } from '@/lib/audit';
 
 export async function DELETE(
   request: NextRequest,
@@ -42,6 +43,10 @@ export async function DELETE(
       },
     });
 
+    await auditConsent.revoke(payload.userId, 'record_access_grant', id, {
+      patientProfileId: grant.patientId,
+      grantedToDoctorProfileId: grant.grantedToId,
+    }, request);
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error('EMR:AccessRevoke', error);

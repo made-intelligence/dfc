@@ -3,115 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
-import { toMinutes, weekdayOfYmd } from "@/lib/schedule-slots";
-
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-const toDbDate = (ymd: string) => new Date(`${ymd}T00:00:00Z`);
-
-type BlockInput = {
-  id?: string;
-  dayOfWeek?: unknown;
-  startTime?: unknown;
-  endTime?: unknown;
-  slotDuration?: unknown;
-  bufferTime?: unknown;
-  scheduleType?: unknown;
-  isRecurring?: unknown;
-  validFrom?: unknown;
-  validUntil?: unknown;
-  maxBookingsPerSlot?: unknown;
-};
-
-/**
- * Checks a block from the schedule page and returns the fields to store, or
- * an error message. One-off blocks (isRecurring false) cover validFrom to
- * validUntil and take their weekday from validFrom.
- */
-async function normalizeBlock(
-  doctorProfileId: string,
-  block: BlockInput,
-): Promise<
-  | { error: string }
-  | { data: { dayOfWeek: number; startTime: string; endTime: string; slotDuration: number; bufferTime: number; scheduleType: "AVAILABLE" | "BLOCKED" | "HOLIDAY" | "EMERGENCY"; isRecurring: boolean; validFrom: Date | null; validUntil: Date | null; maxBookingsPerSlot: number } }
-> {
-  const { id, startTime, endTime } = block;
-  const isRecurring = block.isRecurring !== false;
-  const scheduleType = (["AVAILABLE", "BLOCKED", "HOLIDAY", "EMERGENCY"] as const).find((t) => t === block.scheduleType) ?? "AVAILABLE";
-
-  if (typeof startTime !== "string" || typeof endTime !== "string" || !TIME_RE.test(startTime) || !TIME_RE.test(endTime)) {
-    return { error: "Start and end times must be valid times." };
-  }
-  if (toMinutes(endTime) <= toMinutes(startTime)) {
-    return { error: "End time must be after the start time." };
-  }
-
-  let dayOfWeek = block.dayOfWeek;
-  let validFrom: Date | null = null;
-  let validUntil: Date | null = null;
-  if (isRecurring) {
-    if (typeof dayOfWeek !== "number" || !Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
-      return { error: "Pick a valid day." };
-    }
-  } else {
-    const from = block.validFrom;
-    const until = block.validUntil || block.validFrom;
-    if (typeof from !== "string" || !DATE_RE.test(from) || typeof until !== "string" || !DATE_RE.test(until)) {
-      return { error: "Pick the date (or dates) this applies to." };
-    }
-    if (until < from) {
-      return { error: "The end date must be on or after the start date." };
-    }
-    dayOfWeek = weekdayOfYmd(from);
-    validFrom = toDbDate(from);
-    validUntil = toDbDate(until);
-  }
-
-  const slotDuration = Number(block.slotDuration) || 30;
-  const bufferTime = Number(block.bufferTime) || 0;
-  const maxBookingsPerSlot = Math.trunc(Number(block.maxBookingsPerSlot) || 1);
-  if (maxBookingsPerSlot < 1 || maxBookingsPerSlot > 20) {
-    return { error: "Patients per slot must be between 1 and 20." };
-  }
-  if (scheduleType === "AVAILABLE" && toMinutes(endTime) - toMinutes(startTime) < slotDuration) {
-    return { error: `The block is shorter than one ${slotDuration}-minute slot.` };
-  }
-
-  // Weekly available blocks on the same day must not overlap. One-off blocks
-  // are deliberate exceptions (an extra clinic, a day off) and may.
-  if (scheduleType === "AVAILABLE" && isRecurring) {
-    const clash = await prisma.doctorSchedule.findFirst({
-      where: {
-        doctorId: doctorProfileId,
-        dayOfWeek: dayOfWeek as number,
-        scheduleType: "AVAILABLE",
-        isRecurring: true,
-        startTime: { lt: endTime },
-        endTime: { gt: startTime },
-        ...(id ? { id: { not: id } } : {}),
-      },
-    });
-    if (clash) {
-      return { error: `This overlaps your existing available block ${clash.startTime}–${clash.endTime} on the same day.` };
-    }
-  }
-
-  return {
-    data: {
-      dayOfWeek: dayOfWeek as number,
-      startTime,
-      endTime,
-      slotDuration,
-      bufferTime,
-      scheduleType,
-      isRecurring,
-      validFrom,
-      validUntil,
-      maxBookingsPerSlot,
-    },
-  };
-}
+import { scheduleBlockData } from "@/lib/doctor-schedule";
+import { auditAppointment } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -174,32 +67,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const {
-      title,
-      notes,
-      color,
-      consultationMode,
-      location,
-      ...block
-    } = await request.json();
-
-    const checked = await normalizeBlock(user.doctorProfile.id, { ...block });
+    const body = await request.json();
+    delete body.id; // a new block has no id to exclude from the overlap check
+    const checked = await scheduleBlockData(user.doctorProfile.id, body);
     if ("error" in checked) {
       return NextResponse.json({ error: checked.error }, { status: 400 });
     }
 
     const schedule = await prisma.doctorSchedule.create({
-      data: {
-        doctorId: user.doctorProfile.id,
-        title,
-        ...checked.data,
-        notes,
-        color: color || '#3B82F6',
-        consultationMode: consultationMode || 'VIDEO',
-        location: location || null,
-      },
+      data: { doctorId: user.doctorProfile.id, ...checked.data },
     });
 
+    await auditAppointment.schedule(user.id, user.id, { change: "create", by: "doctor", scheduleId: schedule.id }, request);
     return NextResponse.json(schedule);
   } catch (error) {
     logger.error('DoctorSchedule', error);
@@ -231,36 +110,21 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    const {
-      id,
-      title,
-      notes,
-      color,
-      consultationMode,
-      location,
-      ...block
-    } = await request.json();
-
-    const checked = await normalizeBlock(user.doctorProfile.id, { id, ...block });
+    const body = await request.json();
+    const checked = await scheduleBlockData(user.doctorProfile.id, body);
     if ("error" in checked) {
       return NextResponse.json({ error: checked.error }, { status: 400 });
     }
 
     const schedule = await prisma.doctorSchedule.update({
       where: {
-        id,
+        id: body.id,
         doctorId: user.doctorProfile.id,
       },
-      data: {
-        title,
-        ...checked.data,
-        notes,
-        color: color || '#3B82F6',
-        consultationMode: consultationMode || 'VIDEO',
-        location: location || null,
-      },
+      data: checked.data,
     });
 
+    await auditAppointment.schedule(user.id, user.id, { change: "update", by: "doctor", scheduleId: schedule.id }, request);
     return NextResponse.json(schedule);
   } catch (error) {
     logger.error('DoctorSchedule', error);
@@ -302,6 +166,12 @@ export async function PATCH(request: NextRequest) {
       },
     });
 
+    await auditAppointment.schedule(user.id, user.id, {
+      change: "fee",
+      by: "doctor",
+      from: user.doctorProfile.consultationFee?.toString(),
+      to: consultationFee ?? 0,
+    }, request);
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error('DoctorSchedule', error);
@@ -350,6 +220,7 @@ export async function DELETE(request: NextRequest) {
       },
     });
 
+    await auditAppointment.schedule(user.id, user.id, { change: "delete", by: "doctor", scheduleId: id }, request);
     return NextResponse.json({ success: true });
   } catch (error) {
     logger.error('DoctorSchedule', error);

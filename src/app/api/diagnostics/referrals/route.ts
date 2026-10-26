@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getTokenFromCookies, verifyToken } from "@/lib/auth";
 import { generateReferralCode } from "@/lib/diagnostics/ingestion";
 import { logger } from "@/lib/logger";
+import { audit } from "@/lib/audit";
 
 // POST — create a diagnostic referral (from EMR investigation order)
 export async function POST(request: NextRequest) {
@@ -92,6 +93,13 @@ export async function POST(request: NextRequest) {
         expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
       },
     });
+    await audit({
+      userId: payload.userId,
+      action: "EMR_UPDATE",
+      resource: "diagnostic_referral",
+      resourceId: referral.id,
+      details: { change: "create", referralCode, patientId, investigationName, patientPrice, physicianMarkup: markup },
+    }, request);
 
     return NextResponse.json(
       {

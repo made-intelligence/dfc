@@ -195,7 +195,7 @@ function PaymentCallbackContent() {
                     My Appointments
                   </Button>
                   {meetingLink && (
-                    <Button variant="outline" className="w-full" onClick={() => router.push(meetingLink)}>
+                    <Button variant="outline" className="w-full" onClick={() => window.location.assign(meetingLink)}>
                       <Video className="w-4 h-4 mr-2" />
                       Join Consultation Room
                     </Button>

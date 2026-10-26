@@ -4,6 +4,7 @@ import { UserRole } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import crypto from "crypto";
+import { audit } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,7 +50,18 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Doctor subscriptions are switched off: they never took payment or unlocked
+// anything (members pay annual dues instead). Re-enabling needs a real
+// payment flow first; see member/dues for the pattern.
+const SUBSCRIPTIONS_ENABLED = false;
+
 export async function POST(request: NextRequest) {
+  if (!SUBSCRIPTIONS_ENABLED) {
+    return NextResponse.json(
+      { error: "Doctor subscriptions are not available." },
+      { status: 410 },
+    );
+  }
   try {
     const token = getTokenFromCookies(request.headers.get("cookie"));
     if (!token) {
@@ -107,6 +119,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await audit({
+      userId: payload.userId,
+      action: "PAYMENT_INIT",
+      resource: "doctor_subscription",
+      resourceId: subscription.id,
+      details: { planName, amount, paymentReference, status: subscription.status },
+    }, request);
     return NextResponse.json(subscription);
   } catch (error) {
     logger.error('DoctorSubscription', error);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth, isAuthError, JWTPayload } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { withAudit } from "@/lib/audit-route";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminAuth(request);
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const auth = await requireAdminAuth(request);
   if (isAuthError(auth)) return auth;
   const payload = auth as JWTPayload;
@@ -89,3 +90,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withAudit("spl_contract", handlePOST);

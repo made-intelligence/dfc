@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminAuth, isAuthError } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { withAudit } from "@/lib/audit-route";
 
-export async function PATCH(
+async function handlePATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -57,3 +58,5 @@ export async function PATCH(
     );
   }
 }
+
+export const PATCH = withAudit("spl_invoice", handlePATCH);

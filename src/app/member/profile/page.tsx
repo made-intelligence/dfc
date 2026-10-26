@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/toast";
 import { SPECIALTIES, subSpecialtiesFor } from "@/lib/specialties";
+import { useFeatures } from "@/lib/useFeatures";
 import {
   Camera,
   User,
@@ -352,6 +353,7 @@ function SectionCard({
 
 export default function MemberProfilePage() {
   const [profile, setProfile] = useState<ProfileData>(defaultProfile);
+  const { whatsapp: whatsappEnabled } = useFeatures();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -957,6 +959,7 @@ export default function MemberProfilePage() {
               </p>
             </div>
 
+            {whatsappEnabled && (
             <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
               <input
                 id="whatsappOptIn"
@@ -975,6 +978,7 @@ export default function MemberProfilePage() {
                 </p>
               </div>
             </div>
+            )}
           </div>
         </SectionCard>
 

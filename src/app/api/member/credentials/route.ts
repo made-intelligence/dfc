@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { calculateProfileScore } from '@/lib/utils/profile-score';
 import { logger } from '@/lib/logger';
+import { withAudit } from "@/lib/audit-route";
 
 const ISSUING_BODY_MAP: Record<string, string> = {
   MDCN: 'Medical and Dental Council of Nigeria',
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const token = getTokenFromCookies(request.headers.get('cookie'));
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -158,3 +159,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export const POST = withAudit("member_credential", handlePOST, {action: "PROFILE_UPDATE"});

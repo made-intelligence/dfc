@@ -9,6 +9,8 @@ export interface SendMessageResult {
   success: boolean;
   messageId?: string;
   error?: string;
+  /** True when nothing was attempted because WhatsApp is turned off. */
+  disabled?: boolean;
 }
 
 export interface WhatsAppWebhookEntry {

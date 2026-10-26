@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { UserRole, AppointmentStatus, Prisma } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { auditAppointment } from "@/lib/audit";
+import { appointmentInstant } from "@/lib/appointment-time";
+import { findOpenSlot } from "@/lib/booking-availability";
+import { formatApptDate, formatWatRange, watMidnightIso, ymdOfStoredDate } from "@/lib/wat";
 
 export async function GET(request: NextRequest) {
   try {
@@ -95,9 +99,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Time Check Logic (Common for Cancel & Reschedule)
-    const apptDate = new Date(existingAppointment.appointmentDate);
-    const [hours, mins] = existingAppointment.startTime.split(':').map(Number);
-    apptDate.setHours(hours, mins, 0, 0);
+    const apptDate = appointmentInstant(existingAppointment.appointmentDate, existingAppointment.startTime);
 
     const now = new Date();
     const diffMs = apptDate.getTime() - now.getTime();
@@ -116,41 +118,33 @@ export async function PUT(request: NextRequest) {
     // 1. Cancellation
     if (status === AppointmentStatus.CANCELLED) {
        updateData.status = AppointmentStatus.CANCELLED;
-    } 
+    }
     // 2. Rescheduling
-    else if (newDate && newStartTime && newEndTime) {
-       // Validate new time is in future
-       const newStartDateTime = new Date(newDate);
-       const [newH, newM] = newStartTime.split(':').map(Number);
-       newStartDateTime.setHours(newH, newM, 0, 0);
-       
-       if (newStartDateTime <= now) {
+    else if (newDate && newStartTime) {
+       // Normalise to the stored form: the day's WAT midnight.
+       const newDateIso = watMidnightIso(ymdOfStoredDate(newDate));
+       if (appointmentInstant(newDateIso, newStartTime) <= now) {
            return NextResponse.json({ error: "New appointment time must be in the future." }, { status: 400 });
        }
 
-       // Check Conflict
-       const conflict = await prisma.appointment.findFirst({
-           where: {
-               doctorId: existingAppointment.doctorId,
-               appointmentDate: newDate,
-               status: { in: ['PENDING', 'CONFIRMED'] },
-               OR: [
-                   // Simple overlap check
-                   { startTime: { lte: newStartTime }, endTime: { gt: newStartTime } },
-                   { startTime: { lt: newEndTime }, endTime: { gte: newEndTime } }
-               ]
-           }
-       });
-
-       if (conflict) {
-           return NextResponse.json({ error: "The selected time slot is already booked." }, { status: 400 });
+       // Only a slot the doctor actually offers, and that is still free, is
+       // accepted: the same rule as a new booking.
+       const slot = await findOpenSlot(existingAppointment.doctorId, newDateIso, newStartTime);
+       if (!slot) {
+           return NextResponse.json(
+             { error: "That time is not available with this doctor. Please choose one of the open slots." },
+             { status: 400 }
+           );
        }
 
-       updateData.appointmentDate = newDate;
-       updateData.startTime = newStartTime;
-       updateData.endTime = newEndTime;
-       updateData.status = AppointmentStatus.PENDING; // Reset to PENDING for doctor to confirm? Or keep CONFIRMED?
-       // Let's reset to PENDING so doctor acknowledges the change.
+       updateData.appointmentDate = newDateIso;
+       updateData.startTime = slot.startTime;
+       updateData.endTime = slot.endTime;
+       // Already paid and moved into an offered slot, so it stays confirmed.
+       updateData.status = AppointmentStatus.CONFIRMED;
+       // The new time gets its own reminders.
+       updateData.reminderDaySentAt = null;
+       updateData.reminderHourSentAt = null;
     }
     else {
          return NextResponse.json(
@@ -187,6 +181,35 @@ export async function PUT(request: NextRequest) {
         },
       },
     });
+
+    if (status === AppointmentStatus.CANCELLED) {
+      await auditAppointment.cancel(user.id, id, {
+        by: "patient",
+        doctorId: existingAppointment.doctorId,
+        date: ymdOfStoredDate(existingAppointment.appointmentDate),
+        time: existingAppointment.startTime,
+      }, request);
+    } else {
+      await auditAppointment.reschedule(user.id, id, {
+        by: "patient",
+        doctorId: existingAppointment.doctorId,
+        from: { date: ymdOfStoredDate(existingAppointment.appointmentDate), time: existingAppointment.startTime },
+        to: { date: ymdOfStoredDate(appointment.appointmentDate), time: appointment.startTime },
+      }, request);
+    }
+
+    // Tell the doctor; nothing else would.
+    await prisma.notification.create({
+      data: {
+        userId: existingAppointment.doctorId,
+        title: status === AppointmentStatus.CANCELLED ? "Appointment cancelled" : "Appointment rescheduled",
+        message: status === AppointmentStatus.CANCELLED
+          ? `${user.name} cancelled their appointment on ${formatApptDate(existingAppointment.appointmentDate)} at ${formatWatRange(existingAppointment.startTime)}.`
+          : `${user.name} moved their appointment to ${formatApptDate(appointment.appointmentDate)} at ${formatWatRange(appointment.startTime, appointment.endTime)}.`,
+        type: "info",
+        link: "/doctor/appointments",
+      },
+    }).catch((err) => logger.error("PatientAppointmentsNotify", err));
 
     return NextResponse.json(appointment);
   } catch (error) {

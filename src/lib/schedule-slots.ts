@@ -93,8 +93,8 @@ export function generateDaySlots(blocks: ScheduleBlock[], booked: Slot[] = []): 
 }
 
 /**
- * The booking wizard sends the chosen day as the ISO string of local midnight,
- * so one calendar day is the 24h window starting there.
+ * The booking wizard sends the chosen day as the ISO string of its WAT
+ * midnight (see lib/wat), so one calendar day is the 24h window starting there.
  */
 export function dayWindow(dateIso: string) {
   const start = new Date(dateIso);
@@ -102,8 +102,9 @@ export function dayWindow(dateIso: string) {
 }
 
 /**
- * The patient's calendar day (YYYY-MM-DD) for a wizard date (ISO of local
- * midnight). Shifting by 12h lands on that day for any UTC offset within ±12h.
+ * The calendar day (YYYY-MM-DD) for a wizard date (ISO of WAT midnight, or a
+ * local midnight on older bookings). Shifting by 12h lands on that day for any
+ * UTC offset within ±12h.
  */
 export const ymdOfWizardDate = (dateIso: string) =>
   new Date(new Date(dateIso).getTime() + 12 * 60 * 60 * 1000).toISOString().slice(0, 10);

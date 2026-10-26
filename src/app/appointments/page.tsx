@@ -34,7 +34,9 @@ import {
   Video,
   XCircle,
 } from "lucide-react";
-import { format, isPast, parseISO } from "date-fns";
+import { isPast } from "date-fns";
+import { formatApptDate, formatInstantWat, formatWatRange, watMidnightIso, watNow, ymdOfStoredDate, WAT_LONG_LABEL } from "@/lib/wat";
+import { appointmentInstant, appointmentWindow, JOIN_EARLY_MINUTES } from "@/lib/appointment-time";
 import Topbar from "@/components/layout/Topbar";
 import Footer from "@/components/layout/Footer";
 import { useToast } from "@/components/ui/toast";
@@ -42,6 +44,7 @@ import { Loading } from "@/components/ui/loading";
 
 interface Appointment {
   id: string;
+  doctorId: string;
   appointmentDate: string;
   startTime: string;
   endTime: string;
@@ -50,6 +53,7 @@ interface Appointment {
   notes?: string;
   consultationFee: number;
   meetingLink?: string;
+  consultationMode?: "VIDEO" | "IN_PERSON" | "BOTH";
   doctor: {
     name: string;
     email: string;
@@ -79,13 +83,15 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-  
+
   // Dialog States
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  
+
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
+  const [openSlots, setOpenSlots] = useState<{ startTime: string; endTime: string }[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
@@ -124,8 +130,8 @@ export default function AppointmentsPage() {
 
   const handleRescheduleClick = (appointment: Appointment) => {
       setSelectedAppointment(appointment);
-      setRescheduleDate(appointment.appointmentDate.split('T')[0]); // Pre-fill
-      setRescheduleTime(appointment.startTime);
+      setRescheduleDate(ymdOfStoredDate(appointment.appointmentDate));
+      setRescheduleTime("");
       setShowRescheduleDialog(true);
   };
 
@@ -171,27 +177,33 @@ export default function AppointmentsPage() {
     }
   };
 
+  // Open slots for the chosen reschedule day, from the doctor's real schedule.
+  useEffect(() => {
+    if (!showRescheduleDialog || !selectedAppointment || !rescheduleDate) return;
+    let active = true;
+    setSlotsLoading(true);
+    setRescheduleTime("");
+    fetch(
+      `/api/public/doctors/booked-slots?doctorId=${selectedAppointment.doctorId}&date=${encodeURIComponent(watMidnightIso(rescheduleDate))}`
+    )
+      .then((res) => (res.ok ? res.json() : { open: [] }))
+      .then((data) => {
+        if (!active) return;
+        const now = watNow();
+        const open: { startTime: string; endTime: string }[] = data.open || [];
+        setOpenSlots(rescheduleDate === now.ymd ? open.filter((s) => s.startTime > now.hhmm) : open);
+      })
+      .catch(() => active && setOpenSlots([]))
+      .finally(() => active && setSlotsLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [showRescheduleDialog, selectedAppointment, rescheduleDate]);
+
   const handleRescheduleConfirm = async () => {
       if (!selectedAppointment || !rescheduleDate || !rescheduleTime) return;
 
       try {
-           // Calculate End Time (Assuming same duration or 30 min default if we don't have duration)
-           // We'll keep it simple and just set end time to +30 mins or reuse existing duration
-           // Ideally we should calculate duration from old start/end
-           let newEndTime = "";
-           
-           const [oldStartH, oldStartM] = selectedAppointment.startTime.split(':').map(Number);
-           const [oldEndH, oldEndM] = selectedAppointment.endTime.split(':').map(Number);
-           const durationMinutes = (oldEndH * 60 + oldEndM) - (oldStartH * 60 + oldStartM);
-           
-           const [newStartH, newStartM] = rescheduleTime.split(':').map(Number);
-           const totalStartMinutes = newStartH * 60 + newStartM;
-           const totalEndMinutes = totalStartMinutes + durationMinutes;
-           
-           const newEndH = Math.floor(totalEndMinutes / 60);
-           const newEndM = totalEndMinutes % 60;
-           newEndTime = `${newEndH.toString().padStart(2, '0')}:${newEndM.toString().padStart(2, '0')}`;
-
            const response = await fetch("/api/patient/appointments", {
             method: "PUT",
             headers: {
@@ -199,12 +211,11 @@ export default function AppointmentsPage() {
             },
             body: JSON.stringify({
               id: selectedAppointment.id,
-              appointmentDate: rescheduleDate, // YYYY-MM-DD
+              appointmentDate: watMidnightIso(rescheduleDate),
               startTime: rescheduleTime,
-              endTime: newEndTime
             }),
           });
-    
+
           if (response.ok) {
             fetchAppointments(); // Refresh list
             addToast({
@@ -252,18 +263,14 @@ export default function AppointmentsPage() {
   };
 
   const isAppointmentPast = (appointmentDate: string, endTime: string) => {
-    const dateTime = parseISO(`${appointmentDate.split("T")[0]}T${endTime}`);
-    return isPast(dateTime);
+    return isPast(appointmentInstant(appointmentDate, endTime));
   };
 
   const canCancelAppointment = (appointment: Appointment) => {
       if (appointment.status === "CANCELLED" || appointment.status === "COMPLETED") return false;
 
       // 24 Hour Check
-      const apptDate = new Date(appointment.appointmentDate);
-      const [hours, mins] = appointment.startTime.split(':').map(Number);
-      apptDate.setHours(hours, mins, 0, 0);
-      
+      const apptDate = appointmentInstant(appointment.appointmentDate, appointment.startTime);
       const diffMinutes = getDifferenceInMinutes(apptDate, new Date());
       return diffMinutes >= 1440; // Allow if more than 24h away
   };
@@ -355,16 +362,13 @@ export default function AppointmentsPage() {
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar className="h-4 w-4" />
                     <span>
-                      {format(
-                        new Date(appointment.appointmentDate),
-                        "EEEE, MMMM dd, yyyy"
-                      )}
+                      {formatApptDate(appointment.appointmentDate, "long")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Clock className="h-4 w-4" />
                     <span>
-                      {appointment.startTime} - {appointment.endTime}
+                      {formatWatRange(appointment.startTime, appointment.endTime)}
                     </span>
                   </div>
                   {appointment.reason && (
@@ -384,21 +388,14 @@ export default function AppointmentsPage() {
                   {(() => {
                       if (!appointment.meetingLink) return null;
 
-                      // Parse Appointment Date & Time
-                      const apptBase = new Date(appointment.appointmentDate);
-                      const [startH, startM] = appointment.startTime.split(':').map(Number);
-                      const [endH, endM] = appointment.endTime.split(':').map(Number);
-                      
-                      const startDateTime = new Date(apptBase);
-                      startDateTime.setHours(startH, startM, 0, 0);
-
-                      const endDateTime = new Date(apptBase);
-                      endDateTime.setHours(endH, endM, 0, 0);
-
+                      if (appointment.consultationMode === "IN_PERSON") return null;
+                      const { start: startDateTime, end: endDateTime } = appointmentWindow(
+                        appointment.appointmentDate,
+                        appointment.startTime,
+                        appointment.endTime
+                      );
                       const now = new Date();
-                      
-                      // 10 minute buffer before start
-                      const joinWindowStart = new Date(startDateTime.getTime() - 10 * 60000); 
+                      const joinWindowStart = new Date(startDateTime.getTime() - JOIN_EARLY_MINUTES * 60000);
 
                       const isTooEarly = now < joinWindowStart;
                       const isEnded = now > endDateTime;
@@ -412,11 +409,11 @@ export default function AppointmentsPage() {
                         variant="outline"
                         size="sm"
                         className="w-full"
-                        onClick={() =>
-                          window.open(appointment.meetingLink, "_blank")
-                        }
+                        // Full page load: the room's camera/microphone permission
+                        // header only applies to a document loaded at that URL.
+                        onClick={() => window.location.assign(appointment.meetingLink!)}
                         disabled={!canJoin}
-                        title={!canJoin ? `Link becomes active at ${joinWindowStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : "Join Meeting"}
+                        title={!canJoin ? `Opens ${formatInstantWat(joinWindowStart)}` : "Join Meeting"}
                       >
                         <Video className="h-4 w-4 mr-2" />
                         Join Video Call
@@ -495,14 +492,11 @@ export default function AppointmentsPage() {
                         <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {format(
-                              new Date(appointment.appointmentDate),
-                              "MMM dd, yyyy"
-                            )}
+                            {formatApptDate(appointment.appointmentDate)}
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {appointment.startTime}
+                            {formatWatRange(appointment.startTime)}
                           </span>
                           {appointment.doctorProfile.specialty && (
                             <span className="text-gray-400">
@@ -551,31 +545,43 @@ export default function AppointmentsPage() {
                 Select a new date and time for your appointment with Dr. {selectedAppointment?.doctor.name}.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
+
           <div className="grid gap-4 py-4">
                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
                    <label className="text-right text-sm font-medium">Date</label>
-                   <Input 
-                        type="date" 
-                        className="col-span-3" 
-                        min={new Date().toISOString().split('T')[0]}
+                   <Input
+                        type="date"
+                        className="col-span-3"
+                        min={watNow().ymd}
                         value={rescheduleDate}
                         onChange={(e) => setRescheduleDate(e.target.value)}
                    />
                </div>
-               <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
-                   <label className="text-right text-sm font-medium">Time</label>
-                   <Input 
-                        type="time" 
-                        className="col-span-3" 
-                        value={rescheduleTime}
-                        onChange={(e) => setRescheduleTime(e.target.value)}
-                   />
+               <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-4">
+                   <label className="text-right text-sm font-medium sm:pt-2">Time</label>
+                   <div className="col-span-3">
+                     {slotsLoading ? (
+                       <p className="text-sm text-gray-500">Loading available times...</p>
+                     ) : openSlots.length === 0 ? (
+                       <p className="text-sm text-gray-500">No open times on this day. Try another date.</p>
+                     ) : (
+                       <div className="grid max-h-48 grid-cols-3 gap-2 overflow-y-auto">
+                         {openSlots.map((s) => (
+                           <Button
+                             key={s.startTime}
+                             type="button"
+                             size="sm"
+                             variant={rescheduleTime === s.startTime ? "default" : "outline"}
+                             onClick={() => setRescheduleTime(s.startTime)}
+                           >
+                             {s.startTime}
+                           </Button>
+                         ))}
+                       </div>
+                     )}
+                     <p className="mt-2 text-xs text-gray-500">All times are {WAT_LONG_LABEL}.</p>
+                   </div>
                </div>
-               {/* 
-                  Note: In a full production app, we would fetch available slots here. 
-                  For now, we rely on the backend to reject unavailable slots.
-               */}
           </div>
 
           <AlertDialogFooter>

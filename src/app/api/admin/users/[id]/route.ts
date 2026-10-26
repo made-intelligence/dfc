@@ -17,7 +17,7 @@ export async function GET(
     if (!payload) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const admin = await prisma.user.findUnique({ where: { id: payload.userId } });
-    if (!admin || (admin.role !== UserRole.SECRETARIAT && admin.role !== UserRole.SUPERADMIN)) {
+    if (!admin || !admin.isActive || (admin.role !== UserRole.SECRETARIAT && admin.role !== UserRole.SUPERADMIN)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -178,7 +178,7 @@ export async function PATCH(
     if (!payload) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const admin = await prisma.user.findUnique({ where: { id: payload.userId } });
-    if (!admin || (admin.role !== UserRole.SECRETARIAT && admin.role !== UserRole.SUPERADMIN)) {
+    if (!admin || !admin.isActive || (admin.role !== UserRole.SECRETARIAT && admin.role !== UserRole.SUPERADMIN)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
-import { sendTextMessage } from '@/lib/whatsapp/service';
+import { isWhatsAppEnabled, sendTextMessage } from '@/lib/whatsapp/service';
 import { UserRole } from '@prisma/client';
 import { logger } from '@/lib/logger';
 import React from 'react';
 import { sendEmail } from '@/lib/email/service';
 import SecretariatReply from '@/emails/SecretariatReply';
+import { withAudit } from "@/lib/audit-route";
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const token = getTokenFromCookies(request.headers.get('cookie'));
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-    if (!user || (user.role !== UserRole.SECRETARIAT && user.role !== UserRole.SUPERADMIN)) {
+    if (!user || !user.isActive || (user.role !== UserRole.SECRETARIAT && user.role !== UserRole.SUPERADMIN)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -34,15 +35,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
     }
 
-    // WhatsApp when we have a number (that is how most tickets arrive),
-    // otherwise email: web contact-form and portal tickets often have no phone.
+    // WhatsApp when it is on and we have a number, otherwise email: web
+    // contact-form and portal tickets often have no phone.
     const replyEmail = ticket.fromEmail || ticket.user?.email || null;
     let channel: 'whatsapp' | 'email';
     let result: unknown;
 
-    if (ticket.fromPhone) {
+    if (ticket.fromPhone && isWhatsAppEnabled()) {
       channel = 'whatsapp';
       result = await sendTextMessage(ticket.fromPhone, message, ticket.userId || undefined);
+      if (!(result as { success?: boolean }).success) {
+        return NextResponse.json({ error: 'The WhatsApp reply could not be sent' }, { status: 502 });
+      }
     } else if (replyEmail) {
       channel = 'email';
       result = await sendEmail({
@@ -61,7 +65,11 @@ export async function POST(request: NextRequest) {
       }
     } else {
       return NextResponse.json(
-        { error: 'This ticket has no phone number or email address to reply to' },
+        {
+          error: ticket.fromPhone
+            ? 'This ticket only has a phone number, and WhatsApp is turned off. Contact the sender another way.'
+            : 'This ticket has no phone number or email address to reply to',
+        },
         { status: 400 }
       );
     }
@@ -83,3 +91,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export const POST = withAudit("secretariat_ticket", handlePOST);

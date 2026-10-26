@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { audit } from "@/lib/audit";
+import { authenticatePharmacy } from "@/lib/pharmacy-auth";
 
 // POST — pharmacy confirms dispensing
 export async function POST(
@@ -9,18 +11,32 @@ export async function POST(
 ) {
   try {
     const { rxNumber } = await params;
-    const apiKey = request.headers.get("x-api-key");
-
-    if (!apiKey || apiKey !== process.env.PHARMACY_API_KEY) {
-      return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
-    }
+    // The key says which pharmacy this is; the body cannot choose another.
+    const pharmacy = await authenticatePharmacy(request, rxNumber);
+    if (pharmacy instanceof NextResponse) return pharmacy;
+    const pharmacyId = pharmacy.id;
 
     const body = await request.json();
-    const { pharmacyId, itemsDispensed, dispensedBy, notes } = body;
+    const { itemsDispensed, dispensedBy, notes } = body;
 
-    if (!pharmacyId || !itemsDispensed || !Array.isArray(itemsDispensed)) {
+    // Older integrations still send pharmacyId; it must be their own.
+    if (body.pharmacyId && body.pharmacyId !== pharmacyId) {
+      await audit({
+        action: "AUTH_FAILED",
+        resource: "prescription",
+        resourceId: rxNumber,
+        details: { via: "pharmacy_api", reason: "pharmacy_mismatch", pharmacyId, claimedPharmacyId: body.pharmacyId },
+        severity: "CRITICAL",
+      }, request);
       return NextResponse.json(
-        { error: "pharmacyId and itemsDispensed array are required" },
+        { error: "This key belongs to a different pharmacy" },
+        { status: 403 }
+      );
+    }
+
+    if (!itemsDispensed || !Array.isArray(itemsDispensed)) {
+      return NextResponse.json(
+        { error: "itemsDispensed array is required" },
         { status: 400 }
       );
     }
@@ -48,17 +64,6 @@ export async function POST(
       return NextResponse.json(
         { error: "Prescription has expired" },
         { status: 410 }
-      );
-    }
-
-    // Verify pharmacy exists
-    const pharmacy = await prisma.partnerPharmacy.findUnique({
-      where: { id: pharmacyId },
-    });
-    if (!pharmacy || !pharmacy.isActive) {
-      return NextResponse.json(
-        { error: "Pharmacy not found or inactive" },
-        { status: 404 }
       );
     }
 
@@ -111,6 +116,21 @@ export async function POST(
 
       return log;
     });
+
+    // The pharmacy acts by API key, not as a user; who dispensed is in details.
+    await audit({
+      action: "PRESCRIPTION_DISPENSE",
+      resource: "prescription",
+      resourceId: prescription.id,
+      details: {
+        rxNumber,
+        pharmacyId,
+        pharmacy: pharmacy.name,
+        dispensedBy: dispensedBy || null,
+        items: itemsDispensed.map((d: { drugName?: string }) => d.drugName),
+        dispensingLogId: result.id,
+      },
+    }, request);
 
     return NextResponse.json({
       dispensingLog: {

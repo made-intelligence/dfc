@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { audit } from "@/lib/audit";
 import { validateFields, MAX_LENGTHS } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
@@ -151,6 +152,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await audit({
+      userId: user.id,
+      action: "EMR_UPDATE",
+      resource: "medical_record",
+      resourceId: record.id,
+      details: { change: "create", appointmentId, patientProfileId: record.patientId },
+    }, request);
     return NextResponse.json(record);
   } catch (error) {
     logger.error('DoctorRecords', error);

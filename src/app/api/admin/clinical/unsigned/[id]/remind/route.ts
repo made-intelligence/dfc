@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdminAuth, isAuthError } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { withAudit } from "@/lib/audit-route";
 
-export async function POST(
+async function handlePOST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -57,3 +58,5 @@ export async function POST(
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export const POST = withAudit("clinical_note_reminder", handlePOST);

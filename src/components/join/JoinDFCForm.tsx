@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { SPECIALTIES, subSpecialtiesFor } from '@/lib/specialties';
+import { useFeatures } from '@/lib/useFeatures';
 
 const COUNTRIES = [
   'United Kingdom',
@@ -98,6 +99,7 @@ export function JoinDFCForm() {
   // Honeypot: hidden from people, so only bots fill it in.
   const [website, setWebsite] = useState('');
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
+  const { whatsapp: whatsappEnabled } = useFeatures();
   const [showPassword, setShowPassword] = useState(false);
   const [confirmAccuracy, setConfirmAccuracy] = useState(false);
   const [confirmTerms, setConfirmTerms] = useState(false);
@@ -182,7 +184,7 @@ export function JoinDFCForm() {
           institution: form.currentInstitution,
           country: form.path === 'local_specialist' ? 'Nigeria' : form.countryOfPractice,
           yearsQualified: form.yearOfQualification,
-          whatsappOptIn: form.whatsappOptIn,
+          whatsappOptIn: whatsappEnabled && form.whatsappOptIn,
           website,
         }),
       });
@@ -456,10 +458,15 @@ export function JoinDFCForm() {
         {/* Mobile */}
         <div>
           <label className={labelClass}>
-            Mobile number{' '}
-            <span className="text-gray-400 font-normal">
-              (for WhatsApp notifications)
-            </span>
+            Mobile number
+            {whatsappEnabled && (
+              <>
+                {' '}
+                <span className="text-gray-400 font-normal">
+                  (for WhatsApp notifications)
+                </span>
+              </>
+            )}
           </label>
           <input
             type="tel"
@@ -510,7 +517,8 @@ export function JoinDFCForm() {
           <FieldError field="password" />
         </div>
 
-        {/* WhatsApp opt-in */}
+        {/* WhatsApp opt-in, offered only while WhatsApp is on */}
+        {whatsappEnabled && (
         <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
@@ -522,6 +530,7 @@ export function JoinDFCForm() {
             Receive DFC notifications via WhatsApp
           </span>
         </label>
+        )}
       </div>
     </>
   );
@@ -581,10 +590,9 @@ export function JoinDFCForm() {
               ['Country', form.countryOfPractice],
               ['Mobile', form.mobile],
               ['Email', form.email],
-              [
-                'WhatsApp notifications',
-                form.whatsappOptIn ? 'Opted in' : 'Opted out',
-              ],
+              ...(whatsappEnabled
+                ? [['WhatsApp notifications', form.whatsappOptIn ? 'Opted in' : 'Opted out']]
+                : []),
             ] as [string, string][]).map(([label, value]) => (
               <div key={label} className="flex flex-col sm:flex-row sm:gap-4">
                 <dt className="text-gray-500 sm:w-48 shrink-0">{label}</dt>

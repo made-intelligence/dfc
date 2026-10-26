@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { auditAppointment } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -110,6 +111,11 @@ export async function PUT(request: NextRequest) {
       },
     });
 
+    await (status === "CANCELLED" ? auditAppointment.cancel : auditAppointment.update)(user.id, id, {
+      by: "doctor",
+      status,
+      notesChanged: !!notes,
+    }, request);
     return NextResponse.json(appointment);
   } catch (error) {
     logger.error('DoctorAppointments', error);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { withAudit } from "@/lib/audit-route";
 
 async function requireAdmin(request: NextRequest) {
   const token = getTokenFromCookies(request.headers.get("cookie"));
@@ -9,12 +10,12 @@ async function requireAdmin(request: NextRequest) {
   const payload = await verifyToken(token);
   if (!payload) return null;
   const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-  if (!user || (user.role !== "SUPERADMIN" && user.role !== "SECRETARIAT")) return null;
+  if (!user || !user.isActive || (user.role !== "SUPERADMIN" && user.role !== "SECRETARIAT")) return null;
   return user;
 }
 
 // POST — add a member to an initiative
-export async function POST(
+async function handlePOST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -76,7 +77,7 @@ export async function POST(
 }
 
 // DELETE — remove a member from an initiative
-export async function DELETE(
+async function handleDELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -101,3 +102,6 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withAudit("initiative_member", handlePOST);
+export const DELETE = withAudit("initiative_member", handleDELETE);

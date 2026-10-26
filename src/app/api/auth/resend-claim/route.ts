@@ -5,6 +5,7 @@ import { sendEmail } from "@/lib/email/service";
 import ClaimInvite from "@/emails/ClaimInvite";
 import React from "react";
 import { logger } from "@/lib/logger";
+import { auditAccount } from "@/lib/audit";
 import { appUrl } from "@/lib/app-url";
 import {
   generateClaimToken,
@@ -50,6 +51,11 @@ export async function POST(request: NextRequest) {
     // new link. An account with a password already set must use sign-in or
     // password reset, and we say nothing either way.
     const eligible = user && !user.password && user.claimToken !== null;
+    await auditAccount.passwordResetRequest(
+      user?.id ?? null,
+      { via: "resend_claim_link", email: email.toLowerCase().trim(), outcome: eligible ? "sent" : user ? "not_eligible" : "unknown_email" },
+      request,
+    );
 
     if (eligible) {
       const token = generateClaimToken();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { audit } from '@/lib/audit';
 
 export async function GET(request: NextRequest) {
   try {
@@ -136,6 +137,15 @@ export async function PATCH(request: NextRequest) {
       }),
     ]);
 
+    // Dismissing a critical safety alert is the decision most worth being able to find later.
+    await audit({
+      userId: payload.userId,
+      action: 'EMR_UPDATE',
+      resource: 'cdss_alert',
+      resourceId: alertId,
+      details: { change: action.toLowerCase(), level: alert.level, category: alert.category, patientProfileId: alert.patientId, notes: notes || null },
+      severity: action === 'DISMISSED' && alert.level === 'CRITICAL' ? 'WARN' : 'INFO',
+    }, request);
     return NextResponse.json({ alert: updatedAlert, interactionLog });
   } catch (error) {
     logger.error('CDSS:AlertUpdate', error);

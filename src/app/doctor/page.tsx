@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { formatApptDate, formatWatRange } from "@/lib/wat";
 import {
   Card,
   CardContent,
@@ -68,10 +69,10 @@ export default function DoctorDashboard() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       if (!user) return;
-      
+
       try {
         const response = await fetch("/api/doctor/dashboard");
-        
+
         if (response.ok) {
           const data = await response.json();
           setDashboardData(data);
@@ -197,10 +198,7 @@ export default function DoctorDashboard() {
                   >
                     <div className="flex items-center space-x-3">
                       <div className="text-sm font-medium text-gray-900">
-                        {new Date(`1970-01-01T${appointment.startTime}`).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {formatWatRange(appointment.startTime)}
                       </div>
                       <div>
                         <div className="text-sm font-medium">
@@ -257,7 +255,7 @@ export default function DoctorDashboard() {
                   };
 
                   const { icon: Icon, type } = getActivityIcon(activity.status);
-                  const timeAgo = new Date(activity.appointmentDate).toLocaleDateString();
+                  const timeAgo = formatApptDate(activity.appointmentDate);
 
                   return (
                     <div key={activity.id} className="flex items-start space-x-3">
@@ -295,31 +293,31 @@ export default function DoctorDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-4 gap-4">
-            <Button 
+            <Button
               className="h-20 flex-col space-y-2"
               onClick={() => router.push('/doctor/schedule')}
             >
               <Calendar className="h-6 w-6" />
               <span>Manage Schedule</span>
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="h-20 flex-col space-y-2"
               onClick={() => router.push('/doctor/patients')}
             >
               <Users className="h-6 w-6" />
               <span>View Patients</span>
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="h-20 flex-col space-y-2"
               onClick={() => router.push('/doctor/appointments')}
             >
               <Clock className="h-6 w-6" />
               <span>Appointments</span>
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="h-20 flex-col space-y-2"
               onClick={() => router.push('/doctor/profile')}
             >

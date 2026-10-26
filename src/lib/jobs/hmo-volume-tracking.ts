@@ -12,7 +12,9 @@ import { logger } from "@/lib/logger";
  *   - 90-100%: -10% discount
  *   - Above 100%: -12% discount
  *
- * Intended to run quarterly via cron.
+ * Runs on the first day of each quarter (src/app/api/cron/daily) and reports
+ * on the quarter that has just ended. Report only: it logs the adjustment for
+ * the secretariat and changes no tariffs.
  */
 
 interface VolumeReport {
@@ -47,7 +49,7 @@ export async function runQuarterlyVolumeTracking(): Promise<VolumeReport[]> {
       return [];
     }
 
-    const quarterStart = getQuarterStart();
+    const { start: quarterStart, end: quarterEnd } = previousQuarter();
     const reports: VolumeReport[] = [];
 
     for (const contract of activeContracts) {
@@ -56,7 +58,7 @@ export async function runQuarterlyVolumeTracking(): Promise<VolumeReport[]> {
         where: {
           hmoPartnerId: contract.hmoId,
           status: { in: ["DELIVERED", "BILLED", "PAID"] },
-          deliveredAt: { gte: quarterStart },
+          deliveredAt: { gte: quarterStart, lt: quarterEnd },
         },
       });
 
@@ -99,8 +101,10 @@ export async function runQuarterlyVolumeTracking(): Promise<VolumeReport[]> {
   }
 }
 
-function getQuarterStart(): Date {
-  const now = new Date();
-  const quarter = Math.floor(now.getMonth() / 3);
-  return new Date(now.getFullYear(), quarter * 3, 1);
+/** The most recently completed calendar quarter, as UTC dates. */
+function previousQuarter(now: Date = new Date()): { start: Date; end: Date } {
+  const thisQuarterMonth = Math.floor(now.getUTCMonth() / 3) * 3;
+  const end = new Date(Date.UTC(now.getUTCFullYear(), thisQuarterMonth, 1));
+  const start = new Date(Date.UTC(now.getUTCFullYear(), thisQuarterMonth - 3, 1));
+  return { start, end };
 }

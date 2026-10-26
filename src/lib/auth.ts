@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 import { SECURE_ATTR } from "@/lib/cookie-flags";
+import { prisma } from "@/lib/prisma";
 
 if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
   throw new Error("JWT_SECRET environment variable is required in production");
@@ -175,7 +176,18 @@ export async function requireAdminAuth(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return payload;
+  // The token lives for two hours; check the row so a deactivation or a
+  // change of role takes effect on the next request, not when it expires.
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: { role: true, isActive: true },
+  });
+  if (!user || !user.isActive)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (user.role !== UserRole.SUPERADMIN && user.role !== UserRole.SECRETARIAT)
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  return { ...payload, role: user.role };
 }
 
 // Helper to check if requireAdminAuth returned an error response

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
-import { sendClaimLink, normalisePhone } from '@/lib/whatsapp/service';
+import { isWhatsAppEnabled, sendClaimLink, normalisePhone } from '@/lib/whatsapp/service';
 import { UserRole } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
 import { logger } from '@/lib/logger';
 import { appUrl } from '@/lib/app-url';
+import { withAudit } from "@/lib/audit-route";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-    if (!user || (user.role !== UserRole.SECRETARIAT && user.role !== UserRole.SUPERADMIN)) {
+    if (!user || !user.isActive || (user.role !== UserRole.SECRETARIAT && user.role !== UserRole.SUPERADMIN)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const token = getTokenFromCookies(request.headers.get('cookie'));
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-    if (!user || (user.role !== UserRole.SECRETARIAT && user.role !== UserRole.SUPERADMIN)) {
+    if (!user || !user.isActive || (user.role !== UserRole.SECRETARIAT && user.role !== UserRole.SUPERADMIN)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -99,6 +100,13 @@ export async function POST(request: NextRequest) {
       if (!memberId) {
         return NextResponse.json({ error: 'memberId is required' }, { status: 400 });
       }
+      // Claim links go out by WhatsApp only; leave the member as-is until it's on.
+      if (!isWhatsAppEnabled()) {
+        return NextResponse.json(
+          { error: 'WhatsApp is turned off, so claim links cannot be sent.' },
+          { status: 503 }
+        );
+      }
 
       const member = await prisma.legacyMember.findUnique({ where: { id: memberId } });
       if (!member) {
@@ -125,3 +133,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export const POST = withAudit("legacy_migration", handlePOST, {severity: "WARN"});

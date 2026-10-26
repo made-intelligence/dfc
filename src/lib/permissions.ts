@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function getDefaultPermissionsByRole(role: string) {
@@ -40,4 +41,17 @@ export async function getUserPermissions(userId: string) {
 export async function hasPermission(userId: string, permissionName: string): Promise<boolean> {
   const permissions = await getUserPermissions(userId);
   return permissions.some(p => p.name === permissionName);
+}
+
+/**
+ * For routes behind requireAdminAuth: a 403 unless the admin holds
+ * `permissionName`. Super admins hold every permission.
+ */
+export async function requirePermission(
+  auth: { userId: string; role: string },
+  permissionName: string
+): Promise<NextResponse | null> {
+  if (auth.role === 'SUPERADMIN') return null;
+  if (await hasPermission(auth.userId, permissionName)) return null;
+  return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 }

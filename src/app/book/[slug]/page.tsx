@@ -3,26 +3,22 @@ import { appUrl } from "@/lib/app-url";
 import DoctorProfileClient from "@/components/booking/DoctorProfileClient";
 import { DoctorJsonLd } from "@/components/seo/JsonLd";
 import { notFound } from "next/navigation";
+import { cache } from "react";
+import { getPublicDoctorBySlug } from "@/lib/public-doctor";
 
 interface Props {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-async function getDoctor(slug: string) {
-  const baseUrl = appUrl();
-  try {
-    const res = await fetch(`${baseUrl}/api/public/doctors/${slug}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.doctor;
-  } catch (error) {
-    console.error("Failed to fetch doctor:", error);
-    return null;
-  }
-}
+// Read the database directly rather than calling our own API over APP_URL,
+// which 404'd every profile whenever that URL did not reach this server.
+// cache() dedupes the lookup between generateMetadata and the page.
+const getDoctor = cache(async (slug: string) => {
+  const doctor = await getPublicDoctorBySlug(slug);
+  // Same plain-JSON shape the client got from the API (dates as strings).
+  return doctor ? JSON.parse(JSON.stringify(doctor)) : null;
+});
 
 export async function generateMetadata(
   { params }: Props,

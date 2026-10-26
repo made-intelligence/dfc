@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminAuth, isAuthError } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { withAudit } from "@/lib/audit-route";
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminAuth(request);
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const auth = await requireAdminAuth(request);
   if (isAuthError(auth)) return auth;
 
@@ -85,3 +86,5 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+
+export const PATCH = withAudit("beta_feedback", handlePATCH);

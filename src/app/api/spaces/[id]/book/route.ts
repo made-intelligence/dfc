@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getTokenFromCookies, verifyToken } from "@/lib/auth";
 import { validateCredentialPassport } from "@/lib/credentials/passport";
 import { logger } from "@/lib/logger";
+import { audit } from "@/lib/audit";
 
 export async function POST(
   request: NextRequest,
@@ -147,6 +148,13 @@ export async function POST(
       },
     });
 
+    await audit({
+      userId: payload.userId,
+      action: "APPOINTMENT_BOOK",
+      resource: "space_booking",
+      resourceId: booking.id,
+      details: { spaceId, bookingDate, startTime, endTime, memberRate, currency: space.currency, indemnityValid: booking.indemnityValid },
+    }, request);
     return NextResponse.json(
       {
         booking: {

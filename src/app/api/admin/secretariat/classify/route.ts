@@ -4,8 +4,9 @@ import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { classifySecretariatRequest } from '@/lib/ai/service';
 import { UserRole, Prisma } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { withAudit } from "@/lib/audit-route";
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const token = getTokenFromCookies(request.headers.get('cookie'));
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
     if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
 
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-    if (!user || (user.role !== UserRole.SECRETARIAT && user.role !== UserRole.SUPERADMIN)) {
+    if (!user || !user.isActive || (user.role !== UserRole.SECRETARIAT && user.role !== UserRole.SUPERADMIN)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -39,3 +40,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Classification failed' }, { status: 500 });
   }
 }
+
+export const POST = withAudit("secretariat_ticket", handlePOST);

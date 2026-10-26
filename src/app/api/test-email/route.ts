@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail } from '@/lib/email/service';
-import BookingConfirmation from '@/emails/BookingConfirmation';
+import AppointmentEmail from '@/emails/AppointmentEmail';
 import React from 'react';
 import { requireAdminAuth, isAuthError } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { withAudit } from "@/lib/audit-route";
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const authResult = await requireAdminAuth(request);
     if (isAuthError(authResult)) return authResult;
@@ -19,13 +20,17 @@ export async function POST(request: NextRequest) {
     const emailResult = await sendEmail({
       to,
       subject: 'Test Booking Confirmation',
-      templateName: 'BookingConfirmation',
-      component: React.createElement(BookingConfirmation, {
-        patientName: 'John Doe',
-        doctorName: 'Sarah Smith',
-        date: 'October 24, 2025',
-        time: '10:00 AM',
-        meetingLink: 'https://meet.google.com/abc-defg-hij',
+      templateName: 'appointment-test',
+      component: React.createElement(AppointmentEmail, {
+        kind: 'CONFIRMED',
+        recipientName: 'Test Patient',
+        recipientRole: 'patient',
+        otherPartyName: 'Test Doctor',
+        dateLabel: 'Friday, 24 October 2026',
+        timeLabel: '10:00 – 10:30',
+        reason: 'Test consultation',
+        joinUrl: 'https://www.dfcare.org/room/test',
+        manageUrl: 'https://www.dfcare.org/appointments',
       }),
     });
 
@@ -39,3 +44,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Email sending failed' }, { status: 500 });
   }
 }
+
+export const POST = withAudit("test_email", handlePOST);

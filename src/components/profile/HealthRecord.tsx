@@ -169,6 +169,19 @@ interface ConsentSettings {
   dataProcessing: boolean;
 }
 
+/** Consent API type for each toggle on this page. */
+const CONSENT_TYPE: Record<keyof ConsentSettings, string> = {
+  telemedicine: "TELEMEDICINE",
+  secondOpinionDataSharing: "SECOND_OPINION_SHARING",
+  dataProcessing: "DATA_PROCESSING",
+};
+
+interface ConsentRecord {
+  type: string;
+  given: boolean;
+  revokedAt: string | null;
+}
+
 interface HealthRecordProps {
   patientId: string;
   bloodGroup?: string;
@@ -349,11 +362,13 @@ export default function HealthRecord({ patientId, bloodGroup }: HealthRecordProp
         credentials: "include",
       });
       if (res.ok) {
-        const data = await res.json();
+        // The API returns the consent history; a type is on while any grant is unrevoked.
+        const records: ConsentRecord[] = await res.json();
+        const isOn = (type: string) => records.some((r) => r.type === type && r.given && !r.revokedAt);
         setConsent({
-          telemedicine: data.telemedicine ?? false,
-          secondOpinionDataSharing: data.secondOpinionDataSharing ?? false,
-          dataProcessing: data.dataProcessing ?? false,
+          telemedicine: isOn(CONSENT_TYPE.telemedicine),
+          secondOpinionDataSharing: isOn(CONSENT_TYPE.secondOpinionDataSharing),
+          dataProcessing: isOn(CONSENT_TYPE.dataProcessing),
         });
       }
     } catch {
@@ -444,7 +459,7 @@ export default function HealthRecord({ patientId, bloodGroup }: HealthRecordProp
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...updated, patientId }),
+        body: JSON.stringify({ patientId, type: CONSENT_TYPE[key], given: updated[key] }),
       });
       if (res.ok) {
         addToast({ title: "Consent updated", description: "Your preferences have been saved", type: "success" });

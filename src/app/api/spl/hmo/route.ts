@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTokenFromCookies, verifyToken } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { withAudit } from "@/lib/audit-route";
 
 // GET — list HMO partners
 export async function GET(request: NextRequest) {
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST — create HMO partner
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const token = getTokenFromCookies(request.headers.get("cookie"));
     if (!token) {
@@ -88,3 +89,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const POST = withAudit("spl_hmo", handlePOST, {action: "SETTINGS_UPDATE"});

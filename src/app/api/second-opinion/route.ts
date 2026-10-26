@@ -4,6 +4,7 @@ import { summariseCaseForSpecialist } from '@/lib/ai/service';
 import { verifyToken, getTokenFromCookies, JWTPayload } from '@/lib/auth';
 import { SecondOpinionTier } from '@prisma/client';
 import { logger } from '@/lib/logger';
+import { audit } from '@/lib/audit';
 import { validateFields, MAX_LENGTHS } from '@/lib/validation';
 
 const TIER_PRICES: Record<string, number> = {
@@ -97,6 +98,13 @@ export async function POST(request: NextRequest) {
         status: 'SUBMITTED',
       },
     });
+    await audit({
+      userId,
+      action: 'SECOND_OPINION_CREATE',
+      resource: 'second_opinion',
+      resourceId: soCase.id,
+      details: { reference, tier: validTier, specialty, requesterType: requesterType || 'patient', amountKobo },
+    }, request);
 
     // Fire-and-forget: generate AI brief
     (async () => {

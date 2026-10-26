@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { audit } from "@/lib/audit";
+import { authenticatePharmacy } from "@/lib/pharmacy-auth";
 
 // GET — pharmacy scans QR / looks up prescription
-// Auth: API key for partner pharmacies
+// Auth: the pharmacy's own API key (lib/pharmacy-auth)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ rxNumber: string }> }
 ) {
   try {
     const { rxNumber } = await params;
-    const apiKey = request.headers.get("x-api-key");
-
-    if (!apiKey || apiKey !== process.env.PHARMACY_API_KEY) {
-      return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
-    }
+    const pharmacy = await authenticatePharmacy(request, rxNumber);
+    if (pharmacy instanceof NextResponse) return pharmacy;
 
     const prescription = await prisma.prescription.findUnique({
       where: { rxNumber },
@@ -42,6 +41,23 @@ export async function GET(
         },
       },
     });
+
+    // Every lookup is recorded, found or not: the response carries patient
+    // details, and a run of misses is someone guessing prescription numbers.
+    await audit({
+      userId: null,
+      action: "EMR_ACCESS",
+      resource: "prescription",
+      resourceId: prescription?.id ?? rxNumber,
+      details: {
+        via: "pharmacy_api",
+        rxNumber,
+        pharmacyId: pharmacy.id,
+        pharmacy: pharmacy.name,
+        outcome: !prescription ? "not_found" : prescription.status,
+      },
+      severity: prescription ? "INFO" : "WARN",
+    }, request);
 
     if (!prescription) {
       return NextResponse.json(

@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken, getTokenFromCookies } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { withAudit } from "@/lib/audit-route";
 
 async function requireAdmin(request: NextRequest) {
   const token = getTokenFromCookies(request.headers.get('cookie'));
   if (!token) return null;
   const payload = await verifyToken(token);
   if (!payload || !['SUPERADMIN', 'SECRETARIAT'].includes(payload.role)) return null;
+  const user = await prisma.user.findUnique({ where: { id: payload.userId }, select: { isActive: true } });
+  if (!user?.isActive) return null;
   return payload;
 }
 
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST — add a member to a committee
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (!admin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest) {
 }
 
 // PATCH — update member role or deactivate
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (!admin) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -147,3 +150,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export const POST = withAudit("committee", handlePOST);
+export const PATCH = withAudit("committee", handlePATCH);

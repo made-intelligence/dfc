@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (!payload) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-    if (!user || (user.role !== "SUPERADMIN" && user.role !== "SECRETARIAT")) {
+    if (!user || !user.isActive || (user.role !== "SUPERADMIN" && user.role !== "SECRETARIAT")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

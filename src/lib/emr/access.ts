@@ -1,6 +1,7 @@
 import 'server-only';
 import { prisma } from '@/lib/prisma';
 import { UserRole } from '@prisma/client';
+import { audit, clientInfo } from '@/lib/audit';
 
 export async function checkRecordAccess(
   accessingUserId: string,
@@ -57,6 +58,7 @@ export async function checkRecordAccess(
   const allowed = hasAdminAccess || physicianAllowed || patientAllowed;
 
   // Always log access
+  const { ipAddress, userAgent } = await clientInfo();
   await prisma.recordAccessLog.create({
     data: {
       patientId,
@@ -64,8 +66,21 @@ export async function checkRecordAccess(
       action,
       resourceType,
       resourceId,
+      ipAddress,
+      userAgent,
     },
   }).catch(() => {});
+
+  // RecordAccessLog is the patient's own "who saw my record"; the audit log
+  // keeps the same event alongside everything else on the platform.
+  await audit({
+    userId: accessingUserId,
+    action: action === 'VIEWED' ? 'EMR_ACCESS' : action === 'DOWNLOADED' ? 'DATA_DOWNLOAD' : 'EMR_UPDATE',
+    resource: `emr_${resourceType.toLowerCase()}`,
+    resourceId: resourceId ?? patientId,
+    details: { patientProfileId: patientId, access: action, allowed },
+    severity: allowed ? 'INFO' : 'WARN',
+  });
 
   if (!allowed) {
     return { allowed: false, reason: 'You do not have permission to access this patient record.' };

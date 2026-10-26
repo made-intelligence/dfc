@@ -3,9 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookies } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { v4 as uuidv4 } from 'uuid';
-import React from 'react';
 import { logger } from '@/lib/logger';
 import { findOpenSlot } from '@/lib/booking-availability';
+import { sendAppointmentEmails } from '@/lib/appointment-email';
+import { formatApptDate, formatWatRange } from '@/lib/wat';
+import { audit, auditAccount, auditAppointment, auditPayment } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,6 +87,14 @@ export async function POST(request: NextRequest) {
       const expectedKobo = doctorProfile ? Math.round(Number(doctorProfile.consultationFee) * 100) : 0;
       if (expectedKobo > 0 && (amount !== expectedKobo || (currency && currency !== "NGN"))) {
         logger.error("PaymentVerify", "Amount/currency mismatch", { reference, amount, expectedKobo, currency });
+        await audit({
+          userId: authenticatedUserId,
+          action: "PAYMENT_VERIFY",
+          resource: "payment",
+          resourceId: reference,
+          details: { outcome: "amount_mismatch", amount, expectedKobo, currency, doctorId },
+          severity: "CRITICAL",
+        }, request);
         return NextResponse.json(
           { error: "Payment amount does not match the consultation fee." },
           { status: 400 }
@@ -98,6 +108,14 @@ export async function POST(request: NextRequest) {
         authenticatedUser: authenticatedUserId,
         paymentPatientId: patientId,
       });
+      await audit({
+        userId: authenticatedUserId,
+        action: "PAYMENT_VERIFY",
+        resource: "payment",
+        resourceId: reference,
+        details: { outcome: "payer_mismatch", paymentPatientId: patientId },
+        severity: "CRITICAL",
+      }, request);
       return NextResponse.json(
         { error: "Payment does not belong to authenticated user" },
         { status: 403 }
@@ -163,6 +181,14 @@ export async function POST(request: NextRequest) {
     const slot = await findOpenSlot(doctorId, date, time);
     if (!slot) {
       logger.error('PaymentVerify', 'Slot taken after payment; refund needed', { reference, doctorId, date, time });
+      await audit({
+        userId: authenticatedUserId,
+        action: "PAYMENT_VERIFY",
+        resource: "payment",
+        resourceId: reference,
+        details: { outcome: "slot_taken_refund_needed", amount: amount / 100, currency, doctorId, date, time },
+        severity: "CRITICAL",
+      }, request);
       return NextResponse.json(
         {
           error: `Sorry, that time was booked by someone else while you were paying. Please contact support with payment reference ${reference} for a refund or to rebook.`,
@@ -267,37 +293,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Send confirmation email asynchronously (don't block response)
-    const { sendEmail } = await import('@/lib/email/service');
-    const BookingConfirmation = (await import('@/emails/BookingConfirmation')).default;
-
-    const emailPromise = sendEmail({
-      to: appointment.patient.email,
-      subject: 'Booking Confirmation - DFC',
-      templateName: 'BookingConfirmation',
-      component: React.createElement(BookingConfirmation, {
-        patientName: appointment.patient.name,
-        doctorName: appointment.doctor.name,
-        date: date,
-        time: time,
-        meetingLink: meetingLink
-      }),
-      metadata: { appointmentId: appointment.id }
-    });
-
-    const doctorEmailPromise = sendEmail({
-      to: appointment.doctor.email,
-      subject: 'New Appointment Booked - DFC',
-      templateName: 'BookingConfirmation',
-      component: React.createElement(BookingConfirmation, {
-         patientName: appointment.doctor.name,
-         doctorName: "Patient: " + appointment.patient.name,
-         date: date,
-         time: time,
-         meetingLink: meetingLink
-      }),
-      metadata: { appointmentId: appointment.id, type: 'doctor_notification' }
-    });
+    // Confirmation emails to the patient and the doctor
+    const emailPromise = sendAppointmentEmails(appointment.id, "CONFIRMED");
 
     // Create In-App Notifications
     const notificationsPromise = prisma.notification.createMany({
@@ -305,21 +302,40 @@ export async function POST(request: NextRequest) {
         {
           userId: appointment.doctorId,
           title: "New Appointment",
-          message: `You have a new appointment with ${appointment.patient.name} on ${date} at ${time}`,
+          message: `You have a new appointment with ${appointment.patient.name} on ${formatApptDate(appointment.appointmentDate)} at ${formatWatRange(time)}`,
           type: "info",
           link: `/doctor/appointments`,
         },
          {
           userId: appointment.patientId,
           title: "Appointment Confirmed",
-          message: `Your appointment with Dr. ${appointment.doctor.name} on ${date} at ${time} has been confirmed.`,
+          message: `Your appointment with Dr. ${appointment.doctor.name} on ${formatApptDate(appointment.appointmentDate)} at ${formatWatRange(time)} has been confirmed.`,
           type: "success",
           link: `/appointments`,
         }
       ]
     });
 
-    await Promise.allSettled([emailPromise, doctorEmailPromise, notificationsPromise]);
+    const auditPromises = [
+      auditPayment.verify(resolvedPatientId, reference, {
+        outcome: "paid",
+        amount: amount / 100,
+        currency,
+        appointmentId: appointment.id,
+      }, request),
+      auditAppointment.book(resolvedPatientId, appointment.id, {
+        via: isGuest ? "guest_checkout" : "patient",
+        doctorId,
+        date,
+        time,
+        paymentReference: reference,
+      }, request),
+    ];
+    if (isNewGuestAccount) {
+      auditPromises.push(auditAccount.create(resolvedPatientId, { via: "guest_checkout" }, request));
+    }
+
+    await Promise.allSettled([emailPromise, notificationsPromise, ...auditPromises]);
 
     return NextResponse.json({
         success: true,

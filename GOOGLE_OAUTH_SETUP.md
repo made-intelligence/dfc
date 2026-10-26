@@ -68,7 +68,7 @@ This guide will help you set up Google OAuth authentication for the DFC Medical 
    ```
    GOOGLE_CLIENT_ID="your-client-id-from-step-4"
    GOOGLE_CLIENT_SECRET="your-client-secret-from-step-4"
-   NEXT_PUBLIC_APP_URL="http://localhost:3000"
+   APP_URL="http://localhost:3000"
    ```
 
 ## Step 6: Test the Integration
@@ -88,7 +88,7 @@ When deploying to production:
 
 1. Update the OAuth consent screen with your production domain
 2. Add your production URL to the authorized origins and redirect URIs
-3. Update the `NEXT_PUBLIC_APP_URL` environment variable to your production URL
+3. Update the `APP_URL` environment variable to your production URL
 4. Make sure to use HTTPS in production
 
 ## Troubleshooting

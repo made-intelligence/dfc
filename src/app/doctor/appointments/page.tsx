@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Calendar, Clock, User, Phone, Search, Filter, Video } from "lucide-react";
 import { isPast } from "date-fns";
+import { appointmentWindow, JOIN_EARLY_MINUTES } from "@/lib/appointment-time";
+import { formatApptDate, formatInstantWat, formatWatRange } from "@/lib/wat";
 import { Loading } from "@/components/ui/loading";
 import { useToast } from "@/components/ui/toast";
 
@@ -168,15 +170,13 @@ export default function AppointmentsPage() {
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
                       <span>
-                        {new Date(
-                          appointment.appointmentDate,
-                        ).toLocaleDateString()}
+                        {formatApptDate(appointment.appointmentDate)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
                       <span>
-                        {appointment.startTime} - {appointment.endTime}
+                        {formatWatRange(appointment.startTime, appointment.endTime)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -211,22 +211,13 @@ export default function AppointmentsPage() {
                   {(() => {
                       if (!appointment.meetingLink) return null;
 
-                      // Parse Appointment Date & Time
-                      // Assuming appointmentDate is YYYY-MM-DD or ISO
-                      const apptBase = new Date(appointment.appointmentDate);
-                      const [startH, startM] = appointment.startTime.split(':').map(Number);
-                      const [endH, endM] = appointment.endTime.split(':').map(Number);
-                      
-                      const startDateTime = new Date(apptBase);
-                      startDateTime.setHours(startH, startM, 0, 0);
-
-                      const endDateTime = new Date(apptBase);
-                      endDateTime.setHours(endH, endM, 0, 0);
-
+                      const { start: startDateTime, end: endDateTime } = appointmentWindow(
+                        appointment.appointmentDate,
+                        appointment.startTime,
+                        appointment.endTime
+                      );
                       const now = new Date();
-                      
-                      // 10 minute buffer before start
-                      const joinWindowStart = new Date(startDateTime.getTime() - 10 * 60000); // 10 mins in ms
+                      const joinWindowStart = new Date(startDateTime.getTime() - JOIN_EARLY_MINUTES * 60000);
 
                       const isTooEarly = now < joinWindowStart;
                       const isEnded = now > endDateTime;
@@ -245,7 +236,7 @@ export default function AppointmentsPage() {
                                 className="w-full sm:w-auto"
                                 onClick={() => window.open(appointment.meetingLink, "_blank")}
                                 disabled={!canJoin}
-                                title={!canJoin ? `Link becomes active at ${joinWindowStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : "Join Meeting"}
+                                title={!canJoin ? `Opens ${formatInstantWat(joinWindowStart)}` : "Join Meeting"}
                               >
                                 <Video className="h-4 w-4 mr-2" />
                                 Join Video Call
