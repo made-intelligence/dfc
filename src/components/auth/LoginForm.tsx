@@ -75,11 +75,6 @@ export function LoginForm() {
       }
     } else {
       setError(result.error || "Login failed");
-      addToast({
-        title: "Login Failed",
-        description: result.error || "Please check your credentials",
-        type: "error",
-      });
     }
 
     setLoading(false);
@@ -154,7 +149,7 @@ export function LoginForm() {
           </div>
 
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+            <div role="alert" className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
               {error}
             </div>
           )}
