@@ -39,6 +39,14 @@ import {
   ChevronDown,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { useSidebarCollapsed } from "@/lib/sidebar-collapse";
 import { useClosedSidebarSections } from "@/lib/sidebar-sections";
@@ -186,6 +194,9 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
     pathname === item.href ||
     (item.href !== "/admin" && item.href !== "/doctor" && pathname.startsWith(item.href + "/"));
 
+  const profileHref =
+    user.role === UserRole.DFC_MEMBER ? "/doctor/profile" : "/admin/profile";
+
   return (
     <div className="h-dvh overflow-hidden bg-gray-50 flex">
       {/* Mobile sidebar overlay */}
@@ -300,36 +311,6 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
             })}
           </div>
         </nav>
-
-        <div className={`shrink-0 p-4 border-t border-white/10 ${collapsed ? "lg:px-2" : ""}`}>
-          <div className={`flex items-center mb-4 ${collapsed ? "lg:justify-center" : ""}`}>
-            <div className="flex-shrink-0" title={collapsed ? `${user.name} (${user.email})` : undefined}>
-              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                <span className="text-[#0D1F3C] text-sm font-medium">
-                  {user.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            </div>
-            <div className={`ml-3 min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
-              <p className="text-sm font-medium text-white truncate">{user.name}</p>
-              <p className="text-xs text-white/60 truncate">{user.email}</p>
-              <p className="text-xs text-white/40 capitalize">
-                {user.role.toLowerCase()}
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className={`w-full cursor-pointer hover:text-red-800 text-red-700 ${collapsed ? "lg:px-0" : ""}`}
-            onClick={handleLogout}
-            title={collapsed ? "Sign Out" : undefined}
-            aria-label="Sign Out"
-          >
-            <LogOut className={`mr-2 h-4 w-4 ${collapsed ? "lg:mr-0" : ""}`} />
-            <span className={collapsed ? "lg:hidden" : ""}>Sign Out</span>
-          </Button>
-        </div>
       </div>
 
       {/* Main content */}
@@ -363,10 +344,35 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
 
             <div className="flex items-center space-x-4">
               <NotificationsDropdown />
-              <div className="text-right text-sm leading-tight">
-                <div className="text-gray-900 font-medium">{user.name}</div>
-                <div className="text-gray-500 text-xs">{user.email}</div>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Account menu"
+                    className="flex items-center gap-2 rounded-md px-2 py-1 text-right text-sm leading-tight cursor-pointer hover:bg-gray-100"
+                  >
+                    <div className="min-w-0 max-w-[10rem] sm:max-w-xs">
+                      <div className="text-gray-900 font-medium truncate">{user.name}</div>
+                      <div className="text-gray-500 text-xs truncate">{user.email}</div>
+                    </div>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel className="text-xs font-normal capitalize text-gray-500">
+                    {user.role.toLowerCase()}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => router.push(profileHref)}>
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={handleLogout} className="text-red-700 focus:text-red-800">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
